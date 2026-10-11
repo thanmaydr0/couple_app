@@ -125,11 +125,11 @@ Deno.test("functions authenticate before fallback or privileged reads; tokens st
     Deno.env.set("SUPABASE_URL", "https://test.supabase.co");
     Deno.env.set("SUPABASE_ANON_KEY", "test-anon");
     Deno.env.set("SUPABASE_SERVICE_ROLE_KEY", "test-service");
-    Deno.env.set("METERED_APP", "test"); Deno.env.set("METERED_API_KEY", "secret");
+    Deno.env.set("METERED_APP", "test_workspace"); Deno.env.set("METERED_API_KEY", "secret");
     Deno.env.delete("EXPO_ACCESS_TOKEN");
     const turn = (await import("../functions/turn-credentials/index.ts")).handleRequest;
     const notify = (await import("../functions/notify-partner/index.ts")).handleRequest;
-    let valid = false, hasToken = false, pushCount = 0, partnerLookups = 0;
+    let valid = false, hasToken = false, pushCount = 0, partnerLookups = 0, meteredCalls = 0;
     globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
       const url = new URL(input instanceof Request ? input.url : String(input));
       if (url.pathname === "/auth/v1/user") return Response.json(valid ? { id: "caller", is_anonymous: false } : { message: "bad jwt" }, { status: valid ? 200 : 401 });
@@ -149,7 +149,11 @@ Deno.test("functions authenticate before fallback or privileged reads; tokens st
         assert(url.searchParams.get("user_id") === "eq.partner", "Token scope missing");
         return Response.json(hasToken ? [{ token: "ExpoPushToken[private-token]" }] : []);
       }
-      if (url.hostname.endsWith("metered.live")) return new Response("unavailable", { status: 503 });
+      if (url.hostname.endsWith("metered.live")) {
+        meteredCalls++;
+        assert(url.hostname === "test_workspace.metered.live", "Metered workspace hostname rejected");
+        return new Response("unavailable", { status: 503 });
+      }
       if (url.hostname === "exp.host") {
         pushCount++;
         const push = JSON.parse(String(init?.body));
@@ -171,6 +175,7 @@ Deno.test("functions authenticate before fallback or privileged reads; tokens st
     valid = true;
     const fallback = await turn(request());
     assert(fallback.status === 200 && (await fallback.json())[0].urls === "stun:stun.l.google.com:19302", "STUN fallback failed");
+    assert(Number(meteredCalls) === 1, "Underscore workspace skipped the Metered request");
     const noToken = await notify(request());
     assert(noToken.status === 200 && pushCount === 0, "Missing-token noop failed");
     hasToken = true;

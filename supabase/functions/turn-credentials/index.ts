@@ -38,7 +38,7 @@ export async function handleRequest(req: Request): Promise<Response> {
   const fallback = [{ urls: "stun:stun.l.google.com:19302" }];
   const app = Deno.env.get("METERED_APP");
   const apiKey = Deno.env.get("METERED_API_KEY");
-  if (!app || !apiKey || !/^[a-zA-Z0-9-]+$/.test(app)) return json(fallback);
+  if (!app || !apiKey || !/^[a-zA-Z0-9_-]+$/.test(app)) return json(fallback);
   try {
     const endpoint = new URL(`https://${app}.metered.live/api/v1/turn/credentials`);
     endpoint.searchParams.set("apiKey", apiKey);

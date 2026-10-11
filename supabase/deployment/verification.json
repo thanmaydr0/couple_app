@@ -1,0 +1,24 @@
+{
+  "signups_disabled": true,
+  "project_ref": "tlqedvktbgaipzhdgsuy",
+  "verified_at": "2026-10-11T19:19:12.3777115+00:00",
+  "accounts": [
+    {
+      "sign_in": "passed",
+      "account_id": "ea50cef7-f494-4661-acd4-530b32756cd9",
+      "paired_profile_count": 2,
+      "turn_relay_count": 4,
+      "turn_http_status": 200,
+      "notify_no_token": "passed"
+    },
+    {
+      "sign_in": "passed",
+      "account_id": "adf1eee4-3cef-4cd1-bea4-fd01a51832b1",
+      "paired_profile_count": 2,
+      "turn_relay_count": 4,
+      "turn_http_status": 200,
+      "notify_no_token": "passed"
+    }
+  ],
+  "unauthenticated_functions": "rejected"
+}

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "952074754763",
+    "project_id": "teser-278d0",
+    "storage_bucket": "teser-278d0.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:952074754763:android:4a6cfdac49ed1e7469d94e",
+        "android_client_info": {
+          "package_name": "com.thanmay.teser"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCTc_O8KxcAEEPCT8t0MLzTz-xwJ0tyMTM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

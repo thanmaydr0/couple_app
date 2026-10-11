@@ -1,7 +1,30 @@
 # Two-person Supabase backend
 
-Everything here is deployed manually. You do not need Docker or a local Supabase
-stack. No remote database or function is changed by creating these files.
+## Current deployment — 2026-10-12
+
+The backend is deployed to `Couple_app` (`tlqedvktbgaipzhdgsuy`). Both migrations
+and both JWT-protected Edge Functions are live. The two requested accounts were
+created and paired without invitation emails; public registration is disabled.
+Local sign-in credentials are in `supabase/.private/account-credentials.json`,
+excluded from Git and protected by Windows folder permissions. Never copy that
+file into the app or commit it.
+
+Metered TURN is configured using the `neha_thanmay` workspace and its free
+500 MB trial. Its credential-specific API key is stored only in Supabase secrets.
+Live checks confirmed both accounts can sign in, see exactly the two paired
+profiles, obtain four TURN relay entries, and call notify-partner successfully
+with no device token registered. Both functions reject missing JWTs. Sanitized
+results are saved in `supabase/deployment/verification.json`.
+
+Expo uses the deployed Supabase project and existing Firebase Android app
+`com.thanmay.teser` in `teser-278d0`. Firebase Cloud Messaging V1 is enabled.
+The Expo FCM service account credential is pending approval and configuration.
+Actual push display and WebRTC connectivity still require the installed app on
+two physical devices. No SQL, account invitations, or TURN secret entry is
+required from the user for this deployment.
+
+The instructions below are a reference for recreating or maintaining the setup.
+They do not require Docker or a local Supabase stack.
 
 ## 1. Create a project and run the SQL
 
@@ -191,6 +214,8 @@ From the repository root:
 ```powershell
 npx deno check --config supabase/deno.json supabase/functions/turn-credentials/index.ts supabase/functions/notify-partner/index.ts src/types/db.ts
 npx deno test --config supabase/deno.json --allow-env --allow-read --allow-net supabase/tests/backend_test.ts
+# Live account/function checks, using the private local credential file:
+pwsh -File supabase/tests/live_check.ps1
 ```
 
 Tests use in-memory Postgres (PGlite) with small Auth/Storage stand-ins and mocked
