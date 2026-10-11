@@ -7,8 +7,9 @@ Us uses Expo SDK 57, React Native 0.86, TypeScript and Expo Router. Native build
 - Android package: `com.thanmay.teser`; Firebase project: `teser-278d0`. The matching public Android configuration is included as `google-services.json`.
 - EAS project: `@thanmaydr/us-app` (`9ed6b019-a224-484f-9d5c-f5c6e7e3ec11`). The real update URL is configured in `app.json`.
 - Supabase project: `tlqedvktbgaipzhdgsuy`. Both public variables are configured locally and in EAS development, preview and production environments. Schema, private media storage and both Edge Functions are deployed.
-- EAS generated the Android signing keystore remotely. First development build: https://expo.dev/accounts/thanmaydr/projects/us-app/builds/76d791d2-9e71-4e93-b9d3-ddb0472e5ca3 . Check its current status before downloading.
-- FCM v1 server credentials are still absent from EAS. The separate backend chat is handling Firebase server authorization and TURN setup; avoid doing those operations concurrently.
+- EAS generated the Android signing keystore remotely. The first development build failed because the splash configuration had no image. A real heart splash asset and app icon are now included. Replacement build: https://expo.dev/accounts/thanmaydr/projects/us-app/builds/569af113-ccbc-4a26-be98-c684e8a34b2f . Check its current status before downloading.
+- FCM v1 server credentials are still absent from EAS. The dedicated credential is prepared in the backend chat and awaits approval before creation and upload. TURN setup is complete.
+- Build monitoring was stopped at the user's request while the replacement build was still `IN_PROGRESS`. Its resource-linking step passed; final APK success has not yet been verified.
 
 ## Setup reference for another environment
 
@@ -100,6 +101,7 @@ The export creates a JavaScript bundle in ignored `dist/`, not an APK. Only the 
 Verified `npx eas-cli@latest update --help` and `npx eas-cli@latest build --help` during scaffolding on 2026-10-11. The documented `--platform`, `--profile`, `--channel`, `--environment` and `--message` flags come from those commands.
 
 - [Expo SDK reference](https://docs.expo.dev/versions/v57.0.0/)
+- [Splash screen configuration](https://docs.expo.dev/versions/v57.0.0/sdk/splash-screen/)
 - [Expo Router installation](https://docs.expo.dev/router/installation/)
 - [Reanimated setup](https://docs.expo.dev/versions/v57.0.0/sdk/reanimated/)
 - [Video and thumbnails](https://docs.expo.dev/versions/v57.0.0/sdk/video/)
@@ -121,7 +123,7 @@ The remaining Expo packages were checked against their SDK 57 documentation, and
 - `npx expo config --type public`: passed; config plugins resolve.
 - `npx expo install --check`: passed after installing the audio asset peer.
 - `npm ls --depth=0`: passed, with no missing or invalid direct dependencies.
-- `npx expo-doctor`: run once, 19/21 checks passed. It identified the missing `expo-asset` direct dependency (subsequently installed and checked) and the two New Architecture metadata warnings described above. Doctor was not rerun or its warnings suppressed.
-- `npx expo export --platform android`: passed. It warns that `google-services.json` is absent; the actual Firebase file is a manual prerequisite for EAS, not a file this scaffold can fabricate.
+- `npx expo-doctor`: the initial scaffold run passed 19/21 checks and identified the missing `expo-asset` direct dependency, which was installed. The cloud-setup run passed 20/21; only the WebRTC/InCall Manager New Architecture metadata warnings remain. They are not suppressed.
+- `npx expo export --platform android`: passed during initial scaffolding. The warning about absent Firebase configuration was resolved by downloading the real Android configuration during cloud setup. Export was not repeated while the backend session was active.
 - npm audit reports 34 dependency advisories (13 moderate, 21 high), largely inherited through the Expo/React Native toolchain and ngrok dependencies. Its proposed changes include incompatible SDK downgrades/upgrades, so no forced audit changes were applied. Review compatible upstream fixes during a shared dependency maintenance task before release.
-- No local native build, device test, authenticated Supabase request, EAS cloud build or OTA publish was performed. Real project credentials, EAS linking and Firebase configuration are still required.
+- Cloud setup now includes actual Supabase and Firebase configuration, EAS linking and remote Android builds. The backend session's live verification reports two successful authenticated account checks, paired-profile access, TURN relay credentials, and rejection of unauthenticated function requests. No local native build, device test or OTA publish was performed.
