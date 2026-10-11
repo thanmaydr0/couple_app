@@ -1,0 +1,23 @@
+node_modules/
+.expo/
+dist/
+.git/
+.env
+.env.*
+!.env.example
+*.tsbuildinfo
+expo-env.d.ts
+android/
+ios/
+*.jks
+*.keystore
+*.p8
+*.p12
+*.key
+*.mobileprovision
+npm-debug.*
+.DS_Store
+# Backend-only material and local account credentials never belong in EAS uploads.
+supabase/
+**/.private/
+src/lib/verify-shell.mjs
