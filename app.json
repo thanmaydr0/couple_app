@@ -91,7 +91,10 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#161118"
+          "backgroundColor": "#161118",
+          "image": "./assets/splash-mark.png",
+          "imageWidth": 160,
+          "resizeMode": "contain"
         }
       ],
       "expo-image",
@@ -116,6 +119,7 @@
         "projectId": "9ed6b019-a224-484f-9d5c-f5c6e7e3ec11"
       }
     },
-    "owner": "thanmaydr"
+    "owner": "thanmaydr",
+    "icon": "./assets/icon.png"
   }
 }
