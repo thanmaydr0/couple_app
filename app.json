@@ -1,0 +1,106 @@
+{
+  "expo": {
+    "name": "Us",
+    "slug": "us-app",
+    "version": "1.0.0",
+    "platforms": [
+      "android"
+    ],
+    "scheme": "us",
+    "userInterfaceStyle": "dark",
+    "orientation": "default",
+    "android": {
+      "package": "com.CHANGEME.us",
+      "googleServicesFile": "./google-services.json",
+      "permissions": [
+        "CAMERA",
+        "RECORD_AUDIO",
+        "MODIFY_AUDIO_SETTINGS",
+        "READ_MEDIA_IMAGES",
+        "READ_MEDIA_VIDEO",
+        "POST_NOTIFICATIONS",
+        "WAKE_LOCK",
+        "VIBRATE",
+        "FOREGROUND_SERVICE",
+        "FOREGROUND_SERVICE_CAMERA",
+        "FOREGROUND_SERVICE_MICROPHONE",
+        "BLUETOOTH_CONNECT",
+        "INTERNET"
+      ]
+    },
+    "plugins": [
+      "expo-router",
+      "expo-dev-client",
+      [
+        "expo-video",
+        {
+          "supportsBackgroundPlayback": true,
+          "supportsPictureInPicture": true
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "color": "#EBA5B5",
+          "defaultChannel": "default"
+        }
+      ],
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "Allow Us to access the memories you choose to share.",
+          "savePhotosPermission": "Allow Us to save your shared memories.",
+          "granularPermissions": [
+            "photo",
+            "video"
+          ]
+        }
+      ],
+      [
+        "@config-plugins/react-native-webrtc",
+        {
+          "cameraPermission": "Allow Us to use your camera for video calls with your partner.",
+          "microphonePermission": "Allow Us to use your microphone for calls with your partner."
+        }
+      ],
+      "expo-updates",
+      "react-native-compressor",
+      "expo-secure-store",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow Us to access photos you choose to share.",
+          "cameraPermission": "Allow Us to capture memories with your camera.",
+          "microphonePermission": "Allow Us to record audio in your videos."
+        }
+      ],
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "Allow Us to record voice messages."
+        }
+      ],
+      "expo-screen-orientation",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#161118"
+        }
+      ],
+      "expo-image",
+      "expo-sharing",
+      "expo-asset"
+    ],
+    "updates": {
+      "enabled": true,
+      "checkAutomatically": "ON_LOAD",
+      "fallbackToCacheTimeout": 0
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
