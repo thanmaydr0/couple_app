@@ -2,9 +2,17 @@
 
 Us uses Expo SDK 57, React Native 0.86, TypeScript and Expo Router. Native builds run only in EAS cloud. This laptop only runs Metro, TypeScript and JavaScript exports. Expo Go cannot run this app because WebRTC, InCall Manager, Compressor and other custom native modules require a development build.
 
-## One-time setup before the first build
+## Cloud setup completed (12 October 2026)
 
-1. Replace `com.CHANGEME.us` in `app.json` with your final Android application ID. Register that exact ID in Firebase, download its Android `google-services.json`, and put the file at the repository root. It is intentionally not ignored so EAS can include it. Do not substitute a Firebase service account file.
+- Android package: `com.thanmay.teser`; Firebase project: `teser-278d0`. The matching public Android configuration is included as `google-services.json`.
+- EAS project: `@thanmaydr/us-app` (`9ed6b019-a224-484f-9d5c-f5c6e7e3ec11`). The real update URL is configured in `app.json`.
+- Supabase project: `tlqedvktbgaipzhdgsuy`. Both public variables are configured locally and in EAS development, preview and production environments. Schema, private media storage and both Edge Functions are deployed.
+- EAS generated the Android signing keystore remotely. First development build: https://expo.dev/accounts/thanmaydr/projects/us-app/builds/76d791d2-9e71-4e93-b9d3-ddb0472e5ca3 . Check its current status before downloading.
+- FCM v1 server credentials are still absent from EAS. The separate backend chat is handling Firebase server authorization and TURN setup; avoid doing those operations concurrently.
+
+## Setup reference for another environment
+
+1. Keep the Android package and Firebase Android app registration matched. The current package and downloaded `google-services.json` are already configured. This public client configuration is intentionally committed so EAS can include it. Do not substitute a Firebase service account file.
 2. Copy `.env.example` to `.env`. Set your Supabase URL and anon key. Public Expo variables are included in the app bundle; never put the Supabase service role key or Metered key here. Use the same two public variables in the EAS `development`, `preview` and `production` environments. `.env` is ignored; `.env.example` is committed.
 3. Authenticate and link the real EAS project, then configure its actual update URL:
 
@@ -14,7 +22,7 @@ Us uses Expo SDK 57, React Native 0.86, TypeScript and Expo Router. Native build
    npx eas-cli@latest update:configure
    ```
 
-   Review and commit the resulting `extra.eas.projectId` and `updates.url` in app config before building. No fabricated project ID or update endpoint is included in this scaffold. Keep `runtimeVersion: { "policy": "appVersion" }` and all three channels from `eas.json`.
+   The current project is already linked; these commands are only needed when setting up a different project. Keep `runtimeVersion: { "policy": "appVersion" }` and all three channels from `eas.json`.
 4. Configure Firebase Cloud Messaging v1 credentials for Android push in the EAS dashboard. The service account credential belongs in EAS credentials, never in this repository or app bundle. The bundled `google-services.json` alone does not configure push delivery.
 
 ## Build APKs in the cloud
