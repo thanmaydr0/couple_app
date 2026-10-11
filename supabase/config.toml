@@ -1,0 +1,7 @@
+project_id = "couple-app"
+
+[functions.turn-credentials]
+verify_jwt = true
+
+[functions.notify-partner]
+verify_jwt = true
