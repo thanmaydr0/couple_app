@@ -10,11 +10,12 @@ import { AuthGate } from '@/lib/AuthGate';
 import { SessionProvider, useSession } from '@/lib/session';
 import { PresenceProvider } from '@/features/presence/PresenceProvider';
 import { CallProvider } from '@/features/calls/CallProvider';
+import { PushProvider } from '@/features/notifications/PushProvider';
 import { theme } from '@/ui/theme';
 
 function AppShell() {
   const { data: session } = useSession();
-  return <PresenceProvider><CallProvider><AuthGate>
+  return <PresenceProvider><CallProvider><PushProvider><AuthGate>
       <StatusBar style="light" />
       <Stack screenOptions={{ headerStyle: { backgroundColor: theme.colors.background }, headerTintColor: theme.colors.text, contentStyle: { backgroundColor: theme.colors.background } }}>
         <Stack.Protected guard={!!session}>
@@ -29,7 +30,7 @@ function AppShell() {
           <Stack.Screen name="(auth)/login" options={{ headerShown: false }} />
         </Stack.Protected>
       </Stack>
-    </AuthGate></CallProvider></PresenceProvider>;
+    </AuthGate></PushProvider></CallProvider></PresenceProvider>;
 }
 export default function RootLayout() {
   return <GestureHandlerRootView style={{ flex: 1, backgroundColor: theme.colors.background }}>

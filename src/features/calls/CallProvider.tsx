@@ -4,7 +4,6 @@ import * as Notifications from 'expo-notifications';
 import { usePartner, useProfile, useSession } from '@/lib/hooks';
 import { CallEngine, attachEngine, detachEngine, useCalls } from './engine';
 import { ActiveCallScreen } from './CallScreen';
-import { registerCallNotifications } from './notifications';
 
 export function CallProvider({ children }: PropsWithChildren) {
   const { data: session } = useSession();
@@ -22,15 +21,12 @@ export function CallProvider({ children }: PropsWithChildren) {
     if (!uid || !coupleId || !partnerId) return;
     const engine = new CallEngine(uid, coupleId, partnerId);
     attachEngine(engine); engine.mount();
-    void registerCallNotifications(uid).catch(() => { console.warn('[calls] Push registration unavailable.'); });
     const recover = () => { void engine.recover(); };
-    // Both foreground delivery and notification taps validate current DB status/age.
-    const response = Notifications.addNotificationResponseReceivedListener(recover);
+    // Tap routing belongs to PushProvider; foreground calls recover globally.
     const received = Notifications.addNotificationReceivedListener((notification) => {
       if (notification.request.content.data?.type === 'call') recover();
     });
-    void Notifications.getLastNotificationResponseAsync().then((last) => { if (last?.notification.request.content.data?.type === 'call') recover(); }).catch(() => {});
-    return () => { response.remove(); received.remove(); detachEngine(engine); engine.dispose(); };
+    return () => { received.remove(); detachEngine(engine); engine.dispose(); };
   }, [uid, coupleId, partnerId]);
   return <>{children}<Modal visible={phase !== 'idle'} animationType="slide" presentationStyle="fullScreen" statusBarTranslucent
     onRequestClose={() => { /* A back press must not accidentally end or hide an incoming call. */ }}>

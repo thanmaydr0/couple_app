@@ -71,6 +71,24 @@ function harness(uid = 'a', partnerId = 'b') {
   return { engine, store: engineModule.useCalls, rows, sent, peers, streams, incoming, signal, channel, types, timers,
     deny: () => { allowed = false; }, deferMedia: () => { let resolve; acquire = () => new Promise((done) => { resolve = done; }); return () => { const stream = new Stream(); resolve(stream); return stream; }; } };
 }
+test('notification taps open only the requested fresh partner invite', async () => {
+  const h = harness(); await tick();
+  const row = h.incoming();
+  assert.equal(await h.engine.openIncomingNotification('missing'), false);
+  row.started_at = new Date(Date.now() - 40000).toISOString();
+  assert.equal(await h.engine.openIncomingNotification(row.id), false);
+  row.started_at = new Date().toISOString(); row.status = 'ended';
+  assert.equal(await h.engine.openIncomingNotification(row.id), false);
+  row.status = 'ringing'; row.caller_id = 'outsider';
+  assert.equal(await h.engine.openIncomingNotification(row.id), false);
+  row.caller_id = 'b'; row.couple_id = 'other-couple';
+  assert.equal(await h.engine.openIncomingNotification(row.id), false);
+  row.couple_id = 'couple';
+  assert.equal(await h.engine.openIncomingNotification(row.id), true);
+  assert.equal(h.store.getState().phase, 'incoming');
+  h.engine.dispose();
+});
+
 test('protocol validates envelopes and rejects malformed/stale invite timestamps', () => {
   const h = harness();
   assert.equal(h.types.parseSignal({}), null);

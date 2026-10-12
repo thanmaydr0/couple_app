@@ -26,7 +26,7 @@ export async function handleRequest(req: Request): Promise<Response> {
     const { data: auth, error: authError } = await client.auth.getUser(match[1]);
     if (authError || !auth.user || auth.user.is_anonymous) return json({ error: "Invalid user access token" }, 401);
 
-    let payload;
+    let payload: { type?: unknown; title?: unknown; body?: unknown; data?: Record<string, unknown> };
     try {
       // Expo limits the whole notification to 4096 bytes; leave room for routing.
       const raw = await req.text();
@@ -35,10 +35,10 @@ export async function handleRequest(req: Request): Promise<Response> {
     } catch {
       return json({ error: "Invalid JSON" }, 400);
     }
-    if (!payload || !["message", "call"].includes(payload.type) ||
+    if (!payload || !["message", "call", "test"].includes(String(payload.type)) ||
       typeof payload.title !== "string" || typeof payload.body !== "string" ||
       !payload.data || typeof payload.data !== "object" || Array.isArray(payload.data)) {
-      return json({ error: "Expected {type: 'message'|'call', title, body, data: object}" }, 400);
+      return json({ error: "Expected {type: 'message'|'call'|'test', title, body, data: object}" }, 400);
     }
 
     // A separate admin client never inherits the caller's Authorization header.
@@ -53,13 +53,17 @@ export async function handleRequest(req: Request): Promise<Response> {
     const { data: partners, error: partnerError } = await admin.from("profiles")
       .select("id").eq("couple_id", caller.couple_id).neq("id", auth.user.id).limit(2);
     if (partnerError) return json({ error: "Partner lookup failed" }, 500);
-    if (!partners?.length) return ok();
-    if (partners.length !== 1) return json({ error: "Invalid couple configuration" }, 409);
+    if (payload.type !== "test" && !partners?.length) return ok();
+    if (payload.type !== "test" && partners?.length !== 1) return json({ error: "Invalid couple configuration" }, 409);
+    // Test notifications always target the VERIFIED caller, never a supplied ID.
+    const recipientId = payload.type === "test" ? auth.user.id : partners![0].id;
     const { data: push, error: pushError } = await admin.from("push_tokens")
-      .select("token").eq("user_id", partners[0].id).maybeSingle();
+      .select("token").eq("user_id", recipientId).maybeSingle();
     if (pushError) return json({ error: "Notification lookup failed" }, 500);
     // The response is identical whether a token exists or not. Never return it.
-    if (!push?.token || !/^(ExponentPushToken|ExpoPushToken)\[[A-Za-z0-9_-]+\]$/.test(push.token)) return ok();
+    if (!push?.token || !/^(ExponentPushToken|ExpoPushToken)\[[A-Za-z0-9_-]+\]$/.test(push.token)) {
+      return payload.type === "test" ? json({ error: "Register notifications on this device first" }, 409) : ok();
+    }
     const expoHeaders: Record<string, string> = { "Content-Type": "application/json", "Accept": "application/json" };
     // Optional if enhanced push security is enabled in Expo.
     const expoAccessToken = Deno.env.get("EXPO_ACCESS_TOKEN");
@@ -68,9 +72,11 @@ export async function handleRequest(req: Request): Promise<Response> {
       method: "POST",
       headers: expoHeaders,
       body: JSON.stringify({
-        to: push.token, title: payload.title, body: payload.body, data: payload.data,
+        to: push.token, title: payload.title, body: payload.body,
+        data: { ...payload.data, type: payload.type, recipientId, coupleId: caller.couple_id },
         sound: "default", priority: "high",
         channelId: payload.type === "call" ? "calls" : "messages",
+        ttl: payload.type === "call" ? 40 : 86400,
       }),
       signal: AbortSignal.timeout(8000),
     });

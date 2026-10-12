@@ -8,6 +8,7 @@ import { friendlyError } from '@/lib/errors';
 import { Avatar, Button, Card, Screen, Text, theme } from '@/ui';
 import { FormField } from '@/ui/FormField';
 import { LoadingScreen } from '@/ui/LoadingScreen';
+import { testNotification, unregisterPush } from '@/features/notifications/service';
 export default function SettingsScreen() {
   const profile = useProfile();
   const couple = useCouple();
@@ -44,17 +45,22 @@ export default function SettingsScreen() {
     return 'Avatar updated.';
   } });
   const logout = useMutation({ mutationFn: async () => {
+    if (profile.data) await unregisterPush(profile.data.id);
     const { error: signOutError } = await supabase.auth.signOut({ scope: 'local' });
     if (signOutError) throw signOutError;
     return '';
   } });
-  const busy = saveName.isPending || saveAnniversary.isPending || avatarMutation.isPending || logout.isPending;
+  const pushTest = useMutation({ mutationFn: async () => {
+    if (!profile.data) throw new Error('Missing profile');
+    return testNotification(profile.data.id);
+  } });
+  const busy = saveName.isPending || saveAnniversary.isPending || avatarMutation.isPending || logout.isPending || pushTest.isPending;
   const perform = async (action: () => Promise<string>) => {
     setMessage(''); setError('');
     try { setMessage(await action()); }
     catch (cause) {
       const detail = cause instanceof Error ? cause.message : '';
-      setError(/^(Display name|Enter a valid date)/.test(detail) ? detail : /permission denied/i.test(detail) ? 'Allow access to photos in Android settings, then try again.' : friendlyError(cause));
+      setError(/^(Display name|Enter a valid date|The remote test|Could not (save|remove) notification|The EAS push)/.test(detail) ? detail : /permission denied/i.test(detail) ? 'Allow access to photos in Android settings, then try again.' : friendlyError(cause));
     }
   };
   if (profile.isPending || couple.isPending) return <LoadingScreen />;
@@ -65,6 +71,10 @@ export default function SettingsScreen() {
       <Button title={saveName.isPending ? 'Saving…' : 'Save name'} disabled={busy} onPress={() => { void perform(() => saveName.mutateAsync()); }} />
     </Card>
     <Card style={{ gap: 16 }}><Text accessibilityRole="header" style={{ fontSize: 22 }}>Your story began</Text><FormField label="Anniversary (YYYY-MM-DD)" value={anniversary} onChangeText={setAnniversary} maxLength={10} placeholder="2024-02-14" autoCapitalize="none" editable={!busy} /><Text style={{ color: theme.colors.muted }}>Leave blank to hide the days-together counter.</Text><Button title={saveAnniversary.isPending ? 'Saving…' : 'Save anniversary'} disabled={busy} onPress={() => { void perform(() => saveAnniversary.mutateAsync()); }} /></Card>
+    <Card style={{ gap: 16 }}><Text accessibilityRole="header" style={{ fontSize: 22 }}>Stay connected</Text>
+      <Text style={{ color: theme.colors.muted }}>Check remote push delivery to this phone. For reliable messages and calls, allow notifications and unrestricted battery use for Us in Android settings.</Text>
+      <Button title={pushTest.isPending ? 'Sending test…' : 'Test notification'} disabled={busy} onPress={() => { void perform(() => pushTest.mutateAsync()); }} />
+    </Card>
     {!!message && <Text accessibilityLiveRegion="polite" style={{ color: theme.colors.success }}>{message}</Text>}
     {!!error && <Text accessibilityRole="alert" style={{ color: theme.colors.danger }}>{error}</Text>}
     <Button title={logout.isPending ? 'Signing out…' : 'Sign out'} disabled={busy} onPress={() => { void perform(() => logout.mutateAsync()); }} />

@@ -5,6 +5,7 @@ import { supabase } from './supabase';
 import { Screen, Text, Button, theme } from '@/ui';
 import { LoadingScreen } from '@/ui/LoadingScreen';
 import { friendlyError } from './errors';
+import { unregisterPush } from '@/features/notifications/service';
 
 export function AuthGate({ children }: PropsWithChildren) {
   const session = useSession();
@@ -20,7 +21,11 @@ export function AuthGate({ children }: PropsWithChildren) {
         <Text accessibilityRole="header" style={{ fontSize: 26, lineHeight: 34 }}>{unpaired ? 'Your space isn’t paired yet' : 'We couldn’t load your space'}</Text>
         <Text>{unpaired ? 'Ask the admin to run the seed script' : friendlyError(error)}</Text>
         <Button title="Try again" onPress={() => { void session.refetch(); void profile.refetch(); }} />
-        <Button title="Sign out" onPress={() => { void supabase.auth.signOut({ scope: 'local' }).then(({ error: signOutError }) => { if (signOutError) setLogoutError(friendlyError(signOutError)); }); }} />
+        <Button title="Sign out" onPress={() => { void (async () => {
+          if (session.data) await unregisterPush(session.data.user.id);
+          const { error: signOutError } = await supabase.auth.signOut({ scope: 'local' });
+          if (signOutError) throw signOutError;
+        })().catch((cause: unknown) => setLogoutError(friendlyError(cause))); }} />
         {!!logoutError && <Text accessibilityRole="alert">{logoutError}</Text>}
       </View></Screen>}
     </View>}

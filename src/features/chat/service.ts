@@ -103,12 +103,13 @@ export async function pickChatImage(couple: string, uid: string): Promise<{ uri:
 
 export async function notifyPartnerOfMessage(message: MessageRow): Promise<void> {
   try {
-    await supabase.functions.invoke('notify-partner', { body: {
+    const { error } = await supabase.functions.invoke('notify-partner', { body: {
       type: 'message', title: 'A message for you',
       body: message.kind === 'image' ? 'Sent you a photo' : (message.body ?? '').slice(0, 180),
-      data: { message_id: message.id, couple_id: message.couple_id, url: '/(tabs)/chat' },
+      data: { type: 'message', message_id: message.id, couple_id: message.couple_id, url: '/(tabs)/chat' },
     } });
-  } catch { /* Push must never turn a successful send into a failed bubble. */ }
+    if (error) console.warn('[chat] Partner push could not be delivered.');
+  } catch { console.warn('[chat] Partner push could not be delivered.'); }
 }
 
 export async function sendMessage(message: ChatMessage): Promise<ChatMessage> {

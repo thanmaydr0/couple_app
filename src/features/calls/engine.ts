@@ -341,6 +341,15 @@ export class CallEngine {
     }
   }
 
+  async openIncomingNotification(id: string): Promise<boolean> {
+    const { data, error } = await supabase.from('calls').select('*').eq('id', id)
+      .eq('couple_id', this.coupleId).eq('caller_id', this.partnerId).maybeSingle();
+    if (error) throw new Error('Could not check the incoming call.');
+    if (this.disposed || !data || data.status !== 'ringing' || !freshInvite(data.started_at)) return false;
+    await this.incoming(data);
+    return this.call?.id === id;
+  }
+
   async recover() {
     if (this.disposed || this.recovering) return;
     this.recovering = true;
