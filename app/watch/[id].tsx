@@ -1,1 +1,1 @@
-export { default } from '@/features/movie/Screen';
+export { default } from '@/features/movie/SessionScreen';
