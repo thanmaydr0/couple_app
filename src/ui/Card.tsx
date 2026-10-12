@@ -1,6 +1,7 @@
-import { View, type ViewProps } from 'react-native';
-import { theme } from './theme';
-
+import { StyleSheet, type ViewProps } from 'react-native';
+import Animated from 'react-native-reanimated';
+import { useTheme, useThemeStyle } from '../theme';
 export function Card({ style, ...props }: ViewProps) {
-  return <View {...props} style={[{ backgroundColor: theme.colors.surface, borderRadius: theme.radius.md, borderWidth: 1, borderColor: theme.colors.border, padding: theme.spacing.md }, style]} />;
+  const { radius, spacing, geometry } = useTheme(); const animated = useThemeStyle({ backgroundColor: 'surface', borderColor: 'border' }, StyleSheet.flatten(style));
+  return <Animated.View {...props} style={[{ borderRadius: radius.lg, borderWidth: geometry.hairline, padding: spacing.md }, animated, style]} />;
 }

@@ -1,9 +1,14 @@
+import { getLegacyColors } from '../theme/ThemeProvider';
+import { spacing, radius } from '../theme/tokens';
+/** @deprecated Use useTheme(). Module-level StyleSheet values remain snapshots until restyled. */
 export const theme = {
   colors: {
-    background: '#161118', surface: '#231B27', surfaceRaised: '#302435',
-    primary: '#EBA5B5', onPrimary: '#301621', text: '#FFF2F5',
-    muted: '#BDAABF', border: '#49364C', success: '#A9CEB5', danger: '#FF9C9C',
+    get background() { return getLegacyColors().bg; }, get surface() { return getLegacyColors().surface; },
+    get surfaceRaised() { return getLegacyColors().surfaceAlt; }, get primary() { return getLegacyColors().primary; },
+    get onPrimary() { return getLegacyColors().primaryContrast; }, get text() { return getLegacyColors().textPrimary; },
+    get muted() { return getLegacyColors().textMuted; }, get border() { return getLegacyColors().border; },
+    get success() { return getLegacyColors().success; }, get danger() { return getLegacyColors().danger; },
   },
-  spacing: { xs: 4, sm: 8, md: 16, lg: 24, xl: 32 },
-  radius: { sm: 8, md: 16, lg: 24, pill: 999 },
-} as const;
+  spacing: { xs: spacing.xs, sm: spacing.sm, md: spacing.md, lg: spacing.lg, xl: spacing.xl },
+  radius: { sm: radius.sm, md: radius.md, lg: spacing.lg, pill: radius.pill },
+};
