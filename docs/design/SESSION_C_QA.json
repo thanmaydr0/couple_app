@@ -1,0 +1,70 @@
+{
+  "generatedAt": "2026-10-12T16:54:11.735Z",
+  "frameCount": 108,
+  "uniqueNames": 108,
+  "fonts": {
+    "display": true,
+    "body": true,
+    "label": true
+  },
+  "scriptErrors": [],
+  "externalRequests": [],
+  "themes": [
+    {
+      "theme": "Midnight",
+      "frameCount": 108,
+      "incorrectDimensions": 0,
+      "horizontalOverflow": [],
+      "contrastFailures": []
+    },
+    {
+      "theme": "Rose",
+      "frameCount": 108,
+      "incorrectDimensions": 0,
+      "horizontalOverflow": [],
+      "contrastFailures": []
+    },
+    {
+      "theme": "Noir",
+      "frameCount": 108,
+      "incorrectDimensions": 0,
+      "horizontalOverflow": [],
+      "contrastFailures": []
+    }
+  ],
+  "largeTextHorizontalOverflow": [],
+  "interactions": {
+    "watch": "Watch/File picker/default",
+    "guess": "Scribble/Guess/correct",
+    "accept": "Calls/Video/default",
+    "selfViewKeyboardMoved": true,
+    "offline": [
+      {
+        "frame": "Watch/Player portrait/offline",
+        "controls": 4,
+        "disabled": true
+      },
+      {
+        "frame": "Chess/Board/offline",
+        "controls": 64,
+        "disabled": true
+      },
+      {
+        "frame": "Scribble/Draw/offline",
+        "controls": 7,
+        "disabled": true
+      },
+      {
+        "frame": "Scribble/Guess/offline",
+        "controls": 2,
+        "disabled": true
+      }
+    ]
+  },
+  "limitations": [
+    "This is an editable HTML review artifact, not Figma nodes or app implementation.",
+    "Large-type QA is a browser reflow stress test, not Android font-scale/device validation.",
+    "Video/avatar assets were not supplied; labeled placeholders remain.",
+    "No actual session, chess move, drawing sync, call or device behavior was exercised."
+  ]
+}

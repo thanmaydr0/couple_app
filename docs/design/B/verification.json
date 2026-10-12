@@ -1,0 +1,575 @@
+{
+  "results": [
+    {
+      "theme": "Midnight",
+      "frames": [
+        {
+          "name": "Chat/Conversation/default",
+          "width": 412,
+          "height": 915,
+          "overflow": [],
+          "historyScroll": 0
+        },
+        {
+          "name": "Chat/Reply composing/default",
+          "width": 412,
+          "height": 915,
+          "overflow": [],
+          "historyScroll": 2
+        },
+        {
+          "name": "Chat/Message actions sheet/default",
+          "width": 412,
+          "height": 915,
+          "overflow": [],
+          "historyScroll": 0
+        },
+        {
+          "name": "Chat/Message info sheet/seen",
+          "width": 412,
+          "height": 915,
+          "overflow": [],
+          "historyScroll": 0
+        },
+        {
+          "name": "Chat/Message info sheet/pending",
+          "width": 412,
+          "height": 915,
+          "overflow": [],
+          "historyScroll": 0
+        },
+        {
+          "name": "Chat/Image viewer/default",
+          "width": 412,
+          "height": 915,
+          "overflow": [],
+          "historyScroll": null
+        },
+        {
+          "name": "Chat/Image viewer/loading",
+          "width": 412,
+          "height": 915,
+          "overflow": [],
+          "historyScroll": null
+        },
+        {
+          "name": "Chat/Image viewer/error",
+          "width": 412,
+          "height": 915,
+          "overflow": [],
+          "historyScroll": null
+        },
+        {
+          "name": "Chat/Conversation/empty",
+          "width": 412,
+          "height": 915,
+          "overflow": [],
+          "historyScroll": null
+        },
+        {
+          "name": "Chat/Conversation/loading",
+          "width": 412,
+          "height": 915,
+          "overflow": [],
+          "historyScroll": 0
+        },
+        {
+          "name": "Chat/Conversation/error",
+          "width": 412,
+          "height": 915,
+          "overflow": [],
+          "historyScroll": 0
+        },
+        {
+          "name": "Chat/Conversation/offline",
+          "width": 412,
+          "height": 915,
+          "overflow": [],
+          "historyScroll": 0
+        },
+        {
+          "name": "Memories/Timeline/default",
+          "width": 412,
+          "height": 915,
+          "overflow": [],
+          "historyScroll": null
+        },
+        {
+          "name": "Memories/Upload sheet/uploading",
+          "width": 412,
+          "height": 915,
+          "overflow": [],
+          "historyScroll": null
+        },
+        {
+          "name": "Memories/Photo viewer/default",
+          "width": 412,
+          "height": 915,
+          "overflow": [],
+          "historyScroll": null
+        },
+        {
+          "name": "Memories/Video viewer/default",
+          "width": 412,
+          "height": 915,
+          "overflow": [],
+          "historyScroll": null
+        },
+        {
+          "name": "Memories/Viewer/loading",
+          "width": 412,
+          "height": 915,
+          "overflow": [],
+          "historyScroll": null
+        },
+        {
+          "name": "Memories/Viewer/error",
+          "width": 412,
+          "height": 915,
+          "overflow": [],
+          "historyScroll": null
+        },
+        {
+          "name": "Memories/Timeline/empty",
+          "width": 412,
+          "height": 915,
+          "overflow": [],
+          "historyScroll": null
+        },
+        {
+          "name": "Memories/Timeline/loading",
+          "width": 412,
+          "height": 915,
+          "overflow": [],
+          "historyScroll": null
+        },
+        {
+          "name": "Memories/Upload sheet/error",
+          "width": 412,
+          "height": 915,
+          "overflow": [],
+          "historyScroll": null
+        },
+        {
+          "name": "Memories/Timeline/storage almost full",
+          "width": 412,
+          "height": 915,
+          "overflow": [],
+          "historyScroll": null
+        },
+        {
+          "name": "Memories/Timeline/error",
+          "width": 412,
+          "height": 915,
+          "overflow": [],
+          "historyScroll": null
+        },
+        {
+          "name": "Memories/Timeline/offline",
+          "width": 412,
+          "height": 915,
+          "overflow": [],
+          "historyScroll": null
+        }
+      ],
+      "fonts": [
+        {
+          "name": "Fraunces",
+          "loaded": true
+        },
+        {
+          "name": "Plus Jakarta Sans",
+          "loaded": true
+        }
+      ],
+      "contrast": {
+        "pairs": 27,
+        "minimum": 4.7978794521765655,
+        "failures": []
+      }
+    },
+    {
+      "theme": "Rose",
+      "frames": [
+        {
+          "name": "Chat/Conversation/default",
+          "width": 412,
+          "height": 915,
+          "overflow": [],
+          "historyScroll": 0
+        },
+        {
+          "name": "Chat/Reply composing/default",
+          "width": 412,
+          "height": 915,
+          "overflow": [],
+          "historyScroll": 2
+        },
+        {
+          "name": "Chat/Message actions sheet/default",
+          "width": 412,
+          "height": 915,
+          "overflow": [],
+          "historyScroll": 0
+        },
+        {
+          "name": "Chat/Message info sheet/seen",
+          "width": 412,
+          "height": 915,
+          "overflow": [],
+          "historyScroll": 0
+        },
+        {
+          "name": "Chat/Message info sheet/pending",
+          "width": 412,
+          "height": 915,
+          "overflow": [],
+          "historyScroll": 0
+        },
+        {
+          "name": "Chat/Image viewer/default",
+          "width": 412,
+          "height": 915,
+          "overflow": [],
+          "historyScroll": null
+        },
+        {
+          "name": "Chat/Image viewer/loading",
+          "width": 412,
+          "height": 915,
+          "overflow": [],
+          "historyScroll": null
+        },
+        {
+          "name": "Chat/Image viewer/error",
+          "width": 412,
+          "height": 915,
+          "overflow": [],
+          "historyScroll": null
+        },
+        {
+          "name": "Chat/Conversation/empty",
+          "width": 412,
+          "height": 915,
+          "overflow": [],
+          "historyScroll": null
+        },
+        {
+          "name": "Chat/Conversation/loading",
+          "width": 412,
+          "height": 915,
+          "overflow": [],
+          "historyScroll": 0
+        },
+        {
+          "name": "Chat/Conversation/error",
+          "width": 412,
+          "height": 915,
+          "overflow": [],
+          "historyScroll": 0
+        },
+        {
+          "name": "Chat/Conversation/offline",
+          "width": 412,
+          "height": 915,
+          "overflow": [],
+          "historyScroll": 0
+        },
+        {
+          "name": "Memories/Timeline/default",
+          "width": 412,
+          "height": 915,
+          "overflow": [],
+          "historyScroll": null
+        },
+        {
+          "name": "Memories/Upload sheet/uploading",
+          "width": 412,
+          "height": 915,
+          "overflow": [],
+          "historyScroll": null
+        },
+        {
+          "name": "Memories/Photo viewer/default",
+          "width": 412,
+          "height": 915,
+          "overflow": [],
+          "historyScroll": null
+        },
+        {
+          "name": "Memories/Video viewer/default",
+          "width": 412,
+          "height": 915,
+          "overflow": [],
+          "historyScroll": null
+        },
+        {
+          "name": "Memories/Viewer/loading",
+          "width": 412,
+          "height": 915,
+          "overflow": [],
+          "historyScroll": null
+        },
+        {
+          "name": "Memories/Viewer/error",
+          "width": 412,
+          "height": 915,
+          "overflow": [],
+          "historyScroll": null
+        },
+        {
+          "name": "Memories/Timeline/empty",
+          "width": 412,
+          "height": 915,
+          "overflow": [],
+          "historyScroll": null
+        },
+        {
+          "name": "Memories/Timeline/loading",
+          "width": 412,
+          "height": 915,
+          "overflow": [],
+          "historyScroll": null
+        },
+        {
+          "name": "Memories/Upload sheet/error",
+          "width": 412,
+          "height": 915,
+          "overflow": [],
+          "historyScroll": null
+        },
+        {
+          "name": "Memories/Timeline/storage almost full",
+          "width": 412,
+          "height": 915,
+          "overflow": [],
+          "historyScroll": null
+        },
+        {
+          "name": "Memories/Timeline/error",
+          "width": 412,
+          "height": 915,
+          "overflow": [],
+          "historyScroll": null
+        },
+        {
+          "name": "Memories/Timeline/offline",
+          "width": 412,
+          "height": 915,
+          "overflow": [],
+          "historyScroll": null
+        }
+      ],
+      "fonts": [
+        {
+          "name": "Fraunces",
+          "loaded": true
+        },
+        {
+          "name": "Plus Jakarta Sans",
+          "loaded": true
+        }
+      ],
+      "contrast": {
+        "pairs": 27,
+        "minimum": 5.08568071921237,
+        "failures": []
+      }
+    },
+    {
+      "theme": "Noir",
+      "frames": [
+        {
+          "name": "Chat/Conversation/default",
+          "width": 412,
+          "height": 915,
+          "overflow": [],
+          "historyScroll": 0
+        },
+        {
+          "name": "Chat/Reply composing/default",
+          "width": 412,
+          "height": 915,
+          "overflow": [],
+          "historyScroll": 2
+        },
+        {
+          "name": "Chat/Message actions sheet/default",
+          "width": 412,
+          "height": 915,
+          "overflow": [],
+          "historyScroll": 0
+        },
+        {
+          "name": "Chat/Message info sheet/seen",
+          "width": 412,
+          "height": 915,
+          "overflow": [],
+          "historyScroll": 0
+        },
+        {
+          "name": "Chat/Message info sheet/pending",
+          "width": 412,
+          "height": 915,
+          "overflow": [],
+          "historyScroll": 0
+        },
+        {
+          "name": "Chat/Image viewer/default",
+          "width": 412,
+          "height": 915,
+          "overflow": [],
+          "historyScroll": null
+        },
+        {
+          "name": "Chat/Image viewer/loading",
+          "width": 412,
+          "height": 915,
+          "overflow": [],
+          "historyScroll": null
+        },
+        {
+          "name": "Chat/Image viewer/error",
+          "width": 412,
+          "height": 915,
+          "overflow": [],
+          "historyScroll": null
+        },
+        {
+          "name": "Chat/Conversation/empty",
+          "width": 412,
+          "height": 915,
+          "overflow": [],
+          "historyScroll": null
+        },
+        {
+          "name": "Chat/Conversation/loading",
+          "width": 412,
+          "height": 915,
+          "overflow": [],
+          "historyScroll": 0
+        },
+        {
+          "name": "Chat/Conversation/error",
+          "width": 412,
+          "height": 915,
+          "overflow": [],
+          "historyScroll": 0
+        },
+        {
+          "name": "Chat/Conversation/offline",
+          "width": 412,
+          "height": 915,
+          "overflow": [],
+          "historyScroll": 0
+        },
+        {
+          "name": "Memories/Timeline/default",
+          "width": 412,
+          "height": 915,
+          "overflow": [],
+          "historyScroll": null
+        },
+        {
+          "name": "Memories/Upload sheet/uploading",
+          "width": 412,
+          "height": 915,
+          "overflow": [],
+          "historyScroll": null
+        },
+        {
+          "name": "Memories/Photo viewer/default",
+          "width": 412,
+          "height": 915,
+          "overflow": [],
+          "historyScroll": null
+        },
+        {
+          "name": "Memories/Video viewer/default",
+          "width": 412,
+          "height": 915,
+          "overflow": [],
+          "historyScroll": null
+        },
+        {
+          "name": "Memories/Viewer/loading",
+          "width": 412,
+          "height": 915,
+          "overflow": [],
+          "historyScroll": null
+        },
+        {
+          "name": "Memories/Viewer/error",
+          "width": 412,
+          "height": 915,
+          "overflow": [],
+          "historyScroll": null
+        },
+        {
+          "name": "Memories/Timeline/empty",
+          "width": 412,
+          "height": 915,
+          "overflow": [],
+          "historyScroll": null
+        },
+        {
+          "name": "Memories/Timeline/loading",
+          "width": 412,
+          "height": 915,
+          "overflow": [],
+          "historyScroll": null
+        },
+        {
+          "name": "Memories/Upload sheet/error",
+          "width": 412,
+          "height": 915,
+          "overflow": [],
+          "historyScroll": null
+        },
+        {
+          "name": "Memories/Timeline/storage almost full",
+          "width": 412,
+          "height": 915,
+          "overflow": [],
+          "historyScroll": null
+        },
+        {
+          "name": "Memories/Timeline/error",
+          "width": 412,
+          "height": 915,
+          "overflow": [],
+          "historyScroll": null
+        },
+        {
+          "name": "Memories/Timeline/offline",
+          "width": 412,
+          "height": 915,
+          "overflow": [],
+          "historyScroll": null
+        }
+      ],
+      "fonts": [
+        {
+          "name": "Fraunces",
+          "loaded": true
+        },
+        {
+          "name": "Plus Jakarta Sans",
+          "loaded": true
+        }
+      ],
+      "contrast": {
+        "pairs": 27,
+        "minimum": 4.769187563828087,
+        "failures": []
+      }
+    }
+  ],
+  "errors": [],
+  "interactions": {
+    "sendEnabled": true,
+    "actionsOpened": "chat-message-actions-sheet-default",
+    "infoOpened": "chat-message-info-sheet-seen",
+    "uploadOpened": "memories-upload-sheet-uploading"
+  }
+}

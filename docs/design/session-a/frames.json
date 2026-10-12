@@ -1,0 +1,428 @@
+[
+  {
+    "id": "Auth/Splash/default",
+    "width": 412,
+    "height": 915,
+    "url": "index.html#Auth%2FSplash%2Fdefault"
+  },
+  {
+    "id": "Auth/Splash/loading",
+    "width": 412,
+    "height": 915,
+    "url": "index.html#Auth%2FSplash%2Floading"
+  },
+  {
+    "id": "Auth/Splash/empty",
+    "width": 412,
+    "height": 915,
+    "url": "index.html#Auth%2FSplash%2Fempty"
+  },
+  {
+    "id": "Auth/Splash/error",
+    "width": 412,
+    "height": 915,
+    "url": "index.html#Auth%2FSplash%2Ferror"
+  },
+  {
+    "id": "Auth/Splash/offline",
+    "width": 412,
+    "height": 915,
+    "url": "index.html#Auth%2FSplash%2Foffline"
+  },
+  {
+    "id": "Auth/Login/default",
+    "width": 412,
+    "height": 915,
+    "url": "index.html#Auth%2FLogin%2Fdefault"
+  },
+  {
+    "id": "Auth/Login/loading",
+    "width": 412,
+    "height": 915,
+    "url": "index.html#Auth%2FLogin%2Floading"
+  },
+  {
+    "id": "Auth/Login/empty",
+    "width": 412,
+    "height": 915,
+    "url": "index.html#Auth%2FLogin%2Fempty"
+  },
+  {
+    "id": "Auth/Login/validation",
+    "width": 412,
+    "height": 915,
+    "url": "index.html#Auth%2FLogin%2Fvalidation"
+  },
+  {
+    "id": "Auth/Login/error",
+    "width": 412,
+    "height": 915,
+    "url": "index.html#Auth%2FLogin%2Ferror"
+  },
+  {
+    "id": "Auth/Login/config-error",
+    "width": 412,
+    "height": 915,
+    "url": "index.html#Auth%2FLogin%2Fconfig-error"
+  },
+  {
+    "id": "Auth/Login/offline",
+    "width": 412,
+    "height": 915,
+    "url": "index.html#Auth%2FLogin%2Foffline"
+  },
+  {
+    "id": "Auth/Login/keyboard",
+    "width": 412,
+    "height": 915,
+    "url": "index.html#Auth%2FLogin%2Fkeyboard"
+  },
+  {
+    "id": "Home/Our space/default",
+    "width": 412,
+    "height": 915,
+    "url": "index.html#Home%2FOur%20space%2Fdefault"
+  },
+  {
+    "id": "Home/Our space/loading",
+    "width": 412,
+    "height": 915,
+    "url": "index.html#Home%2FOur%20space%2Floading"
+  },
+  {
+    "id": "Home/Our space/empty",
+    "width": 412,
+    "height": 915,
+    "url": "index.html#Home%2FOur%20space%2Fempty"
+  },
+  {
+    "id": "Home/Our space/error",
+    "width": 412,
+    "height": 915,
+    "url": "index.html#Home%2FOur%20space%2Ferror"
+  },
+  {
+    "id": "Home/Our space/offline",
+    "width": 412,
+    "height": 915,
+    "url": "index.html#Home%2FOur%20space%2Foffline"
+  },
+  {
+    "id": "Home/Our space/long-content",
+    "width": 412,
+    "height": 915,
+    "url": "index.html#Home%2FOur%20space%2Flong-content"
+  },
+  {
+    "id": "Settings/Main/default",
+    "width": 412,
+    "height": 915,
+    "url": "index.html#Settings%2FMain%2Fdefault"
+  },
+  {
+    "id": "Settings/Main/loading",
+    "width": 412,
+    "height": 915,
+    "url": "index.html#Settings%2FMain%2Floading"
+  },
+  {
+    "id": "Settings/Main/empty",
+    "width": 412,
+    "height": 915,
+    "url": "index.html#Settings%2FMain%2Fempty"
+  },
+  {
+    "id": "Settings/Main/error",
+    "width": 412,
+    "height": 915,
+    "url": "index.html#Settings%2FMain%2Ferror"
+  },
+  {
+    "id": "Settings/Main/offline",
+    "width": 412,
+    "height": 915,
+    "url": "index.html#Settings%2FMain%2Foffline"
+  },
+  {
+    "id": "Settings/Main/long-content",
+    "width": 412,
+    "height": 915,
+    "url": "index.html#Settings%2FMain%2Flong-content"
+  },
+  {
+    "id": "Settings/Main/signing-out",
+    "width": 412,
+    "height": 915,
+    "url": "index.html#Settings%2FMain%2Fsigning-out"
+  },
+  {
+    "id": "Settings/Main/logout-error",
+    "width": 412,
+    "height": 915,
+    "url": "index.html#Settings%2FMain%2Flogout-error"
+  },
+  {
+    "id": "Settings/Appearance/default",
+    "width": 412,
+    "height": 915,
+    "url": "index.html#Settings%2FAppearance%2Fdefault"
+  },
+  {
+    "id": "Settings/Appearance/long-content",
+    "width": 412,
+    "height": 915,
+    "url": "index.html#Settings%2FAppearance%2Flong-content"
+  },
+  {
+    "id": "Settings/Profile/default",
+    "width": 412,
+    "height": 915,
+    "url": "index.html#Settings%2FProfile%2Fdefault"
+  },
+  {
+    "id": "Settings/Profile/loading",
+    "width": 412,
+    "height": 915,
+    "url": "index.html#Settings%2FProfile%2Floading"
+  },
+  {
+    "id": "Settings/Profile/empty",
+    "width": 412,
+    "height": 915,
+    "url": "index.html#Settings%2FProfile%2Fempty"
+  },
+  {
+    "id": "Settings/Profile/error",
+    "width": 412,
+    "height": 915,
+    "url": "index.html#Settings%2FProfile%2Ferror"
+  },
+  {
+    "id": "Settings/Profile/offline",
+    "width": 412,
+    "height": 915,
+    "url": "index.html#Settings%2FProfile%2Foffline"
+  },
+  {
+    "id": "Settings/Profile/long-content",
+    "width": 412,
+    "height": 915,
+    "url": "index.html#Settings%2FProfile%2Flong-content"
+  },
+  {
+    "id": "Settings/Profile/uploading",
+    "width": 412,
+    "height": 915,
+    "url": "index.html#Settings%2FProfile%2Fuploading"
+  },
+  {
+    "id": "Settings/Profile/saving-name",
+    "width": 412,
+    "height": 915,
+    "url": "index.html#Settings%2FProfile%2Fsaving-name"
+  },
+  {
+    "id": "Settings/Profile/saving-anniversary",
+    "width": 412,
+    "height": 915,
+    "url": "index.html#Settings%2FProfile%2Fsaving-anniversary"
+  },
+  {
+    "id": "Settings/Profile/invalid-name",
+    "width": 412,
+    "height": 915,
+    "url": "index.html#Settings%2FProfile%2Finvalid-name"
+  },
+  {
+    "id": "Settings/Profile/invalid-date",
+    "width": 412,
+    "height": 915,
+    "url": "index.html#Settings%2FProfile%2Finvalid-date"
+  },
+  {
+    "id": "Settings/Profile/denied",
+    "width": 412,
+    "height": 915,
+    "url": "index.html#Settings%2FProfile%2Fdenied"
+  },
+  {
+    "id": "Settings/Notifications/default",
+    "width": 412,
+    "height": 915,
+    "url": "index.html#Settings%2FNotifications%2Fdefault"
+  },
+  {
+    "id": "Settings/Notifications/loading",
+    "width": 412,
+    "height": 915,
+    "url": "index.html#Settings%2FNotifications%2Floading"
+  },
+  {
+    "id": "Settings/Notifications/error",
+    "width": 412,
+    "height": 915,
+    "url": "index.html#Settings%2FNotifications%2Ferror"
+  },
+  {
+    "id": "Settings/Notifications/offline",
+    "width": 412,
+    "height": 915,
+    "url": "index.html#Settings%2FNotifications%2Foffline"
+  },
+  {
+    "id": "Settings/Notifications/denied",
+    "width": 412,
+    "height": 915,
+    "url": "index.html#Settings%2FNotifications%2Fdenied"
+  },
+  {
+    "id": "Settings/Notifications/success",
+    "width": 412,
+    "height": 915,
+    "url": "index.html#Settings%2FNotifications%2Fsuccess"
+  },
+  {
+    "id": "System/Tab bar/default",
+    "width": 412,
+    "height": 915,
+    "url": "index.html#System%2FTab%20bar%2Fdefault"
+  },
+  {
+    "id": "System/Tab bar/chat",
+    "width": 412,
+    "height": 915,
+    "url": "index.html#System%2FTab%20bar%2Fchat"
+  },
+  {
+    "id": "System/Tab bar/memories",
+    "width": 412,
+    "height": 915,
+    "url": "index.html#System%2FTab%20bar%2Fmemories"
+  },
+  {
+    "id": "System/Tab bar/watch",
+    "width": 412,
+    "height": 915,
+    "url": "index.html#System%2FTab%20bar%2Fwatch"
+  },
+  {
+    "id": "System/Tab bar/games",
+    "width": 412,
+    "height": 915,
+    "url": "index.html#System%2FTab%20bar%2Fgames"
+  },
+  {
+    "id": "System/Toast/default",
+    "width": 412,
+    "height": 915,
+    "url": "index.html#System%2FToast%2Fdefault"
+  },
+  {
+    "id": "System/Toast/error",
+    "width": 412,
+    "height": 915,
+    "url": "index.html#System%2FToast%2Ferror"
+  },
+  {
+    "id": "System/Toast/long-content",
+    "width": 412,
+    "height": 915,
+    "url": "index.html#System%2FToast%2Flong-content"
+  },
+  {
+    "id": "System/Dialog/default",
+    "width": 412,
+    "height": 915,
+    "url": "index.html#System%2FDialog%2Fdefault"
+  },
+  {
+    "id": "System/Dialog/loading",
+    "width": 412,
+    "height": 915,
+    "url": "index.html#System%2FDialog%2Floading"
+  },
+  {
+    "id": "System/Dialog/error",
+    "width": 412,
+    "height": 915,
+    "url": "index.html#System%2FDialog%2Ferror"
+  },
+  {
+    "id": "System/Bottom sheet/default",
+    "width": 412,
+    "height": 915,
+    "url": "index.html#System%2FBottom%20sheet%2Fdefault"
+  },
+  {
+    "id": "System/Bottom sheet/long-content",
+    "width": 412,
+    "height": 915,
+    "url": "index.html#System%2FBottom%20sheet%2Flong-content"
+  },
+  {
+    "id": "System/Skeleton/default",
+    "width": 412,
+    "height": 915,
+    "url": "index.html#System%2FSkeleton%2Fdefault"
+  },
+  {
+    "id": "System/Offline banner/default",
+    "width": 412,
+    "height": 915,
+    "url": "index.html#System%2FOffline%20banner%2Fdefault"
+  },
+  {
+    "id": "System/Permissions/camera",
+    "width": 412,
+    "height": 915,
+    "url": "index.html#System%2FPermissions%2Fcamera"
+  },
+  {
+    "id": "System/Permissions/microphone",
+    "width": 412,
+    "height": 915,
+    "url": "index.html#System%2FPermissions%2Fmicrophone"
+  },
+  {
+    "id": "System/Permissions/photos",
+    "width": 412,
+    "height": 915,
+    "url": "index.html#System%2FPermissions%2Fphotos"
+  },
+  {
+    "id": "System/Permissions/notifications",
+    "width": 412,
+    "height": 915,
+    "url": "index.html#System%2FPermissions%2Fnotifications"
+  },
+  {
+    "id": "System/Permissions/camera-denied",
+    "width": 412,
+    "height": 915,
+    "url": "index.html#System%2FPermissions%2Fcamera-denied"
+  },
+  {
+    "id": "System/Permissions/microphone-denied",
+    "width": 412,
+    "height": 915,
+    "url": "index.html#System%2FPermissions%2Fmicrophone-denied"
+  },
+  {
+    "id": "System/Permissions/photos-denied",
+    "width": 412,
+    "height": 915,
+    "url": "index.html#System%2FPermissions%2Fphotos-denied"
+  },
+  {
+    "id": "System/Permissions/notifications-denied",
+    "width": 412,
+    "height": 915,
+    "url": "index.html#System%2FPermissions%2Fnotifications-denied"
+  },
+  {
+    "id": "System/Error screen/default",
+    "width": 412,
+    "height": 915,
+    "url": "index.html#System%2FError%20screen%2Fdefault"
+  }
+]

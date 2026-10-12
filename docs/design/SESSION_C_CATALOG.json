@@ -1,0 +1,650 @@
+[
+  {
+    "id": "Watch/Lobby/default",
+    "area": "Watch",
+    "state": "default",
+    "key": true
+  },
+  {
+    "id": "Watch/Lobby/invited",
+    "area": "Watch",
+    "state": "invited",
+    "key": true
+  },
+  {
+    "id": "Watch/Lobby/resume",
+    "area": "Watch",
+    "state": "resume",
+    "key": false
+  },
+  {
+    "id": "Watch/Lobby/loading",
+    "area": "Watch",
+    "state": "loading",
+    "key": false
+  },
+  {
+    "id": "Watch/Lobby/empty",
+    "area": "Watch",
+    "state": "empty",
+    "key": false
+  },
+  {
+    "id": "Watch/Lobby/error",
+    "area": "Watch",
+    "state": "error",
+    "key": false
+  },
+  {
+    "id": "Watch/Lobby/offline",
+    "area": "Watch",
+    "state": "offline",
+    "key": false
+  },
+  {
+    "id": "Watch/File picker/default",
+    "area": "Watch",
+    "state": "default",
+    "key": true
+  },
+  {
+    "id": "Watch/File picker/reading",
+    "area": "Watch",
+    "state": "reading",
+    "key": false
+  },
+  {
+    "id": "Watch/File picker/error",
+    "area": "Watch",
+    "state": "error",
+    "key": false
+  },
+  {
+    "id": "Watch/Verification/default",
+    "area": "Watch",
+    "state": "default",
+    "key": false
+  },
+  {
+    "id": "Watch/Verification/match",
+    "area": "Watch",
+    "state": "match",
+    "key": true
+  },
+  {
+    "id": "Watch/Verification/mismatch",
+    "area": "Watch",
+    "state": "mismatch",
+    "key": true
+  },
+  {
+    "id": "Watch/Verification/override",
+    "area": "Watch",
+    "state": "override",
+    "key": true
+  },
+  {
+    "id": "Watch/Verification/ended",
+    "area": "Watch",
+    "state": "ended",
+    "key": false
+  },
+  {
+    "id": "Watch/Verification/loading",
+    "area": "Watch",
+    "state": "loading",
+    "key": false
+  },
+  {
+    "id": "Watch/Verification/error",
+    "area": "Watch",
+    "state": "error",
+    "key": false
+  },
+  {
+    "id": "Watch/Verification/offline",
+    "area": "Watch",
+    "state": "offline",
+    "key": false
+  },
+  {
+    "id": "Watch/Player portrait/both ready",
+    "area": "Watch",
+    "state": "both ready",
+    "key": true
+  },
+  {
+    "id": "Watch/Player portrait/playing",
+    "area": "Watch",
+    "state": "playing",
+    "key": true
+  },
+  {
+    "id": "Watch/Player portrait/controls hidden",
+    "area": "Watch",
+    "state": "controls hidden",
+    "key": false
+  },
+  {
+    "id": "Watch/Player portrait/waiting",
+    "area": "Watch",
+    "state": "waiting",
+    "key": true
+  },
+  {
+    "id": "Watch/Player portrait/buffering",
+    "area": "Watch",
+    "state": "buffering",
+    "key": false
+  },
+  {
+    "id": "Watch/Player portrait/offline",
+    "area": "Watch",
+    "state": "offline",
+    "key": false
+  },
+  {
+    "id": "Watch/Player portrait/error",
+    "area": "Watch",
+    "state": "error",
+    "key": false
+  },
+  {
+    "id": "Watch/Player landscape/both ready",
+    "area": "Watch",
+    "state": "both ready",
+    "key": false
+  },
+  {
+    "id": "Watch/Player landscape/playing",
+    "area": "Watch",
+    "state": "playing",
+    "key": true
+  },
+  {
+    "id": "Watch/Player landscape/waiting",
+    "area": "Watch",
+    "state": "waiting",
+    "key": false
+  },
+  {
+    "id": "Watch/Player landscape/offline",
+    "area": "Watch",
+    "state": "offline",
+    "key": false
+  },
+  {
+    "id": "Games/Hub/default",
+    "area": "Games",
+    "state": "default",
+    "key": true
+  },
+  {
+    "id": "Chess/Lobby/default",
+    "area": "Chess",
+    "state": "default",
+    "key": true
+  },
+  {
+    "id": "Chess/Lobby/resume",
+    "area": "Chess",
+    "state": "resume",
+    "key": true
+  },
+  {
+    "id": "Chess/Lobby/loading",
+    "area": "Chess",
+    "state": "loading",
+    "key": false
+  },
+  {
+    "id": "Chess/Lobby/empty",
+    "area": "Chess",
+    "state": "empty",
+    "key": false
+  },
+  {
+    "id": "Chess/Lobby/error",
+    "area": "Chess",
+    "state": "error",
+    "key": false
+  },
+  {
+    "id": "Chess/Lobby/offline",
+    "area": "Chess",
+    "state": "offline",
+    "key": false
+  },
+  {
+    "id": "Chess/Board/my turn",
+    "area": "Chess",
+    "state": "my turn",
+    "key": true
+  },
+  {
+    "id": "Chess/Board/partner turn",
+    "area": "Chess",
+    "state": "partner turn",
+    "key": false
+  },
+  {
+    "id": "Chess/Board/check",
+    "area": "Chess",
+    "state": "check",
+    "key": true
+  },
+  {
+    "id": "Chess/Board/saving",
+    "area": "Chess",
+    "state": "saving",
+    "key": false
+  },
+  {
+    "id": "Chess/Board/no moves",
+    "area": "Chess",
+    "state": "no moves",
+    "key": false
+  },
+  {
+    "id": "Chess/Board/offline",
+    "area": "Chess",
+    "state": "offline",
+    "key": false
+  },
+  {
+    "id": "Chess/Board/error",
+    "area": "Chess",
+    "state": "error",
+    "key": false
+  },
+  {
+    "id": "Chess/Promotion/default",
+    "area": "Chess",
+    "state": "default",
+    "key": true
+  },
+  {
+    "id": "Chess/Offer draw/received",
+    "area": "Chess",
+    "state": "received",
+    "key": true
+  },
+  {
+    "id": "Chess/Offer draw/sent",
+    "area": "Chess",
+    "state": "sent",
+    "key": false
+  },
+  {
+    "id": "Chess/Resign/default",
+    "area": "Chess",
+    "state": "default",
+    "key": false
+  },
+  {
+    "id": "Chess/Game over/win",
+    "area": "Chess",
+    "state": "win",
+    "key": true
+  },
+  {
+    "id": "Chess/Game over/lose",
+    "area": "Chess",
+    "state": "lose",
+    "key": true
+  },
+  {
+    "id": "Chess/Game over/draw",
+    "area": "Chess",
+    "state": "draw",
+    "key": true
+  },
+  {
+    "id": "Scribble/Lobby/default",
+    "area": "Scribble",
+    "state": "default",
+    "key": true
+  },
+  {
+    "id": "Scribble/Lobby/loading",
+    "area": "Scribble",
+    "state": "loading",
+    "key": false
+  },
+  {
+    "id": "Scribble/Lobby/empty",
+    "area": "Scribble",
+    "state": "empty",
+    "key": false
+  },
+  {
+    "id": "Scribble/Lobby/error",
+    "area": "Scribble",
+    "state": "error",
+    "key": false
+  },
+  {
+    "id": "Scribble/Lobby/offline",
+    "area": "Scribble",
+    "state": "offline",
+    "key": false
+  },
+  {
+    "id": "Scribble/Word pick/default",
+    "area": "Scribble",
+    "state": "default",
+    "key": true
+  },
+  {
+    "id": "Scribble/Word pick/waiting",
+    "area": "Scribble",
+    "state": "waiting",
+    "key": true
+  },
+  {
+    "id": "Scribble/Word pick/error",
+    "area": "Scribble",
+    "state": "error",
+    "key": false
+  },
+  {
+    "id": "Scribble/Word pick/offline",
+    "area": "Scribble",
+    "state": "offline",
+    "key": false
+  },
+  {
+    "id": "Scribble/Word pick/loading",
+    "area": "Scribble",
+    "state": "loading",
+    "key": false
+  },
+  {
+    "id": "Scribble/Draw/default",
+    "area": "Scribble",
+    "state": "default",
+    "key": true
+  },
+  {
+    "id": "Scribble/Draw/urgent",
+    "area": "Scribble",
+    "state": "urgent",
+    "key": true
+  },
+  {
+    "id": "Scribble/Draw/loading",
+    "area": "Scribble",
+    "state": "loading",
+    "key": false
+  },
+  {
+    "id": "Scribble/Draw/empty",
+    "area": "Scribble",
+    "state": "empty",
+    "key": false
+  },
+  {
+    "id": "Scribble/Draw/error",
+    "area": "Scribble",
+    "state": "error",
+    "key": false
+  },
+  {
+    "id": "Scribble/Draw/offline",
+    "area": "Scribble",
+    "state": "offline",
+    "key": false
+  },
+  {
+    "id": "Scribble/Draw/clear",
+    "area": "Scribble",
+    "state": "clear",
+    "key": false
+  },
+  {
+    "id": "Scribble/Guess/default",
+    "area": "Scribble",
+    "state": "default",
+    "key": true
+  },
+  {
+    "id": "Scribble/Guess/empty",
+    "area": "Scribble",
+    "state": "empty",
+    "key": false
+  },
+  {
+    "id": "Scribble/Guess/close",
+    "area": "Scribble",
+    "state": "close",
+    "key": false
+  },
+  {
+    "id": "Scribble/Guess/correct",
+    "area": "Scribble",
+    "state": "correct",
+    "key": true
+  },
+  {
+    "id": "Scribble/Guess/error",
+    "area": "Scribble",
+    "state": "error",
+    "key": false
+  },
+  {
+    "id": "Scribble/Guess/offline",
+    "area": "Scribble",
+    "state": "offline",
+    "key": false
+  },
+  {
+    "id": "Scribble/Guess/loading",
+    "area": "Scribble",
+    "state": "loading",
+    "key": false
+  },
+  {
+    "id": "Scribble/Round summary/solved",
+    "area": "Scribble",
+    "state": "solved",
+    "key": true
+  },
+  {
+    "id": "Scribble/Round summary/time up",
+    "area": "Scribble",
+    "state": "time up",
+    "key": true
+  },
+  {
+    "id": "Scribble/Round summary/error",
+    "area": "Scribble",
+    "state": "error",
+    "key": false
+  },
+  {
+    "id": "Scribble/Round summary/offline",
+    "area": "Scribble",
+    "state": "offline",
+    "key": false
+  },
+  {
+    "id": "Scribble/Results/win",
+    "area": "Scribble",
+    "state": "win",
+    "key": true
+  },
+  {
+    "id": "Scribble/Results/lose",
+    "area": "Scribble",
+    "state": "lose",
+    "key": false
+  },
+  {
+    "id": "Scribble/Results/tie",
+    "area": "Scribble",
+    "state": "tie",
+    "key": true
+  },
+  {
+    "id": "Scribble/Results/error",
+    "area": "Scribble",
+    "state": "error",
+    "key": false
+  },
+  {
+    "id": "Scribble/Results/offline",
+    "area": "Scribble",
+    "state": "offline",
+    "key": false
+  },
+  {
+    "id": "Calls/Incoming/audio",
+    "area": "Calls",
+    "state": "audio",
+    "key": true
+  },
+  {
+    "id": "Calls/Incoming/video",
+    "area": "Calls",
+    "state": "video",
+    "key": true
+  },
+  {
+    "id": "Calls/Incoming/avatar fallback",
+    "area": "Calls",
+    "state": "avatar fallback",
+    "key": false
+  },
+  {
+    "id": "Calls/Incoming/error",
+    "area": "Calls",
+    "state": "error",
+    "key": false
+  },
+  {
+    "id": "Calls/Calling/preparing",
+    "area": "Calls",
+    "state": "preparing",
+    "key": false
+  },
+  {
+    "id": "Calls/Calling/outgoing",
+    "area": "Calls",
+    "state": "outgoing",
+    "key": true
+  },
+  {
+    "id": "Calls/Calling/connecting",
+    "area": "Calls",
+    "state": "connecting",
+    "key": false
+  },
+  {
+    "id": "Calls/Calling/error",
+    "area": "Calls",
+    "state": "error",
+    "key": false
+  },
+  {
+    "id": "Calls/Audio/default",
+    "area": "Calls",
+    "state": "default",
+    "key": true
+  },
+  {
+    "id": "Calls/Audio/muted",
+    "area": "Calls",
+    "state": "muted",
+    "key": false
+  },
+  {
+    "id": "Calls/Audio/route chooser",
+    "area": "Calls",
+    "state": "route chooser",
+    "key": true
+  },
+  {
+    "id": "Calls/Audio/error",
+    "area": "Calls",
+    "state": "error",
+    "key": false
+  },
+  {
+    "id": "Calls/Video/default",
+    "area": "Calls",
+    "state": "default",
+    "key": true
+  },
+  {
+    "id": "Calls/Video/controls hidden",
+    "area": "Calls",
+    "state": "controls hidden",
+    "key": true
+  },
+  {
+    "id": "Calls/Video/camera off",
+    "area": "Calls",
+    "state": "camera off",
+    "key": false
+  },
+  {
+    "id": "Calls/Video/no remote",
+    "area": "Calls",
+    "state": "no remote",
+    "key": false
+  },
+  {
+    "id": "Calls/Video/error",
+    "area": "Calls",
+    "state": "error",
+    "key": false
+  },
+  {
+    "id": "Calls/Reconnecting/audio",
+    "area": "Calls",
+    "state": "audio",
+    "key": false
+  },
+  {
+    "id": "Calls/Reconnecting/video",
+    "area": "Calls",
+    "state": "video",
+    "key": true
+  },
+  {
+    "id": "Calls/Ended/default",
+    "area": "Calls",
+    "state": "default",
+    "key": true
+  },
+  {
+    "id": "Calls/Recent/default",
+    "area": "Calls",
+    "state": "default",
+    "key": true
+  },
+  {
+    "id": "Calls/Recent/loading",
+    "area": "Calls",
+    "state": "loading",
+    "key": false
+  },
+  {
+    "id": "Calls/Recent/empty",
+    "area": "Calls",
+    "state": "empty",
+    "key": false
+  },
+  {
+    "id": "Calls/Recent/error",
+    "area": "Calls",
+    "state": "error",
+    "key": false
+  },
+  {
+    "id": "Calls/Recent/offline",
+    "area": "Calls",
+    "state": "offline",
+    "key": false
+  }
+]
