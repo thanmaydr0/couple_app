@@ -23,14 +23,14 @@ the most recently registered device receives pushes.
   Supabase project. It derives the recipient from verified couple membership.
   A `test` request always targets the authenticated caller, ignoring supplied
   recipient IDs. Normal sends never reveal whether the partner has a token.
-- **Outstanding on 2026-10-12:** Expo's Android credentials page has no FCM V1
-  service account key. End-to-end remote delivery requires that credential.
-  Use a dedicated Google service account with only Firebase Cloud Messaging API
-  Admin (`roles/firebasecloudmessaging.admin`), create its JSON key, and upload it
-  in Expo → Project settings → Credentials → Android → `com.thanmay.teser` →
-  FCM V1 service account key. Creating persistent access needs approval.
-  Keep the private JSON key outside the app and Git; `google-services.json` is
-  a different, public client configuration file.
+- **Configured on 2026-10-12:** the dedicated service account
+  `us-expo-push@teser-278d0.iam.gserviceaccount.com` has Firebase Cloud Messaging
+  API Admin (`roles/firebasecloudmessaging.admin`) access. Its approved JSON key
+  is assigned to `com.thanmay.teser` for FCM V1 in Expo. The key is kept outside
+  the app and Git in the current Windows user's restricted private folder.
+  `google-services.json` is a different, public client configuration file.
+  Expo accepted remote self-test sends for both accounts after configuration;
+  actual phone display still needs device verification.
 
 See [Expo's FCM V1 setup guide](https://docs.expo.dev/push-notifications/fcm-credentials/).
 Use an Android development or release build on a physical phone; Expo Go does not
@@ -109,8 +109,9 @@ Automated checks: `npx tsc --noEmit`, `npx expo-doctor`, and
 Doctor currently reports the existing New Architecture metadata warning for
 `react-native-incall-manager` and `react-native-webrtc`; it is not suppressed.
 Live checks on 2026-10-12 confirmed owner-only token reads for both accounts and
-missing-JWT rejection. Both remote self-test sends returned HTTP 502 while the
-Expo FCM V1 credential was absent; phone delivery is not verified. The live check
+missing-JWT rejection. Initial self-test sends returned HTTP 502 before FCM V1
+setup; after configuration both remote self-tests were accepted by Expo.
+Phone display is not verified. The live check
 can be repeated with `node src/features/notifications/live-check.cjs` using the
 existing ignored local account credentials; it sends one self-test per account.
 

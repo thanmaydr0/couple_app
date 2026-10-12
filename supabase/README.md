@@ -18,7 +18,10 @@ results are saved in `supabase/deployment/verification.json`.
 
 Expo uses the deployed Supabase project and existing Firebase Android app
 `com.thanmay.teser` in `teser-278d0`. Firebase Cloud Messaging V1 is enabled.
-The Expo FCM service account credential is pending approval and configuration.
+The dedicated Expo FCM V1 service account credential was approved and configured
+on 2026-10-12. Expo accepted remote self-test sends for both accounts. The private
+key is stored outside the app and Git. See `docs/PUSH.md` for notification behavior
+and Android reliability settings.
 Actual push display and WebRTC connectivity still require the installed app on
 two physical devices. No SQL, account invitations, or TURN secret entry is
 required from the user for this deployment.
