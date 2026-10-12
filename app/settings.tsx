@@ -1,15 +1,20 @@
 import { useEffect, useState } from 'react';
 import { KeyboardAvoidingView, ScrollView, View } from 'react-native';
+import { router, Stack } from 'expo-router';
+import Constants from 'expo-constants';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAvatar, useCouple, useProfile } from '@/lib/hooks';
 import { supabase } from '@/lib/supabase';
 import { uploadAvatar, validAnniversary } from '@/lib/settings';
 import { friendlyError } from '@/lib/errors';
-import { Avatar, Button, Card, Screen, Text, theme } from '@/ui';
+import { Avatar, Button, Card, Screen, Text, Header, ErrorState, ListItem, PressableScale } from '@/ui';
+import { useTheme } from '@/theme';
+import { StaggerList } from '@/motion';
+import { FailureToast, OfflineNotice, PageSkeleton } from '@/features/presence/Presentation';
 import { FormField } from '@/ui/FormField';
-import { LoadingScreen } from '@/ui/LoadingScreen';
 import { testNotification, unregisterPush } from '@/features/notifications/service';
 export default function SettingsScreen() {
+  const { spacing, geometry } = useTheme();
   const profile = useProfile();
   const couple = useCouple();
   const avatar = useAvatar(profile.data?.avatar_path);
@@ -63,20 +68,26 @@ export default function SettingsScreen() {
       setError(/^(Display name|Enter a valid date|The remote test|Could not (save|remove) notification|The EAS push)/.test(detail) ? detail : /permission denied/i.test(detail) ? 'Allow access to photos in Android settings, then try again.' : friendlyError(cause));
     }
   };
-  if (profile.isPending || couple.isPending) return <LoadingScreen />;
-  if (profile.isError || couple.isError || !profile.data || !couple.data) return <Screen centered><Text>We couldn’t load settings.</Text><Button title="Try again" onPress={() => { void profile.refetch(); void couple.refetch(); }} /></Screen>;
-  return <Screen bottomInset><KeyboardAvoidingView behavior="height" style={{ flex: 1 }}><ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ gap: 24, paddingBottom: 32 }}>
-    <Card style={{ gap: 20 }}><View style={{ alignItems: 'center', gap: 16 }}><Avatar name={profile.data.display_name || 'You'} uri={avatar.data} size={96} /><Button title={avatarMutation.isPending ? 'Uploading…' : 'Change avatar'} disabled={busy} onPress={() => { void perform(() => avatarMutation.mutateAsync()); }} /></View>
+  if (profile.isPending || couple.isPending) return <><Stack.Screen options={{ headerShown: false }} /><PageSkeleton title="Settings" /></>;
+  if (profile.isError || couple.isError || !profile.data || !couple.data) return <Screen><Stack.Screen options={{ headerShown: false }} /><Header title="Settings" onBack={() => router.back()} /><OfflineNotice /><FailureToast message="We couldn’t load settings." /><ErrorState title="Settings couldn’t load" onRetry={() => { void profile.refetch(); void couple.refetch(); }} /></Screen>;
+  return <Screen bottomInset><Stack.Screen options={{ headerShown: false }} /><KeyboardAvoidingView behavior="height" style={{ flex: 1 }}><ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ gap: spacing.lg, paddingBottom: spacing.xl }}>
+    <View><Text variant="caption" color="textSecondary">MAKE YOURSELF AT HOME</Text><Header title="Settings" onBack={() => router.back()} /></View>
+    <OfflineNotice /><FailureToast message={error} />
+    <StaggerList style={{ gap: spacing.lg }}>
+    <Card style={{ gap: spacing.s20 }}><Text variant="title/M" accessibilityRole="header">Profile</Text><View style={{ alignItems: 'center', gap: spacing.md }}><Avatar name={profile.data.display_name || 'You'} uri={avatar.data} size={geometry.avatar * 2} /><Button title={avatarMutation.isPending ? 'Uploading…' : 'Change avatar'} loading={avatarMutation.isPending} disabled={busy} onPress={() => { void perform(() => avatarMutation.mutateAsync()); }} /></View>
       <FormField label="Display name" value={name} onChangeText={setName} maxLength={80} editable={!busy} autoComplete="name" />
-      <Button title={saveName.isPending ? 'Saving…' : 'Save name'} disabled={busy} onPress={() => { void perform(() => saveName.mutateAsync()); }} />
+      <Button title={saveName.isPending ? 'Saving…' : 'Save name'} loading={saveName.isPending} disabled={busy} onPress={() => { void perform(() => saveName.mutateAsync()); }} />
     </Card>
-    <Card style={{ gap: 16 }}><Text accessibilityRole="header" style={{ fontSize: 22 }}>Your story began</Text><FormField label="Anniversary (YYYY-MM-DD)" value={anniversary} onChangeText={setAnniversary} maxLength={10} placeholder="2024-02-14" autoCapitalize="none" editable={!busy} /><Text style={{ color: theme.colors.muted }}>Leave blank to hide the days-together counter.</Text><Button title={saveAnniversary.isPending ? 'Saving…' : 'Save anniversary'} disabled={busy} onPress={() => { void perform(() => saveAnniversary.mutateAsync()); }} /></Card>
-    <Card style={{ gap: 16 }}><Text accessibilityRole="header" style={{ fontSize: 22 }}>Stay connected</Text>
-      <Text style={{ color: theme.colors.muted }}>Check remote push delivery to this phone. For reliable messages and calls, allow notifications and unrestricted battery use for Us in Android settings.</Text>
-      <Button title={pushTest.isPending ? 'Sending test…' : 'Test notification'} disabled={busy} onPress={() => { void perform(() => pushTest.mutateAsync()); }} />
+    <Card style={{ gap: spacing.md }}><Text accessibilityRole="header" variant="title/M">Your story began</Text><FormField label="Anniversary (YYYY-MM-DD)" value={anniversary} onChangeText={setAnniversary} maxLength={10} placeholder="2024-02-14" autoCapitalize="none" editable={!busy} /><Text variant="body/S" color="textSecondary">Leave blank to hide the days-together counter.</Text><Button title={saveAnniversary.isPending ? 'Saving…' : 'Save anniversary'} loading={saveAnniversary.isPending} disabled={busy} onPress={() => { void perform(() => saveAnniversary.mutateAsync()); }} /></Card>
+    <Card style={{ gap: spacing.md }}><Text accessibilityRole="header" variant="title/M">Stay connected</Text>
+      <Text variant="body/S" color="textSecondary">Check remote push delivery to this phone. For reliable messages and calls, allow notifications and unrestricted battery use for Us in Android settings.</Text>
+      <Button title={pushTest.isPending ? 'Sending test…' : 'Test notification'} loading={pushTest.isPending} disabled={busy} onPress={() => { void perform(() => pushTest.mutateAsync()); }} />
     </Card>
-    {!!message && <Text accessibilityLiveRegion="polite" style={{ color: theme.colors.success }}>{message}</Text>}
-    {!!error && <Text accessibilityRole="alert" style={{ color: theme.colors.danger }}>{error}</Text>}
-    <Button title={logout.isPending ? 'Signing out…' : 'Sign out'} disabled={busy} onPress={() => { void perform(() => logout.mutateAsync()); }} />
+    <Card><ListItem title="Appearance" subtitle="Eight themes, your accent, your pace" onPress={() => router.push('/settings/appearance')} /></Card>
+    </StaggerList>
+    {!!message && <Text accessibilityLiveRegion="polite" color="success">{message}</Text>}
+    {!!error && <Text accessibilityRole="alert" color="danger">{error}</Text>}
+    <Button title={logout.isPending ? 'Signing out…' : 'Sign out'} variant="ghost" loading={logout.isPending} disabled={busy} onPress={() => { void perform(() => logout.mutateAsync()); }} />
+    <PressableScale accessibilityRole="button" accessibilityLabel={`Us version ${Constants.expoConfig?.version ?? '—'}`} accessibilityHint={__DEV__ ? 'Long press to open the UI lab' : undefined} disabled={!__DEV__} onLongPress={() => router.push('/ui-lab')} accessibilityActions={__DEV__ ? [{ name: 'longpress', label: 'Open UI lab' }] : undefined} onAccessibilityAction={() => { if (__DEV__) router.push('/ui-lab'); }} style={{ minHeight: geometry.touch, justifyContent: 'center' }}><Text variant="caption" color="textSecondary" style={{ textAlign: 'center' }}>Us · {Constants.expoConfig?.version ?? '—'}</Text></PressableScale>
   </ScrollView></KeyboardAvoidingView></Screen>;
 }
