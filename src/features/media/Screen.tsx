@@ -1,6 +1,11 @@
-import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
-import { ActivityIndicator, Alert, AppState, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import { Alert, AppState, RefreshControl, StyleSheet, View } from 'react-native';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import { useTheme } from '@/theme';
+import { BottomSheet, FadeInView, PressableScale } from '@/motion';
+import { Badge, Button, Card, Header, Screen as AppScreen, Text } from '@/ui';
+import { Polaroids, TileEnter, TimelineSkeleton, UploadJob } from './Presentation';
+import { useMediaStyles } from './styles';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import NetInfo from '@react-native-community/netinfo';
 import { FlashList } from '@shopify/flash-list';
@@ -28,7 +33,10 @@ function timeline(rows: MediaRow[]) {
   }
   return items;
 }
-function Tile({ row, store, open }: { row: MediaRow; store: MediaStore; open: () => void }) {
+function Tile({ row, store, open }: { row: MediaRow; store: MediaStore; open: (center?: { x: number; y: number }) => void }) {
+  const s = useMediaStyles();
+  const { colors, geometry } = useTheme();
+  const tile = useRef<View>(null);
   const state = useSyncExternalStore(store.subscribe, store.snapshot);
   const local = state.local[row.id];
   const path = row.thumb_path ?? (row.kind === 'photo' ? row.storage_path : null);
@@ -46,19 +54,24 @@ function Tile({ row, store, open }: { row: MediaRow; store: MediaStore; open: ()
     const network = NetInfo.addEventListener(info => { if (info.isConnected) load(); });
     return () => { alive = false; clearInterval(timer); network(); };
   }, [path, store, localPreview]);
-  return <Pressable onPress={open} style={s.tile} accessibilityRole="button" accessibilityLabel={`${row.kind}: ${row.caption ?? new Date(row.taken_at).toLocaleDateString()}`}>
-    {localPreview || remote ? <Image source={{ uri: localPreview ?? remote }} style={StyleSheet.absoluteFill} contentFit="cover" cachePolicy="none" onError={() => setFailed(true)} /> : <Text style={s.muted}>{failed ? 'Preview unavailable' : 'Loading…'}</Text>}
-    {row.kind === 'video' && <Text style={s.video}>▶ {Math.round((row.duration_ms ?? 0) / 1000)}s</Text>}
-    {local && <Text style={s.badge}>Saved on this phone</Text>}
-  </Pressable>;
+  return <View ref={tile} collapsable={false} style={s.tileWrap}><PressableScale onPress={() => { if (tile.current) tile.current.measureInWindow((x, y, width, height) => open(width > 0 && height > 0 ? { x: x + width / 2, y: y + height / 2 } : undefined)); else open(); }} style={s.tile} accessibilityRole="button" accessibilityLabel={`${row.kind}: ${row.caption ?? new Date(row.taken_at).toLocaleDateString()}`}>
+    {!failed && (localPreview || remote) ? <Image source={{ uri: localPreview ?? remote }} style={StyleSheet.absoluteFill} contentFit="cover" cachePolicy="none" onError={() => setFailed(true)} /> : <View style={{ alignItems: 'center' }}><Ionicons name={failed ? 'cloud-offline-outline' : 'image-outline'} color={colors.textSecondary} size={geometry.icon} /><Text variant="caption" color="textSecondary">{failed ? 'Preview unavailable' : 'Loading…'}</Text></View>}
+    {row.kind === 'video' && <View style={s.video}><Text variant="caption">▶ {Math.round((row.duration_ms ?? 0) / 1000)}s</Text></View>}
+    {local && <FadeInView style={s.badge}><Badge label="Saved on this phone">Saved on this phone</Badge></FadeInView>}
+  </PressableScale></View>;
 }
 function Hub({ store }: { store: MediaStore }) {
+  const s = useMediaStyles();
+  const { colors, spacing, geometry } = useTheme();
+  const [uploadOpen, setUploadOpen] = useState(false);
+  const [origin, setOrigin] = useState<{ x: number; y: number }>();
   const state = useSyncExternalStore(store.subscribe, store.snapshot);
   const [offline, setOffline] = useState(false);
   const [selection, setSelection] = useState<{ rows: MediaRow[]; initial: number }>();
   const [picking, setPicking] = useState(false);
   const [liveError, setLiveError] = useState(false);
   const items = useMemo(() => timeline(state.rows), [state.rows]);
+  const firstTiles = useMemo(() => new Map(state.rows.slice(0, geometry.firstScreenful).map((row, index) => [row.id, index])), [state.rows, geometry.firstScreenful]);
   const sticky = useMemo(() => items.flatMap((item, i) => item.type === 'header' ? [i] : []), [items]);
   useEffect(() => {
     void store.refresh();
@@ -78,20 +91,40 @@ function Hub({ store }: { store: MediaStore }) {
   };
   const used = Object.values(state.local).reduce((total, item) => total + item.bytes, 0);
   const cloudBytes = state.rows.reduce((total, item) => total + (item.size_bytes ?? 0), 0);
-  return <SafeAreaView style={s.root} edges={['top']}>
-    <View style={s.top}><View><Text style={s.title}>Memories</Text><Text style={s.muted}>Your story, together · {state.rows.length} moments</Text></View><Pressable disabled={picking || offline} onPress={() => void pick()} style={s.add}><Text style={s.addText}>{picking ? 'Opening…' : '+ Add'}</Text></Pressable></View>
-    <View style={s.storage}><Text style={s.muted}>{(used / MB).toFixed(1)} MB saved here · {(cloudBytes / MB).toFixed(1)} MB shared originals</Text><View style={s.actions}><Pressable disabled={!!state.downloading} onPress={() => void store.downloadAll()}><Text style={s.link}>{state.downloading ? `Downloading ${state.downloading}` : 'Download all to this phone'}</Text></Pressable><Pressable disabled={!!state.downloading || !!selection} onPress={() => Alert.alert('Clear downloaded memories?', 'Removes this account’s offline copies. Shared originals and phone gallery copies remain.', [{ text: 'Cancel', style: 'cancel' }, { text: 'Clear cache', onPress: () => void store.clearCache().catch(e => Alert.alert('Cache', message(e))) }])}><Text style={s.link}>Clear cache</Text></Pressable></View></View>
-    {offline && <Text style={s.notice}>Offline · Showing saved timeline. Only downloaded originals can open.</Text>}
+  return <AppScreen style={{ padding: 0 }}>
+    <View style={s.top}><Header title="Memories" subtitle={`YOUR STORY, TOGETHER · ${state.rows.length} moments`} /></View>
+    <Card style={s.storage}>
+      <Text variant="title/S">Your shared originals</Text>
+      <Text variant="body/S" color="textSecondary">{(cloudBytes / MB).toFixed(1)} MB shared · {(used / MB).toFixed(1)} MB on this phone</Text>
+      <View style={s.actions}><PressableScale accessibilityRole="button" disabled={!!state.downloading} onPress={() => void store.downloadAll()}><Text style={s.link}>{state.downloading ? `Downloading ${state.downloading}` : 'Download all'}</Text></PressableScale><PressableScale accessibilityRole="button" disabled={!!state.downloading || !!selection} onPress={() => Alert.alert('Clear downloaded memories?', 'Removes this account’s offline copies. Shared originals and phone gallery copies remain.', [{ text: 'Cancel', style: 'cancel' }, { text: 'Clear cache', onPress: () => void store.clearCache().catch(e => Alert.alert('Cache', message(e))) }])}><Text style={s.link}>Clear cache</Text></PressableScale></View>
+    </Card>
+    {offline && <Text accessibilityLiveRegion="polite" style={s.notice}>Offline · Showing saved timeline. Only downloaded originals can open.</Text>}
     {!offline && liveError && <Text style={s.notice}>Live updates are reconnecting. Pull to refresh for new memories.</Text>}
-    {state.free < 250 * MB && <Text style={s.error}>Phone storage is nearly full. Clear cache or free space before downloading more.</Text>}
-    {cloudBytes >= 900 * MB && <Text style={s.error}>Shared originals exceed 900 MB. Check the Supabase project’s available storage before adding more.</Text>}
-    {!!state.error && <Pressable onPress={() => void store.refresh()}><Text style={s.error}>{state.error} Tap to retry sync.</Text></Pressable>}
-    <ScrollView style={s.queue} nestedScrollEnabled>{state.jobs.filter(job => job.status !== 'done').map(job => <View key={job.id} style={s.job}><Text numberOfLines={1} style={s.text}>{job.asset.fileName ?? job.asset.type ?? 'Memory'} · {job.status} {Math.round(job.progress * 100)}%</Text>{job.error && <Text style={s.error}>{job.error}</Text>}{job.status === 'failed' && <Pressable onPress={() => store.retry(job.id)}><Text style={s.link}>Retry upload</Text></Pressable>}</View>)}</ScrollView>
-    <FlashList data={items} keyExtractor={item => item.key} getItemType={item => item.type} stickyHeaderIndices={sticky} refreshing={state.loading} onRefresh={() => void store.refresh()} ListEmptyComponent={<View style={s.empty}>{state.loading ? <ActivityIndicator color="#EBA5B5" /> : <><Text style={s.title}>A little history of us</Text><Text style={s.muted}>Add your first photo or video. Both of you will see it here.</Text></>}</View>} renderItem={({ item }) => item.type === 'header' ? <View style={s.header}><Text style={s.headerText}>{item.title}</Text></View> : <View style={s.grid}>{item.rows.map(row => <Tile key={row.id} row={row} store={store} open={() => setSelection({ rows: [...state.rows], initial: state.rows.findIndex(value => value.id === row.id) })} />)}{Array.from({ length: 3 - item.rows.length }, (_, i) => <View key={`blank-${i}`} style={{ flex: 1 }} />)}</View>} />
-    {selection && <Viewer rows={selection.rows} initial={selection.initial} store={store} close={() => setSelection(undefined)} />}
-  </SafeAreaView>;
+    {state.free < 250 * MB && <Text style={s.warning}>Phone storage is nearly full. Clear cache or free space before downloading more.</Text>}
+    {cloudBytes >= 900 * MB && <Text style={s.warning}>Shared originals exceed 900 MB. Check the Supabase project’s available storage before adding more.</Text>}
+    {!!state.error && <PressableScale accessibilityRole="button" onPress={() => void store.refresh()} style={{ marginHorizontal: spacing.lg }}><Text style={s.error}>{state.error} Tap to retry sync.</Text></PressableScale>}
+    {!!state.jobs.length && <PressableScale accessibilityRole="button" onPress={() => setUploadOpen(true)} style={{ marginHorizontal: spacing.lg }}><Text style={s.link}>{state.jobs.filter(job => job.status === 'done').length} of {state.jobs.length} uploaded · View uploads</Text></PressableScale>}
+    <FlashList data={items} keyExtractor={item => item.key} getItemType={item => item.type} stickyHeaderIndices={sticky}
+      refreshControl={<RefreshControl refreshing={state.loading} onRefresh={() => void store.refresh()} tintColor={colors.primary} colors={[colors.primary]} progressBackgroundColor={colors.surface} />}
+      contentContainerStyle={{ paddingBottom: spacing.s56 + spacing.xl }}
+      ListEmptyComponent={state.loading ? <TimelineSkeleton /> : <View style={s.empty}><Polaroids /><Text variant="title/M">A little history of us</Text><Text color="textSecondary" style={{ textAlign: 'center' }}>Add your first photo or video. Both of you will see it here.</Text><Button title="Add a memory" disabled={offline || picking} onPress={() => setUploadOpen(true)} /></View>}
+      renderItem={({ item }) => item.type === 'header' ? <View style={s.header}><View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: colors.bgElevated, opacity: 1 - geometry.disabledOpacity / 2 }]} /><Text style={s.headerText}>{item.title}</Text></View> : <View style={s.grid}>{item.rows.map((row) => {
+        const ordinal = firstTiles.get(row.id);
+        const tile = <Tile row={row} store={store} open={center => { setOrigin(center); setSelection({ rows: [...state.rows], initial: state.rows.findIndex(value => value.id === row.id) }); }} />;
+        return ordinal !== undefined ? <TileEnter key={row.id} index={ordinal} style={s.tileWrap}>{tile}</TileEnter> : <View key={row.id} style={s.tileWrap}>{tile}</View>;
+      })}{Array.from({ length: 3 - item.rows.length }, (_, i) => <View key={`blank-${i}`} style={s.tileWrap} />)}</View>} />
+    <PressableScale accessibilityRole="button" accessibilityLabel="Add memories" disabled={picking || offline} onPress={() => setUploadOpen(true)} style={s.fab}><Ionicons name="add" size={geometry.icon} color={colors.primaryContrast} /></PressableScale>
+    <BottomSheet visible={uploadOpen} onClose={() => setUploadOpen(false)} title="Add a memory">
+      <Text color="textSecondary">Photos and videos, kept together for the two of you.</Text>
+      <Button title={picking ? 'Opening…' : 'Choose photos & videos'} disabled={picking || offline} onPress={() => void pick()} />
+      <Text variant="body/S" color="textSecondary">Photos are compressed to JPEG (up to 2560px, 80% quality). Videos are compressed before upload. Files still 50 MB or larger are skipped. Your gallery originals stay unchanged.</Text>
+      {state.jobs.map(job => <UploadJob key={job.id} job={job} retry={() => store.retry(job.id)} />)}
+    </BottomSheet>
+    {selection && <Viewer rows={selection.rows} initial={selection.initial} store={store} origin={origin} close={() => setSelection(undefined)} />}
+  </AppScreen>;
 }
 export default function Screen() {
+  const s = useMediaStyles();
   const { data: session } = useSession();
   const { data: profile, isLoading, error } = useProfile();
   const user = session?.user.id;
@@ -108,7 +141,6 @@ export default function Screen() {
   }, [user, profile]);
   const couple = profile ? profile.couple_id : remembered && remembered.user === user ? remembered.couple : null;
   const store = useMemo(() => user && couple ? mediaStore(user, couple) : null, [user, couple]);
-  if (!store) return <SafeAreaView style={[s.root, s.empty]}><Text style={s.title}>Memories</Text><Text style={s.muted}>{isLoading ? 'Loading your shared space…' : error ? 'Cannot load your couple. Connect to the internet and try again.' : 'Sign in and link your couple to share memories.'}</Text></SafeAreaView>;
+  if (!store) return <AppScreen><Header title="Memories" /><View style={s.empty}><Text style={s.muted}>{isLoading ? 'Loading your shared space…' : error ? 'Cannot load your couple. Connect to the internet and try again.' : 'Sign in and link your couple to share memories.'}</Text></View></AppScreen>;
   return <Hub key={`${user}:${couple}`} store={store} />;
 }
-const s = StyleSheet.create({ root: { flex: 1, backgroundColor: '#161118' }, top: { padding: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 }, title: { color: '#FFF2F5', fontSize: 26, fontWeight: '700' }, text: { color: '#FFF2F5' }, muted: { color: '#BDAABF', fontSize: 12 }, add: { backgroundColor: '#EBA5B5', borderRadius: 18, padding: 12 }, addText: { color: '#301621', fontWeight: '700' }, storage: { paddingHorizontal: 16, paddingBottom: 8, gap: 4 }, actions: { flexDirection: 'row', flexWrap: 'wrap', gap: 16 }, link: { color: '#EBA5B5', paddingVertical: 8 }, notice: { padding: 12, color: '#EBA5B5', backgroundColor: '#302435' }, error: { color: '#FF9C9C', padding: 8, fontSize: 12 }, queue: { maxHeight: 160 }, job: { paddingHorizontal: 16, paddingVertical: 4 }, empty: { padding: 32, gap: 16, justifyContent: 'center' }, header: { backgroundColor: '#231B27', paddingHorizontal: 16, paddingVertical: 10 }, headerText: { color: '#FFF2F5', fontSize: 15, fontWeight: '600' }, grid: { flexDirection: 'row', gap: 3, padding: 3 }, tile: { flex: 1, aspectRatio: 0.9, backgroundColor: '#302435', justifyContent: 'center', alignItems: 'center', borderRadius: 8, overflow: 'hidden' }, badge: { position: 'absolute', bottom: 4, left: 3, right: 3, color: '#FFF2F5', backgroundColor: '#161118CC', fontSize: 9, padding: 3, textAlign: 'center' }, video: { position: 'absolute', top: 5, right: 5, backgroundColor: '#161118CC', color: '#FFF2F5', padding: 4, fontSize: 10 } });

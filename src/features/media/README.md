@@ -30,3 +30,26 @@ Use an existing Android development client with the installed native modules (co
 ## Current limits
 
 There is no jump-to-date scrubber. Upload queue lifetime is the running app process. Failed uploads can leave deterministic, retryable objects without a timeline row; retry those jobs before closing the app, or remove orphan objects in Storage manually. Deletion removes objects before the row, so a partial deletion failure remains retryable from the timeline. Offline cache persists until cleared on this device; remote deletion does not erase exported gallery copies. A fresh install requires one successful online profile lookup before offline couple recovery is possible.
+
+## Warm Glow presentation restyle — 12 October 2026
+
+Reference: user-supplied `Us — Warm Glow.png`, used instead of Figma MCP at the user's request. Memories uses the shared Screen, Header, Card, Text, BottomSheet, Badge, Slider and PressableScale with theme and motion tokens. No service, query, Realtime, upload/compression, cache, Storage path, database type or route changes.
+
+Timeline: translucent themed sticky month/day layers, themed refresh, first-eight-only staggered scale/fade tiles, floating Add, shimmer skeletons, floating polaroids (loop only in Full), readable saved badges, retained offline/error/storage warnings. The upload sheet calls the original Android multi-select picker and shows actual per-job progress, success strokes, failure shake, retry and compression guidance. Completed jobs remain visible until the existing enqueue logic replaces them.
+
+Viewer: tile-center scale/fade fallback instead of a measured shared-element resize, pinch/two-finger pan, double-tap zoom/reset, swipe-down dismissal with fading backdrop and spring return, themed fading video playback/seek/mute/full-screen controls (native controls in full screen), scrollable caption/actions, shrink-out after confirmed deletion. Native page snapping is retained rather than replacing the existing pager with a custom spring driver.
+
+Deviations and limits: no reversible deletion/Undo toast. The existing remove handler deletes Storage objects first; a genuine Undo requires a separately authorized deletion lifecycle/backend change. The supplied PNG does not specify detailed viewer/upload layouts, so those follow SCREENS.md and the requested effects. The polaroid illustration is built from themed feature-local views/icons. Presentation.tsx and styles.ts stay feature-local; promote reusable pieces only through a separate shared change. Native rendering, large text, AA contrast over actual photos, sheet/gesture interactions and animation smoothness remain Android device checks.
+
+Phone regression checklist (not verified on a device in this session):
+
+- Multi-select several photos and a video; inspect progress, compression note, success, skipped file and failed Retry.
+- Check chronological order and sticky grouping, pull to refresh, and partner uploads arriving live on a second phone.
+- Download to phone, confirm the saved badge, restart offline and open downloaded photos/videos.
+- Open/close from different tiles, pinch and double-tap, pan with two fingers, page horizontally, dismiss downward and use Android Back. Verify Full, Reduced and Off.
+- Play/pause, seek, mute and full screen a video; verify playback pauses when leaving the page.
+- Delete an owned upload; cancel a deletion and retry a failed deletion. Partner uploads must have no Delete action.
+- Edit/save a caption, save to gallery (including permission denial), and share.
+- Inspect Midnight/Rose/Noir, Android large text, minimum touch targets, readable saved badges and low-storage/error/loading/empty states.
+
+Validation: TypeScript and the existing mocked media service checks; Expo Doctor 19/21, with existing call-package New Architecture warnings and nine Expo patch mismatches. No installs, exports, native builds or backend changes.
