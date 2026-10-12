@@ -1,1 +1,1 @@
-export { default } from '@/features/capsule/Screen';
+export { CapsuleScreen as default } from '@/features/capsule/Screen';
