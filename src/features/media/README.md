@@ -2,6 +2,12 @@
 
 The existing Memories route exports this feature. No shared files or dependencies were changed.
 
+## Deployment status — 12 October 2026
+
+Applied `memories_uploader_permissions` through the Supabase plugin to the configured `Couple_app` project (`tlqedvktbgaipzhdgsuy`). Confirmed the private bucket's 50 MiB limit and `media` Realtime publication. Live database tests using synthetic users/objects inside a rolled-back transaction passed uploader insertion/retry/deletion, partner reading/caption editing, blocked spoofed uploaders/ownership mutation/partner deletion/overwrite, and isolation from unrelated couples. Storage deletion authorization was checked by evaluating the installed deletion policy; actual Storage API deletion still needs a device check. No test fixtures remain.
+
+Only `caption` is updateable by authenticated clients. Security Advisor reported existing warnings for leaked-password protection being disabled and the signed-in callable `my_couple_id()` SECURITY DEFINER helper; neither unrelated setting was changed. New project setups must still follow the steps below.
+
 ## Backend setup
 
 Apply the repository's existing schema and storage migrations first, then review and run `permissions.sql` beside this file in the Supabase SQL Editor. The base schema permits either partner to delete any row; this script enforces uploader-only deletion, immutable paths/ownership, and caption-only updates. Do this before releasing. Verify the `media` table belongs to `supabase_realtime` and the private bucket `media` has a 50 MiB limit. Test with two couple accounts and a third unrelated account: third-party selects/signing must fail; partner deletion and uploader reassignment must fail; both partners may edit captions.
