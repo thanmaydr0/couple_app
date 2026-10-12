@@ -1,1 +1,1 @@
-export { default } from '@/features/calls/Screen';
+export { default } from '@/features/calls/CallScreen';
