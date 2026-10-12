@@ -2,7 +2,7 @@
   "expo": {
     "name": "Us",
     "slug": "us-app",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "platforms": [
       "android"
     ],
@@ -32,8 +32,18 @@
         "android.permission.ACCESS_NETWORK_STATE",
         "android.permission.SYSTEM_ALERT_WINDOW",
         "android.permission.BLUETOOTH",
-        "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"
-      ]
+        "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_BACKGROUND_LOCATION",
+        "android.permission.FOREGROUND_SERVICE_LOCATION",
+        "android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION",
+        "android.permission.USE_BIOMETRIC",
+        "android.permission.USE_FULL_SCREEN_INTENT",
+        "android.permission.ACTIVITY_RECOGNITION",
+        "android.permission.RECEIVE_BOOT_COMPLETED"
+      ],
+      "versionCode": 2
     },
     "plugins": [
       "expo-router",
@@ -84,7 +94,9 @@
       [
         "expo-audio",
         {
-          "microphonePermission": "Allow Us to record voice messages."
+          "microphonePermission": "Allow Us to record voice messages.",
+          "enableBackgroundPlayback": true,
+          "enableBackgroundRecording": true
         }
       ],
       "expo-screen-orientation",
@@ -99,7 +111,97 @@
       ],
       "expo-image",
       "expo-sharing",
-      "expo-asset"
+      "expo-asset",
+      "@maplibre/maplibre-react-native",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "Allow Us to share your location with your partner only while sharing is switched on.",
+          "locationAlwaysAndWhenInUsePermission": "Allow Us to keep optional partner location sharing and place alerts working in the background. You can stop sharing at any time.",
+          "isAndroidBackgroundLocationEnabled": true,
+          "isAndroidForegroundServiceEnabled": true
+        }
+      ],
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Allow Us to use biometrics to unlock private content when you enable the lock."
+        }
+      ],
+      [
+        "expo-sensors",
+        {
+          "motionPermission": "Allow Us to detect device motion for interactive partner experiences when enabled."
+        }
+      ],
+      [
+        "react-native-notify-kit",
+        {
+          "android": {
+            "foregroundService": {
+              "types": [
+                "location",
+                "mediaPlayback",
+                "mediaProjection",
+                "microphone",
+                "camera"
+              ]
+            }
+          }
+        }
+      ],
+      "./plugins/with-incoming-call",
+      [
+        "react-native-android-widget",
+        {
+          "widgets": [
+            {
+              "name": "UsWidget",
+              "label": "Us",
+              "description": "Days together and partner status",
+              "minWidth": "250dp",
+              "minHeight": "110dp",
+              "targetCellWidth": 4,
+              "targetCellHeight": 2,
+              "resizeMode": "none",
+              "updatePeriodMillis": 0
+            },
+            {
+              "name": "PhotoWidget",
+              "label": "Photo",
+              "description": "Photo of the day",
+              "minWidth": "110dp",
+              "minHeight": "110dp",
+              "targetCellWidth": 2,
+              "targetCellHeight": 2,
+              "resizeMode": "none",
+              "updatePeriodMillis": 0
+            },
+            {
+              "name": "DoodleWidget",
+              "label": "Doodle",
+              "description": "Your partner’s latest doodle",
+              "minWidth": "250dp",
+              "minHeight": "110dp",
+              "targetCellWidth": 4,
+              "targetCellHeight": 2,
+              "resizeMode": "none",
+              "updatePeriodMillis": 0
+            },
+            {
+              "name": "HeartbeatWidget",
+              "label": "Heartbeat",
+              "description": "One-tap heartbeat",
+              "minWidth": "40dp",
+              "minHeight": "40dp",
+              "targetCellWidth": 1,
+              "targetCellHeight": 1,
+              "resizeMode": "none",
+              "updatePeriodMillis": 0
+            }
+          ]
+        }
+      ]
     ],
     "updates": {
       "enabled": true,
