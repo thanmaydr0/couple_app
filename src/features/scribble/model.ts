@@ -1,0 +1,12 @@
+import { z } from 'zod';
+export const pointSchema = z.object({ x: z.number().min(0).max(1000), y: z.number().min(0).max(1000) });
+export const strokeSchema = z.object({ id: z.string().max(100), color: z.string().regex(/^#[0-9a-fA-F]{6}$/), size: z.number().min(1).max(80), points: z.array(pointSchema).max(8000) });
+export type Point = z.infer<typeof pointSchema>;
+export type Stroke = z.infer<typeof strokeSchema>;
+export const gameSchema = z.object({ round: z.number().int().min(0).max(10), total: z.number().int().min(2).max(10), players: z.tuple([z.string(), z.string()]), phase: z.enum(['pick', 'draw', 'summary', 'final']), remaining: z.number().min(0).max(80), mask: z.string().max(200), hash: z.string().max(100), revealed: z.string().max(100), solved: z.boolean(), scores: z.record(z.string(), z.number().min(0)), hints: z.number().int().min(0).max(2) });
+export type Game = z.infer<typeof gameSchema>;
+export const feedSchema = z.object({ id: z.string(), sender: z.string(), text: z.string().max(100), feedback: z.enum(['guess', 'close', 'correct']) });
+export type Feed = z.infer<typeof feedSchema>;
+export const packetSchema = z.object({ sender: z.string(), round: z.number().int(), id: z.string(), game: gameSchema.optional(), stroke: strokeSchema.optional(), offset: z.number().int().min(0).max(8000).optional(), strokes: z.array(strokeSchema).max(200).refine(strokes => strokes.reduce((count, stroke) => count + stroke.points.length, 0) <= 8000).optional(), feed: z.array(feedSchema).max(60).optional(), guess: feedSchema.optional(), target: z.string().optional(), ready: z.boolean().optional(), sync: z.string().optional() });
+export type Packet = z.infer<typeof packetSchema>;
+export const drawerOf = (game: Game) => game.players[game.round % 2]!;
