@@ -19,13 +19,19 @@ import { fonts } from '@/theme/fonts';
 import { ToastProvider, useStackTransition } from '@/motion';
 import { IconButton, ErrorState, Screen } from '@/ui';
 
+import { PulseProvider } from '@/features/pulse/PulseProvider';
+import { LocationProvider } from '@/features/location/LocationProvider';
+import { AppLockGate } from '@/features/applock/AppLockGate';
+import { CryptoProvider } from '@/features/e2ee/CryptoProvider';
+import { WidgetSync } from '@/features/widgets/WidgetSync';
+
 void SplashScreen.preventAutoHideAsync().catch(() => {});
 
 function AppShell() {
   const { data: session } = useSession();
   const { colors } = useTheme();
   const transitions = useStackTransition();
-  return <PresenceProvider><CallProvider><PushProvider><AuthGate>
+  return <PresenceProvider><CallProvider><PushProvider><AuthGate><PulseProvider><LocationProvider><AppLockGate><CryptoProvider><WidgetSync>
       <Stack screenOptions={{ ...transitions, headerStyle: { backgroundColor: colors.bg }, headerTintColor: colors.textPrimary, contentStyle: { backgroundColor: colors.bg } }}>
         <Stack.Protected guard={__DEV__}>
           <Stack.Screen name="ui-lab" options={{ headerShown: false }} />
@@ -36,13 +42,15 @@ function AppShell() {
         <Stack.Screen name="watch/[id]" options={{ title: 'Watch together', headerShown: false }} />
         <Stack.Screen name="games/chess" options={{ title: 'Chess' }} />
         <Stack.Screen name="games/scribble" options={{ title: 'Scribble' }} />
+        <Stack.Screen name="us" options={{ headerShown: false }} />
+        <Stack.Screen name="settings/features" options={{ headerShown: false }} />
         <Stack.Screen name="settings" options={{ title: 'Settings' }} />
         </Stack.Protected>
         <Stack.Protected guard={!session}>
           <Stack.Screen name="(auth)/login" options={{ headerShown: false }} />
         </Stack.Protected>
       </Stack>
-    </AuthGate></PushProvider></CallProvider></PresenceProvider>;
+    </WidgetSync></CryptoProvider></AppLockGate></LocationProvider></PulseProvider></AuthGate></PushProvider></CallProvider></PresenceProvider>;
 }
 export default function RootLayout() {
   const [loaded, fontError] = useFonts(fonts);

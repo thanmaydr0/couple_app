@@ -26,7 +26,7 @@ export async function handleRequest(req: Request): Promise<Response> {
     const { data: auth, error: authError } = await client.auth.getUser(match[1]);
     if (authError || !auth.user || auth.user.is_anonymous) return json({ error: "Invalid user access token" }, 401);
 
-    let payload: { type?: unknown; title?: unknown; body?: unknown; data?: Record<string, unknown> };
+    let payload: { type?: unknown; channel?: unknown; title?: unknown; body?: unknown; data?: Record<string, unknown>; priority?: unknown; dataOnly?: unknown };
     try {
       // Expo limits the whole notification to 4096 bytes; leave room for routing.
       const raw = await req.text();
@@ -35,11 +35,20 @@ export async function handleRequest(req: Request): Promise<Response> {
     } catch {
       return json({ error: "Invalid JSON" }, 400);
     }
-    if (!payload || !["message", "call", "test"].includes(String(payload.type)) ||
-      typeof payload.title !== "string" || typeof payload.body !== "string" ||
+    const channels = ['messages', 'calls', 'pulse', 'plans', 'capsule', 'location'];
+    if (!payload || (payload.type !== undefined && !["message", "call", "test"].includes(String(payload.type))) ||
+      (payload.type === undefined && !channels.includes(String(payload.channel))) ||
+      (payload.channel !== undefined && !channels.includes(String(payload.channel))) ||
+      (payload.priority !== undefined && !['default', 'normal', 'high'].includes(String(payload.priority))) ||
+      (payload.dataOnly !== undefined && typeof payload.dataOnly !== 'boolean') ||
+      (!payload.dataOnly && (typeof payload.title !== "string" || typeof payload.body !== "string")) ||
       !payload.data || typeof payload.data !== "object" || Array.isArray(payload.data)) {
-      return json({ error: "Expected {type: 'message'|'call'|'test', title, body, data: object}" }, 400);
+      return json({ error: "Expected {channel, title, body, data, priority?, dataOnly?} or legacy {type, title, body, data}" }, 400);
     }
+    // Legacy call/message types retain their channel and call-engine behavior.
+    const channel = payload.type === 'call' ? 'calls' : payload.type === 'message' || payload.type === 'test' ? 'messages' : String(payload.channel);
+    const type = payload.type ?? 'feature';
+    if (payload.data.route !== undefined && (typeof payload.data.route !== 'string' || !/^\/(?:us(?:\/[a-z0-9_-]+)?|\(tabs\)(?:\/(?:chat|memories|watch|games))?|settings(?:\/(?:features|appearance))?|games\/(?:chess|scribble))$/.test(payload.data.route))) return json({ error: 'Invalid notification route' }, 400);
 
     // A separate admin client never inherits the caller's Authorization header.
     // Every privileged query is scoped using the VERIFIED caller's membership.
@@ -72,10 +81,11 @@ export async function handleRequest(req: Request): Promise<Response> {
       method: "POST",
       headers: expoHeaders,
       body: JSON.stringify({
-        to: push.token, title: payload.title, body: payload.body,
-        data: { ...payload.data, type: payload.type, recipientId, coupleId: caller.couple_id },
-        sound: "default", priority: "high",
-        channelId: payload.type === "call" ? "calls" : "messages",
+        to: push.token,
+        ...(payload.dataOnly ? { _contentAvailable: true } : { title: payload.title, body: payload.body, sound: 'default' }),
+        data: { ...payload.data, type, channel, recipientId, coupleId: caller.couple_id },
+        priority: payload.priority ?? "high",
+        channelId: channel,
         ttl: payload.type === "call" ? 40 : 86400,
       }),
       signal: AbortSignal.timeout(8000),

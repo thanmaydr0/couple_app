@@ -19,6 +19,12 @@ export async function createChannels() {
     enableVibrate: true, vibrationPattern: [0, 600, 500, 600],
     lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
   });
+  for (const id of ['pulse', 'plans', 'capsule', 'location']) {
+    await Notifications.setNotificationChannelAsync(id, {
+      name: id.charAt(0).toUpperCase() + id.slice(1),
+      importance: Notifications.AndroidImportance.DEFAULT, sound: 'default',
+    });
+  }
 }
 
 function prePrompt(): Promise<boolean> {

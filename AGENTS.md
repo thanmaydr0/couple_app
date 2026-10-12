@@ -13,3 +13,16 @@
 # UI RULES
 
 presentation-only restyle (never change queries, hooks, Realtime channels, stores, types, routes or file names; if a restyle needs a logic change, stop and report it); never hard-code colors, font sizes, spacing, radii or durations (use useTheme() and src/motion); every tappable uses PressableScale; every screen uses <Screen> and the shared Header; lists animate only the first screenful; all animation respects useMotion(); new shared components needed by a feature are created inside that feature's folder with theme tokens and noted under "Needs shared change"; match the Figma frames in docs/design/FIGMA_INDEX_*.md (fetch with the Figma tools, map to our tokens/components, never copy generated code literally) or follow docs/design/SCREENS.md; handle loading/empty/error/offline states; ≥48dp touch targets; AA contrast.
+
+
+# FEATURE RULES
+
+- Each feature session owns ONLY: src/features/<id>/**, its route file(s) named in its task (app/us/<id>.tsx), its SQL migration file supabase/migrations/<reserved name>.sql, its own Edge Function folders, and its scheduler handler file. Never edit other files. Needed shared changes go under "Needs shared change" in the final report.
+- SQL: idempotent (if not exists / drop policy if exists), every table has couple_id, RLS ON with policies via my_couple_id(), add live tables to the supabase_realtime publication, add indexes. Use ADD COLUMN IF NOT EXISTS only for columns your task names. Don't edit src/types/db.ts; keep your own types in src/features/<id>/types.ts and use the untyped supabase.from('table') with your own types.
+- Realtime budget: the free tier allows ~2M realtime messages a month. Throttle any high-frequency broadcast (≤15 Hz), send only when the partner is present, and stop on app background.
+- Privacy: anything sensitive (location, vault, keys) is opt-in, OFF by default, has a visible indicator and an easy off switch, and keeps minimal data.
+- UI: follow the UI RULES section (theme tokens, motion kit, PressableScale, loading/empty/error/offline states, ≥48dp targets, animation levels via useMotion()). If src/theme or src/motion doesn't exist, use the app's existing src/ui and keep colors/spacing in constants so the theme work can adopt them later.
+- Notifications: use the notify-partner Edge Function with {channel, title, body, data:{route,...}}; add client-side rate limits.
+- No installs during a wave; native libraries are only added in the dedicated N0 session.
+- Final report format: (a) what was built, (b) how I verified it, (c) what you could NOT verify without a device, (d) SQL to run (in order), (e) Edge Functions to deploy, (f) manual steps for the user, (g) a regression checklist for me, (h) needs shared change.
+- Git rules from earlier sections still apply (commit only your paths including supabase/ files, never add -A, never stash/reset/clean/rebase, retry on index.lock, push to origin main if a remote exists).

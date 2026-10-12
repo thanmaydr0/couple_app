@@ -5,3 +5,6 @@ verify_jwt = true
 
 [functions.notify-partner]
 verify_jwt = true
+
+[functions.scheduler]
+verify_jwt = false

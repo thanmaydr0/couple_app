@@ -40,10 +40,10 @@ function harness({ granted = true, accept = true, currentUser = 'owner' } = {}) 
   return { ...module.exports, channels, saves, events };
 }
 
-test('creates both channels before permission prompt and saves owner token with conflict key', async () => {
+test('creates all six channels before permission prompt and saves owner token with conflict key', async () => {
   const h = harness({ granted: false });
   assert.equal(await h.registerPush('owner'), true);
-  assert.deepEqual(h.events.slice(0, 4), ['messages', 'calls', 'pre-prompt', 'android-permission']);
+  assert.deepEqual(h.events.slice(0, 8), ['messages', 'calls', 'pulse', 'plans', 'capsule', 'location', 'pre-prompt', 'android-permission']);
   assert.equal(h.channels[0].config.importance, 3); assert.equal(h.channels[1].config.importance, 5);
   assert.equal(h.channels[1].config.enableVibrate, true);
   assert.equal(h.saves[0].value.user_id, 'owner'); assert.equal(h.saves[0].options.onConflict, 'user_id');

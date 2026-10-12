@@ -13,6 +13,9 @@ import { StaggerList } from '@/motion';
 import { FailureToast, OfflineNotice, PageSkeleton } from '@/features/presence/Presentation';
 import { FormField } from '@/ui/FormField';
 import { testNotification, unregisterPush } from '@/features/notifications/service';
+import { SettingsSections } from '@/features/shared/FeatureSlots';
+import { ProfileDetails } from '@/features/settings/ProfileDetails';
+
 export default function SettingsScreen() {
   const { spacing, geometry } = useTheme();
   const profile = useProfile();
@@ -85,6 +88,9 @@ export default function SettingsScreen() {
     </Card>
     <Card><ListItem title="Appearance" subtitle="Eight themes, your accent, your pace" onPress={() => router.push('/settings/appearance')} /></Card>
     </StaggerList>
+    <ProfileDetails />
+    <Card><ListItem title="Features" subtitle="Choose what appears on this phone" onPress={() => router.push('/settings/features')} /></Card>
+    <SettingsSections />
     {!!message && <Text accessibilityLiveRegion="polite" color="success">{message}</Text>}
     {!!error && <Text accessibilityRole="alert" color="danger">{error}</Text>}
     <Button title={logout.isPending ? 'Signing out…' : 'Sign out'} variant="ghost" loading={logout.isPending} disabled={busy} onPress={() => { void perform(() => logout.mutateAsync()); }} />

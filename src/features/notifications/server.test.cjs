@@ -35,10 +35,11 @@ function harness({ valid = true, token = true, rejected = false } = {}) {
       return Response.json({ data: rejected ? { status: 'error', details: { token: 'never expose' } } : { status: 'ok' } });
     },
   });
-  return { queries, pushes, run: (type = 'call', data = {}, auth = true) => module.exports.handleRequest(new Request('https://function.test', {
+  const request = (payload, auth = true) => module.exports.handleRequest(new Request('https://function.test', {
     method: 'POST', headers: auth ? { Authorization: 'Bearer caller-access-token' } : {},
-    body: JSON.stringify({ type, title: 'Notification', body: 'Hello', data }),
-  })) };
+    body: JSON.stringify(payload),
+  }));
+  return { queries, pushes, request, run: (type = 'call', data = {}, auth = true) => request({ type, title: 'Notification', body: 'Hello', data }, auth) };
 }
 
 test('authentication gates privileged queries and pushes', async () => {
@@ -72,4 +73,24 @@ test('normal token availability stays private and Expo errors never expose token
   assert.equal(await missing.text(), await sent.text());
   const rejected = await harness({ rejected: true }).run();
   assert.equal(rejected.status, 502); assert.doesNotMatch(await rejected.text(), /never expose|private-token/);
+});
+
+test('feature channels support route, priority and data-only pushes with authoritative recipient', async () => {
+  const h = harness();
+  assert.equal((await h.request({ channel: 'pulse', title: 'A pulse', body: 'Hello', priority: 'normal', data: { route: '/us/pulse', recipientId: 'outsider', type: 'call' } })).status, 200);
+  assert.equal(h.pushes[0].channelId, 'pulse'); assert.equal(h.pushes[0].priority, 'normal');
+  assert.equal(h.pushes[0].data.route, '/us/pulse'); assert.equal(h.pushes[0].data.type, 'feature');
+  assert.equal(h.pushes[0].data.recipientId, 'partner');
+  assert.equal((await h.request({ channel: 'location', dataOnly: true, data: { route: '/us/location' } })).status, 200);
+  const silent = h.pushes[1]; assert.equal(silent._contentAvailable, true);
+  assert.equal(silent.title, undefined); assert.equal(silent.body, undefined); assert.equal(silent.sound, undefined);
+});
+
+test('invalid routes, channels and optional field types never send a push', async () => {
+  const h = harness();
+  const payload = { channel: 'plans', title: 'Plan', body: 'Hello', data: { route: '/us/plans' } };
+  for (const change of [{ channel: 'arbitrary' }, { priority: 'urgent' }, { dataOnly: 'true' }, { data: { route: 'https://attacker.test' } }, { data: { route: '//attacker.test' } }, { data: { route: '/call' } }]) {
+    assert.equal((await h.request({ ...payload, ...change })).status, 400);
+  }
+  assert.equal(h.pushes.length, 0);
 });

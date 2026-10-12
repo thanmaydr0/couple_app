@@ -12,6 +12,7 @@ import { useTheme } from '@/theme';
 import { ParallaxHeader, PulseRing, StaggerList, Skeleton } from '@/motion';
 import { DaysCounter, FailureToast, OfflineNotice, PageSkeleton } from '@/features/presence/Presentation';
 import { RecentCalls } from '@/features/calls/RecentCalls';
+import { MoreOfUs, HomeCards } from '@/features/shared/FeatureSlots';
 const destinations: { title: string; detail: string; href: Href; icon: ComponentProps<typeof Ionicons>['name'] }[] = [
   { title: 'Chat', detail: 'The little things, all day long', href: '/(tabs)/chat', icon: 'chatbubbles-outline' },
   { title: 'Memories', detail: 'Your favorite moments, kept close', href: '/(tabs)/memories', icon: 'images-outline' },
@@ -53,6 +54,7 @@ export default function HomeScreen() {
     <StaggerList style={{ gap: spacing.s12 }}>{destinations.map(({ title, detail, href, icon }) => <PressableScale key={title} accessibilityRole="button" accessibilityLabel={`Open ${title}`} onPress={() => router.push(href)}>
       <Card style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md, minHeight: geometry.touch * 2 }}><Ionicons name={icon} size={geometry.icon} color={colors.primary} /><View style={{ flex: 1, gap: spacing.xs }}><Text variant="title/S">{title}</Text><Text variant="body/S" color="textSecondary">{detail}</Text></View><Ionicons name="chevron-forward" size={geometry.icon} color={colors.textSecondary} /></Card>
     </PressableScale>)}</StaggerList>
+    <MoreOfUs /><HomeCards />
     <RecentCalls />
   </Animated.ScrollView></Screen>;
 }

@@ -5,6 +5,8 @@ import { Card, Header, PressableScale, Screen, Text } from '@/ui';
 import { StaggerList } from '@/motion';
 import { useTheme } from '@/theme';
 
+import { FeatureGames } from '@/features/shared/FeatureSlots';
+
 export default function GamesScreen() {
   const { spacing, colors, geometry, radius } = useTheme();
   return <Screen><ScrollView contentContainerStyle={{ gap: spacing.lg, paddingBottom: spacing.lg }}>
@@ -18,5 +20,6 @@ export default function GamesScreen() {
         </Card>
       </PressableScale>)}
     </StaggerList>
+    <FeatureGames />
   </ScrollView></Screen>;
 }
