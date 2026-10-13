@@ -34,7 +34,11 @@ export function useWatch(session: WatchSessionRow, file: MovieFile, user: string
     let subscribed = false;
     let loaded = false;
     let ready = false;
+    let notReadySince: number | null = null;
+    let readinessTimedOut = false;
     let lastSaved = 0;
+    let lastSessionCheck = 0;
+    let checkingSession = false;
     let cancelPreparation = () => {};
     let channel: ReturnType<typeof supabase.channel> | null = null;
     const sync = new WatchSync({ user, partner, host: session.host_id, client: randomUUID(), player,
@@ -48,9 +52,22 @@ export function useWatch(session: WatchSessionRow, file: MovieFile, user: string
       },
     });
     engine.current = sync;
+    async function checkSession() {
+      if (checkingSession || disposed || sync.state.ended) return;
+      checkingSession = true; lastSessionCheck = Date.now();
+      try {
+        const { data, error: failure } = await supabase.from('watch_sessions').select('status').eq('id', session.id).eq('couple_id', session.couple_id).single();
+        if (disposed) return;
+        if (failure) { sync.connect(false); setError(failure.message); }
+        else if (data.status === 'ended') sync.end(false);
+      } catch {
+        if (!disposed) { sync.connect(false); setError('Could not check the movie session. Please reconnect.'); }
+      } finally { checkingSession = false; }
+    }
     const subscriptions = [
       player.addListener('statusChange', ({ status, error: failure }) => {
         ready = status === 'readyToPlay';
+        if (ready) { notReadySince = null; readinessTimedOut = false; }
         sync.setReady(loaded && ready);
         if (status === 'error') setError(failure?.message ?? 'Could not play this local video. Choose the file again.');
       }),
@@ -62,10 +79,24 @@ export function useWatch(session: WatchSessionRow, file: MovieFile, user: string
       player.addListener('playToEnd', () => { sync.control('pause', player.duration); }),
     ];
     const appState = AppState.addEventListener('change', value => sync.setForeground(value === 'active'));
-    const save = () => { void savePosition(user, session.id, lastPosition.current).catch(() => { if (!disposed) setError('Could not save your resume position on this phone.'); }); };
+    const save = () => {
+      if (!loaded) return;
+      void savePosition(user, session.id, lastPosition.current).catch(() => { if (!disposed) setError('Could not save your resume position on this phone.'); });
+    };
     const interval = setInterval(() => {
       sync.tick();
+      // sourceLoad provides metadata, not decoder readiness. Bound the wait for
+      // initial readiness and later loading even if no further callback arrives.
+      if (loaded && !ready) {
+        notReadySince ??= Date.now();
+        if (!readinessTimedOut && Date.now() - notReadySince >= 20000) {
+          readinessTimedOut = true; sync.control('pause');
+          setError('Video buffering timed out. Use Reconnect / retry playback or choose the local file again.');
+        }
+      } else notReadySince = null;
       if (Date.now() - lastSaved >= 4000) { lastSaved = Date.now(); save(); }
+      // Also detect a persisted end if a broadcast or Postgres change is missed.
+      if (subscribed && Date.now() - lastSessionCheck >= 10000) void checkSession();
     }, 250);
     async function start() {
       try {
@@ -99,11 +130,7 @@ export function useWatch(session: WatchSessionRow, file: MovieFile, user: string
           if (subscribed) {
             setError(null);
             // Catch an end missed during a disconnect or route transition.
-            void supabase.from('watch_sessions').select('status').eq('id', session.id).eq('couple_id', session.couple_id).single().then(({ data, error: failure }) => {
-              if (disposed) return;
-              if (failure) { sync.connect(false); setError(failure.message); }
-              else if (data.status === 'ended') sync.end(false);
-            });
+            void checkSession();
           }
         });
       } catch (failure) { if (!disposed) setError(failure instanceof Error ? failure.message : 'Could not open the movie. Pick the file again.'); }

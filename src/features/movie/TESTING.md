@@ -23,3 +23,14 @@ Put an unprotected MP4 copied from the **same original** on each phone before op
 - Expo Doctor run once without installs: 20/21 checks passed; existing `react-native-incall-manager` and `react-native-webrtc` are marked untested on the New Architecture. These are outside the Watch paths.
 
 Native file-provider access, codecs/DRM failures, actual stalls, orientation, audio focus, keep-awake, visual layout and measured two-phone drift require the device steps above. The backend check does not claim to test those behaviors.
+
+## Playback deadlock regression checks — 2026-10-13
+
+The previous simulation updated position instantly and never generated loading callbacks on seek. A new simulated decoder reproduces the Play → seek → loading → pause → ready → auto-resume → seek loop against the old engine. The corrected engine passes this case, including seeks whose native position getter remains stale until ready.
+
+- `node src/features/movie/verify.mjs`: passes native seek/buffer recovery, simultaneous buffering from either controller, paused seeks, manual pause cancellation, playing=false before loading, audio-focus pauses, watchdog recovery without a status event, and buffering timeout, alongside the original protocol cases.
+- `node src/features/movie/verify-hook.mjs`: runs the actual hook with fake native, storage and transport adapters; passes preservation of saved position during preparation, metadata-loaded/never-ready timeout, and persisted-end detection with realtime notifications deliberately omitted.
+- `node src/features/movie/verify-live.mjs`: private bidirectional messages and authorization checks passed on both runs. Postgres session-end notification timed out on the first run and passed on the second; no cause is established. The feature now also checks persisted status every 10 seconds. Each run cleaned up its own test session.
+- TypeScript passed. Expo Doctor ran once: 19/21 checks passed. Shared issues are New Architecture metadata for react-native-incall-manager/react-native-webrtc and nine Expo patch-version mismatches. No dependencies or native files were changed.
+
+On two Android phones, repeat steps 3–6 above with the same local MP4. In particular, confirm Play starts and continues on both devices, playing and paused seeks settle, buffering resumes only after both are ready, persistent loading exposes retry guidance after 20 seconds, and an audio-focus interruption pauses both. Run Reconnect / retry playback on each phone to leave any old stalled state. These native checks have not been performed in this automation.

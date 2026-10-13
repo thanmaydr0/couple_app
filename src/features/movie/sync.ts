@@ -35,6 +35,9 @@ export class WatchSync {
   private resumePos = 0;
   private ignoreUntil = 0;
   private reference: { pos: number; at: number } | null = null;
+  private stalledAt: number | null = null;
+  private unexpectedPauseAt: number | null = null;
+  private seekTarget: number | null = null;
   private now: () => number;
   constructor(private o: Options) { this.authority = o.host; this.now = o.now ?? Date.now; }
   private update(notice?: string) {
@@ -45,13 +48,16 @@ export class WatchSync {
   private emit(event: EventName, extra: Partial<Packet> = {}) {
     if (!this.state.connected || this.state.ended) return;
     this.o.send(event, { sender: this.o.user, client: this.o.client, seq: ++this.seq, sentAt: this.now(),
-      pos: this.o.player.currentTime, playing: this.desired, ready: this.ready && this.foreground,
+      pos: this.seekTarget ?? this.o.player.currentTime, playing: this.desired, ready: this.ready && this.foreground,
       stamp: this.stamp, resume: this.resume, ...extra });
   }
-  private pauseNative() { this.ignoreUntil = this.now() + 1500; this.o.player.pause(); this.o.player.playbackRate = 1; }
+  private pauseNative() { this.unexpectedPauseAt = null; this.ignoreUntil = this.now() + 1500; this.o.player.pause(); this.o.player.playbackRate = 1; }
   private seekNative(pos: number, userAction = true) {
     if (userAction) { this.ignoreUntil = this.now() + 1500; this.lastMovement = this.now(); }
-    this.o.player.currentTime = Math.max(0, Math.min(pos, this.o.player.duration || pos));
+    // Native seeks are asynchronous; callbacks can still report the old frame.
+    this.seekTarget = Math.max(0, Math.min(pos, this.o.player.duration || pos));
+    this.o.player.currentTime = this.seekTarget;
+    if (Math.abs(this.o.player.currentTime - this.seekTarget) <= 0.02) this.seekTarget = null;
     this.previousPos = this.o.player.currentTime;
   }
   private nextStamp() { this.stamp = { counter: this.stamp.counter + 1, actor: this.o.client }; this.authority = this.o.user; }
@@ -63,8 +69,10 @@ export class WatchSync {
   }
   setReady(value: boolean) {
     const changed = this.ready !== value;
+    this.ready = value;
     if (!value && this.desired) this.stall();
-    this.ready = value; this.update();
+    if (value) { this.stalledAt = null; this.seekTarget = null; }
+    this.update();
     if (changed) this.emit('ready');
     this.maybeResume();
   }
@@ -75,9 +83,9 @@ export class WatchSync {
     this.update(value ? 'Back together? Wait for both ready, then play.' : 'Paused while the app is in the background.');
   }
   private stall() {
-    this.resume = this.desired || this.resume; this.resumePos = this.o.player.currentTime;
-    this.desired = false; this.ready = false; this.nextStamp(); this.pauseNative();
-    this.emit('pause', { resume: this.resume, ready: false }); this.update('Buffering — both paused. Resuming when both are ready.');
+    this.resume = this.desired || this.resume; this.resumePos = this.seekTarget ?? this.o.player.currentTime;
+    this.desired = false; this.stalledAt = this.now(); this.reference = null; this.nextStamp(); this.pauseNative();
+    this.emit('pause'); this.update('Buffering — both paused. Resuming when both are ready.');
   }
   private maybeResume() {
     this.update();
@@ -89,13 +97,18 @@ export class WatchSync {
     if (event !== 'pause' && !this.state.bothReady) { this.update('Both partners must be connected and ready first.'); return; }
     this.nextStamp(); this.resume = false;
     if (event === 'play') this.desired = true;
-    if (event === 'pause') this.desired = false;
-    this.seekNative(position);
+    if (event === 'pause') { this.desired = false; this.stalledAt = null; }
+    // A play/pause at the current position must not seek: Android enters loading
+    // on a seek, even to the same frame, which otherwise restarts auto-resume.
+    if (event === 'seek' || Math.abs(position - this.o.player.currentTime) > 0.2) this.seekNative(position);
+    this.lastMovement = this.now(); this.previousPos = this.o.player.currentTime;
     if (this.desired) { this.o.player.playbackRate = 1; this.o.player.play(); } else this.pauseNative();
     this.emit(event); this.update(this.desired ? 'Watching together' : 'Paused together');
   }
   unexpectedPause() {
-    if (this.desired && this.now() > this.ignoreUntil) this.control('pause');
+    // Android may emit playing=false before loading. Allow the status callback
+    // to arrive before treating this as an audio-focus/user pause.
+    if (this.desired && this.now() > this.ignoreUntil) this.unexpectedPauseAt = this.now();
   }
   reaction(emoji: string) { if (reactions.some(r => r === emoji)) { this.emit('reaction', { emoji }); this.o.reaction(emoji); } }
   leave() { this.desired = false; this.resume = false; this.pauseNative(); this.emit('leave'); }
@@ -152,7 +165,8 @@ export class WatchSync {
         const target = p.pos + (p.playing ? this.age(p) : 0);
         this.reference = p.playing ? { pos: target, at: this.now() } : null;
         this.state.drift = target - this.o.player.currentTime;
-        if (event === 'play' || event === 'seek' || (!p.playing && Math.abs(this.state.drift) > 0.02)) this.seekNative(target);
+        if (event === 'seek' || (event === 'play' && Math.abs(this.state.drift) > 0.6) ||
+          (!p.playing && (order > 0 || !wasHere) && Math.abs(this.state.drift) > 0.02)) this.seekNative(target);
         else if (this.desired) {
           const correction = driftCorrection(this.state.drift);
           if (correction.seek) this.seekNative(target, false);
@@ -169,6 +183,12 @@ export class WatchSync {
   tick() {
     if (this.state.ended) return;
     const now = this.now();
+    // Cached seeks can complete without any loading/ready status transition.
+    if (this.seekTarget !== null && Math.abs(this.o.player.currentTime - this.seekTarget) <= 0.6) this.seekTarget = null;
+    if (this.unexpectedPauseAt !== null && now - this.unexpectedPauseAt >= 250) {
+      this.unexpectedPauseAt = null;
+      if (this.desired && this.ready && !this.o.player.playing) this.control('pause');
+    }
     if (this.state.connected && this.foreground && now - this.lastBeat >= 4000) { this.lastBeat = now; this.emit('heartbeat'); }
     if (this.state.connected && this.foreground && now - this.lastPing >= 30000) this.ping();
     for (const [id, sent] of this.pings) if (now - sent > 10000) this.pings.delete(id);
@@ -185,7 +205,16 @@ export class WatchSync {
     }
     const pos = this.o.player.currentTime;
     if (Math.abs(pos - this.previousPos) > 0.02 || !this.desired) { this.lastMovement = now; this.previousPos = pos; }
-    else if (now - this.lastMovement > 3000 && now > this.ignoreUntil) this.stall();
+    else if (now - this.lastMovement > 3000 && now > this.ignoreUntil) {
+      // No native loading transition occurred. Do not invent unready state and
+      // wait forever for a ready event that the decoder will never send.
+      this.control('pause');
+      this.update('Playback stopped advancing. Press Play or use Reconnect / retry playback.');
+    }
+    if (this.stalledAt !== null && now - this.stalledAt > 20000) {
+      this.control('pause'); this.stalledAt = null;
+      this.update('Buffering timed out. Use Reconnect / retry playback or choose the local file again.');
+    }
     this.update();
   }
 }

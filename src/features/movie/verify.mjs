@@ -18,7 +18,7 @@ assert.deepEqual(driftCorrection(0.4), { seek: false, rate: 1.03 });
 assert.equal(driftCorrection(0.601).seek, true);
 console.log('PASS metadata mismatch boundaries and drift thresholds');
 
-function simulation(skew = 0) {
+function simulation(skew = 0, bufferOnSeek = false) {
   let now = 100000; let nextTick = now + 250; const queue = [];
   const players = [42, 5].map(currentTime => ({ currentTime, playbackRate: 1, playing: false, frozen: false, duration: 7200,
     play() { this.playing = true; }, pause() { this.playing = false; } }));
@@ -27,13 +27,34 @@ function simulation(skew = 0) {
     now: () => now + (index ? skew : 0), change() {}, reaction: emoji => receivedReactions[index].push(emoji),
     send: (event, payload) => { if (!drop) queue.push({ at: now + 50, to: 1 - index, event, payload: structuredClone(payload) }); },
   }));
+  const nativeEvents = [];
+  if (bufferOnSeek) players.forEach((player, index) => {
+    let position = player.currentTime;
+    let generation = 0;
+    player.seeks = 0;
+    Object.defineProperty(player, 'currentTime', { get: () => position, set: value => {
+      if (bufferOnSeek !== 'delayed') position = value;
+      player.seeks++;
+      const id = ++generation;
+      nativeEvents.push({ at: now, run: () => engines[index].setReady(false) });
+      nativeEvents.push({ at: now + 150, run: () => {
+        if (id === generation) { if (bufferOnSeek === 'delayed') position = value; engines[index].setReady(true); }
+      } });
+    } });
+    player.advance = seconds => { position += seconds * player.playbackRate; };
+  });
   function advance(ms) {
     const end = now + ms;
     while (now < end) {
       queue.sort((a, b) => a.at - b.at);
-      const target = Math.min(end, nextTick, queue[0]?.at ?? Infinity);
-      for (const player of players) if (player.playing && !player.frozen) player.currentTime += (target - now) / 1000 * player.playbackRate;
+      nativeEvents.sort((a, b) => a.at - b.at);
+      const target = Math.min(end, nextTick, queue[0]?.at ?? Infinity, nativeEvents[0]?.at ?? Infinity);
+      for (const player of players) if (player.playing && !player.frozen) {
+        if (player.advance) player.advance((target - now) / 1000);
+        else player.currentTime += (target - now) / 1000 * player.playbackRate;
+      }
       now = target;
+      while (nativeEvents.length && nativeEvents[0].at <= now) nativeEvents.shift().run();
       while (queue.length && queue[0].at <= now) {
         const item = queue.shift(); engines[item.to].receive(item.event, item.payload);
       }
@@ -97,6 +118,72 @@ frozen.engines.forEach(e => { e.setReady(true); e.connect(true); }); frozen.adva
 frozen.engines[0].control('play'); frozen.advance(500);
 frozen.players[1].frozen = true; frozen.advance(5000);
 assert(frozen.players.every(p => !p.playing), 'drift seeks must not mask a frozen follower');
-frozen.players[1].frozen = false; frozen.engines[1].setReady(true); frozen.advance(500);
+assert(frozen.engines.every(e => e.state.bothReady), 'watchdog must preserve actual native readiness');
+frozen.players[1].frozen = false; frozen.engines[1].control('play'); frozen.advance(500);
 assert(frozen.players.every(p => p.playing));
-console.log('PASS frozen follower pauses both and recovers after readiness');
+console.log('PASS frozen follower pauses both and allows manual recovery without a status transition');
+
+const native = simulation(0, true);
+native.engines.forEach(e => { e.setReady(true); e.connect(true); }); native.advance(1000);
+native.engines[0].control('play'); native.advance(15000);
+assert(native.players.every(p => p.playing), 'seek-induced buffering must settle into playback');
+assert(native.players.every(p => p.currentTime > 50), 'both decoders must advance after recovery');
+assert(native.players.every(p => p.seeks < 8), 'resume must not continuously seek and rebuffer');
+native.engines[1].control('seek', 100); native.advance(5000);
+assert(native.players.every(p => p.playing && p.currentTime >= 103), 'a playing seek must recover without another seek loop');
+console.log('PASS native seek/loading/ready callbacks converge without a buffering loop');
+
+function connectedSimulation(bufferOnSeek = false) {
+  const result = simulation(0, bufferOnSeek);
+  result.engines.forEach(e => { e.setReady(true); e.connect(true); }); result.advance(1000);
+  return result;
+}
+for (const controller of [0, 1]) {
+  const pausedSeek = connectedSimulation(true);
+  pausedSeek.engines[controller].control('seek', 120); pausedSeek.advance(5000);
+  assert(pausedSeek.players.every(p => !p.playing && p.currentTime === 120), 'paused seeks must stay paused after loading');
+  pausedSeek.engines[controller].control('play'); pausedSeek.advance(1000);
+  pausedSeek.engines.forEach(e => e.setReady(false)); pausedSeek.advance(500);
+  pausedSeek.engines.forEach(e => e.setReady(true)); pausedSeek.advance(5000);
+  assert(pausedSeek.players.every(p => p.playing), 'simultaneous buffering must recover regardless of controller');
+
+  const manual = connectedSimulation();
+  manual.engines[controller].control('play'); manual.advance(1000);
+  manual.engines[1 - controller].setReady(false); manual.advance(200);
+  manual.engines[controller].control('pause'); manual.advance(200);
+  manual.engines[1 - controller].setReady(true); manual.advance(5000);
+  assert(manual.players.every(p => !p.playing), 'explicit pause during buffering cancels auto-resume');
+}
+console.log('PASS either controller: paused seeks, simultaneous buffering, manual cancellation');
+
+const ordered = connectedSimulation();
+ordered.engines[0].control('play'); ordered.advance(5000);
+ordered.players[1].playing = false;
+ordered.engines[1].unexpectedPause(); // playingChange arrives before statusChange
+ordered.engines[1].setReady(false); ordered.advance(500);
+ordered.engines[1].setReady(true); ordered.advance(1000);
+assert(ordered.players.every(p => p.playing), 'playing=false before loading must preserve resume intent');
+ordered.advance(5000);
+ordered.players[1].playing = false; ordered.engines[1].unexpectedPause(); ordered.advance(500);
+assert(ordered.players.every(p => !p.playing), 'audio-focus pause with no loading must pause both');
+console.log('PASS Android callback ordering and audio-focus interruption');
+
+const timeout = connectedSimulation();
+timeout.engines[0].control('play'); timeout.advance(1000);
+timeout.engines[1].setReady(false); timeout.advance(21000);
+assert(timeout.engines[1].state.notice.includes('timed out'), 'persistent buffering must offer actionable recovery');
+timeout.engines[1].setReady(true); timeout.advance(1000);
+assert(timeout.players.every(p => !p.playing), 'timeout must cancel automatic resume');
+timeout.engines[0].control('play'); timeout.advance(1000);
+assert(timeout.players.every(p => p.playing), 'play after timeout recovery must work');
+console.log('PASS buffering timeout and recovery');
+
+for (const controller of [0, 1]) {
+  const delayed = connectedSimulation('delayed');
+  delayed.engines[controller].control('seek', 120); delayed.advance(5000);
+  assert(delayed.players.every(p => !p.playing && p.currentTime === 120), 'paused async seeks must broadcast the requested position');
+  delayed.engines[controller].control('play'); delayed.advance(1000);
+  delayed.engines[controller].control('seek', 240); delayed.advance(5000);
+  assert(delayed.players.every(p => p.playing && p.currentTime >= 243), 'async playing seeks must resume at the requested position');
+}
+console.log('PASS native seeks whose position getter remains stale until readiness');
