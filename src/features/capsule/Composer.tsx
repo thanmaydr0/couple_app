@@ -1,4 +1,7 @@
-import { useState } from 'react';
+import { VoiceRecorder, VoicePlayer, type VoiceRecording } from '@/features/voice';
+import { persistVoice } from '@/features/voice/storage';
+import { useEffect, useRef, useState } from 'react';
+import * as FileSystem from 'expo-file-system/legacy';
 import { Alert, Image, ScrollView, View } from 'react-native';
 import { Button, Card, Chip, Header, Screen, Switch, Text, TextField, PressableScale } from '@/ui';
 import { useTheme } from '@/theme';
@@ -26,6 +29,10 @@ export function Composer({ existing, serverNow, offline, onClose, onSaved }: { e
   const [years, setYears] = useState('1');
   const [date, setDate] = useState(localInput(existing ? new Date(existing.unlock_at) : new Date(new Date(serverNow).getTime() + 86400_000), zone));
   const [photos, setPhotos] = useState<string[]>([]); const [busy, setBusy] = useState(false); const [error, setError] = useState('');
+  const [voice, setVoice] = useState<VoiceRecording>();
+  const voiceRef = useRef<VoiceRecording | undefined>(undefined);
+  useEffect(() => () => { if (voiceRef.current) void FileSystem.deleteAsync(voiceRef.current.uri, { idempotent: true }); }, []);
+  const [recording, setRecording] = useState(false);
   const count = photos.length + (existing?.media_paths.length ?? 0);
   const report = (cause: unknown) => setError(cause instanceof Error ? cause.message : 'Something went wrong. Please try again.');
   const quick = (choice: 'tomorrow' | 'year' | 'anniversary' | 'birthday', future = false) => {
@@ -51,13 +58,13 @@ export function Composer({ existing, serverNow, offline, onClose, onSaved }: { e
     } catch (cause) { report(cause); }
   };
   const save = async () => {
-    if (busy || offline || !profile?.couple_id) return;
+    if (busy || recording || offline || !profile?.couple_id) return;
     setBusy(true); setError('');
     try {
       const unlock = zonedTimeToUtc(date, zone);
       if (unlock.getTime() <= new Date(serverNow).getTime()) throw new Error('Choose a future moment. The server checks the time again when saving.');
-      if (!body.trim() && !photos.length && !existing?.media_paths.length) throw new Error('Write a message or add a photo.');
-      await saveCapsule(profile.couple_id, profile.id, { title: title.trim(), body, kind, open_together: together, unlock_at: unlock.toISOString() }, photos, existing);
+      if (!body.trim() && !photos.length && !existing?.media_paths.length && !voice && !existing?.voice_path) throw new Error('Write a message, add a photo or record your voice.');
+      await saveCapsule(profile.couple_id, profile.id, { title: title.trim(), body, kind, open_together: together, unlock_at: unlock.toISOString() }, photos, existing, voice);
       onSaved();
     } catch (cause) { report(cause); } finally { setBusy(false); }
   };
@@ -76,9 +83,12 @@ export function Composer({ existing, serverNow, offline, onClose, onSaved }: { e
       <Text>{count} / 6 photos{existing?.media_paths.length ? ' · existing photos are kept' : ''}</Text>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>{photos.map((uri, index) => <PressableScale key={uri} disabled={busy} accessibilityLabel={`Remove new photo ${index + 1}`} onPress={() => setPhotos(current => current.filter(item => item !== uri))}><Image source={{ uri }} style={{ width: geometry.touch * 2, height: geometry.touch * 2, borderRadius: radius.md }} /><Text variant="caption">Remove</Text></PressableScale>)}</View>
       <Button title="Add photos" disabled={busy || offline || count >= 6} onPress={() => { setBusy(true); void pickPhotos(6 - count).then(items => setPhotos(current => [...current, ...items])).catch(report).finally(() => setBusy(false)); }} />
-      <Text variant="caption" color="textSecondary">Sealed content stays private until the server unlocks it. Voice messages will arrive in a later update.</Text>
+      <Text variant="title/S">Record a voice message</Text>
+      <VoiceRecorder disabled={busy || !profile?.couple_id} onBusyChange={setRecording} onRecorded={async result => { if (!profile?.couple_id) throw new Error('Sign in first.'); const saved = await persistVoice(result, profile.couple_id, profile.id, 'capsule'); if (voiceRef.current) await FileSystem.deleteAsync(voiceRef.current.uri, { idempotent: true }); voiceRef.current = { uri: saved.uri, meta: saved.meta }; setVoice(voiceRef.current); }} />
+      {voice ? <VoicePlayer id={voice.uri} uri={voice.uri} meta={voice.meta} /> : existing?.voice_path ? <VoicePlayer id={existing.id} path={existing.voice_path} bucket="capsules" /> : null}
+      <Text variant="caption" color="textSecondary">Sealed content stays private until the server unlocks it.</Text>
       {!!error && <Text color="danger" accessibilityLiveRegion="polite">{error}</Text>}
-      <Button title={busy ? 'Sealing…' : existing ? 'Save capsule' : 'Seal for later'} disabled={busy || offline} onPress={() => void save()} />
+      <Button title={busy ? 'Sealing…' : existing ? 'Save capsule' : 'Seal for later'} disabled={busy || recording || offline} onPress={() => void save()} />
       <Button title="Discard draft" disabled={busy} onPress={() => Alert.alert('Discard this draft?', 'Unsaved changes will be lost.', [{ text: 'Keep writing' }, { text: 'Discard', style: 'destructive', onPress: onClose }])} />
     </ScrollView></Screen>;
 }

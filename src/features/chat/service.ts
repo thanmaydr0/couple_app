@@ -5,7 +5,8 @@ import * as ImagePicker from 'expo-image-picker';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import { randomUUID } from 'expo-crypto';
 import { supabase } from '@/lib/supabase';
-import type { MessageRow } from '@/types/db';
+import type { ChatRow as MessageRow } from './types';
+import { uploadVoice } from '@/features/voice/storage';
 import { asSent, cacheWindow, isMessage, type ChatMessage } from './model';
 import { bodySummary, expired } from './body';
 import { chatDb } from './plusService';
@@ -64,7 +65,7 @@ export function persistCache(couple: string, uid: string, messages: ChatMessage[
 }
 
 export async function history(couple: string, before?: MessageRow): Promise<MessageRow[]> {
-  let query = supabase.from('messages').select('*').eq('couple_id', couple)
+  let query = chatDb.from('messages').select('*').eq('couple_id', couple)
     .order('created_at', { ascending: false }).order('id', { ascending: false }).limit(PAGE_SIZE);
   if (before) query = query.or(`created_at.lt.${before.created_at},and(created_at.eq.${before.created_at},id.lt.${before.id})`);
   const { data, error } = await query;
@@ -73,7 +74,7 @@ export async function history(couple: string, before?: MessageRow): Promise<Mess
 }
 
 export async function newer(couple: string, after: MessageRow): Promise<MessageRow[]> {
-  const { data, error } = await supabase.from('messages').select('*').eq('couple_id', couple)
+  const { data, error } = await chatDb.from('messages').select('*').eq('couple_id', couple)
     .or(`created_at.gt.${after.created_at},and(created_at.eq.${after.created_at},id.gt.${after.id})`)
     .order('created_at').order('id').limit(PAGE_SIZE);
   if (error) throw error;
@@ -123,10 +124,14 @@ export async function sendMessage(message: ChatMessage): Promise<ChatMessage> {
     return asSent(row);
   };
   // Recover an ambiguous timeout before uploading/inserting again.
-  const lookup = await supabase.from('messages').select('*').eq('couple_id', message.couple_id)
+  const lookup = await chatDb.from('messages').select('*').eq('couple_id', message.couple_id)
     .eq('client_id', message.client_id).maybeSingle();
   if (lookup.error) throw lookup.error;
   if (lookup.data) return accepted(lookup.data);
+  if (message.kind === 'voice') {
+    if (!message.localUri || !message.media_path) throw new Error('Voice file unavailable. Record it again.');
+    await uploadVoice('media', message.media_path, message.localUri);
+  }
   if (message.kind === 'image') {
     if (!message.localUri || !message.media_path) throw new Error('Photo is unavailable. Please choose it again.');
     const base64 = await FileSystem.readAsStringAsync(message.localUri, { encoding: FileSystem.EncodingType.Base64 });
@@ -136,11 +141,11 @@ export async function sendMessage(message: ChatMessage): Promise<ChatMessage> {
   }
   const { data, error } = await chatDb.from('messages').insert({
     id: message.id, client_id: message.client_id, couple_id: message.couple_id, sender_id: message.sender_id,
-    kind: message.kind, body: message.body, media_path: message.media_path, reply_to: message.reply_to, view_once: message.view_once ?? false,
+    kind: message.kind, meta: message.meta ?? null, body: message.body, media_path: message.media_path, reply_to: message.reply_to, view_once: message.view_once ?? false,
   }).select('*').single();
   if (error) {
     if (error.code === '23505') {
-      const existing = await supabase.from('messages').select('*').eq('couple_id', message.couple_id).eq('client_id', message.client_id).single();
+      const existing = await chatDb.from('messages').select('*').eq('couple_id', message.couple_id).eq('client_id', message.client_id).single();
       if (existing.data) return accepted(existing.data);
     }
     throw error;

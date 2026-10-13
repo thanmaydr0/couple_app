@@ -1,3 +1,5 @@
+import { uploadVoice } from '@/features/voice/storage';
+import type { VoiceRecording } from '@/features/voice';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { randomUUID } from 'expo-crypto';
 import * as ImagePicker from 'expo-image-picker';
@@ -44,7 +46,7 @@ export async function pickPhotos(remaining: number): Promise<string[]> {
   }
   return photos;
 }
-export async function saveCapsule(couple: string, user: string, draft: CapsuleDraft, photos: string[], existing?: Capsule) {
+export async function saveCapsule(couple: string, user: string, draft: CapsuleDraft, photos: string[], existing?: Capsule, voice?: VoiceRecording) {
   const id = existing?.id ?? randomUUID();
   const uploaded: string[] = [];
   let created = false;
@@ -61,8 +63,15 @@ export async function saveCapsule(couple: string, user: string, draft: CapsuleDr
       if (result.error) throw result.error;
       uploaded.push(path);
     }
-    const result = await capsuleDb.from('capsules').update({ ...draft, media_paths: [...(existing?.media_paths ?? []), ...uploaded] }).eq('id', id).select('id').single();
+    let voicePath = existing?.voice_path ?? null;
+    if (voice) {
+      voicePath = `${couple}/capsules/${id}/${randomUUID()}.m4a`;
+      await uploadVoice('capsules', voicePath, voice.uri);
+      uploaded.push(voicePath);
+    }
+    const result = await capsuleDb.from('capsules').update({ ...draft, voice_path: voicePath, media_paths: [...(existing?.media_paths ?? []), ...uploaded.filter(path => !path.endsWith('.m4a'))] }).eq('id', id).select('id').single();
     if (result.error) throw result.error;
+    if (voice && existing?.voice_path && existing.voice_path !== voicePath) await supabase.storage.from('capsules').remove([existing.voice_path]).catch(() => undefined);
     return id;
   } catch {
     if (uploaded.length) await supabase.storage.from('capsules').remove(uploaded);

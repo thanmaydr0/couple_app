@@ -1,6 +1,9 @@
 import type { MessageRow } from '@/types/db';
 
-export type ChatRow = MessageRow & {
+import type { VoiceMeta } from '@/features/voice/types';
+export type ChatRow = Omit<MessageRow, 'kind'> & {
+  kind: MessageRow['kind'] | 'voice';
+  meta?: VoiceMeta | null;
   edited_at?: string | null;
   deleted_at?: string | null;
   pinned_at?: string | null;

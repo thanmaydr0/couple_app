@@ -3,7 +3,8 @@ import { useQueryClient } from '@tanstack/react-query';
 import NetInfo from '@react-native-community/netinfo';
 import { randomUUID } from 'expo-crypto';
 import { supabase } from '@/lib/supabase';
-import type { MessageRow } from '@/types/db';
+import type { ChatRow as MessageRow } from './types';
+import type { VoiceMeta } from '@/features/voice/types';
 import { asSent, isMessage, mergeMessages, type ChatMessage } from './model';
 import { cleanOutbox, history, loadCache, newer, PAGE_SIZE, persistCache, sendMessage } from './service';
 import { unreadKey } from './useUnreadCount';
@@ -197,17 +198,26 @@ export function useChat(coupleId: string, uid: string, active: boolean) {
     finally { sending.current.delete(message.client_id); }
   }, [coupleId, uid, merge, durableRows]);
 
-  const send = useCallback((body: string, replyTo: string | null, image?: { uri: string; path: string; viewOnce?: boolean }) => {
+  const send = useCallback((body: string, replyTo: string | null, image?: { uri: string; path: string; viewOnce?: boolean; meta?: VoiceMeta }) => {
     if (!ready || (!image && !body.trim())) return;
     const id = randomUUID();
     const message: ChatMessage = {
       id, client_id: id, couple_id: coupleId, sender_id: uid,
-      kind: image ? 'image' : 'text', body: encodeBody(body), view_once: image?.viewOnce ?? false,
-      media_path: image?.path ?? null, localUri: image?.uri,
+      kind: image?.meta ? 'voice' : image ? 'image' : 'text', body: encodeBody(body), view_once: image?.viewOnce ?? false,
+      meta: image?.meta ?? null, media_path: image?.path ?? null, localUri: image?.uri,
       reply_to: replyTo, created_at: new Date().toISOString(), read_at: null, status: 'sending',
     };
     void transmit(message);
   }, [coupleId, uid, ready, transmit]);
+  useEffect(() => {
+    if (!ready || !active) return;
+    let online = false;
+    return NetInfo.addEventListener(state => {
+      const connected = !!state.isConnected && state.isInternetReachable !== false;
+      if (connected && !online) for (const message of rows.current.filter(row => row.status === 'failed')) void transmit(message);
+      online = connected;
+    });
+  }, [ready, active, transmit]);
   const retry = useCallback((message: ChatMessage) => {
     if (ready && message.status === 'failed') void transmit(message);
   }, [ready, transmit]);

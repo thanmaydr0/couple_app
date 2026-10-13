@@ -1,3 +1,4 @@
+import { VoicePlayer } from '@/features/voice';
 import { useEffect, useRef, useState } from 'react';
 import { AppState, Image, ScrollView, View } from 'react-native';
 import Svg, { Circle, Path } from 'react-native-svg';
@@ -48,7 +49,7 @@ function Paper({ capsule }: { capsule: Capsule }) {
     return () => clearInterval(timer);
   }, [capsule.body, motion.level]);
   const style = useAnimatedStyle(() => ({ opacity: unfold.value, transform: [{ scaleY: motion.level === 'full' ? 0.5 + unfold.value / 2 : 1 }] }));
-  return <Animated.View style={style}><Card style={{ gap: spacing.md }}><Text variant="title/L">{capsule.title || 'A letter for you'}</Text><Text accessibilityLabel={capsule.body}>{capsule.body.slice(0, letters)}</Text>{capsule.media_paths.map(path => <CapsulePhoto key={path} path={path} />)}{capsule.voice_path && <Text color="textSecondary">A voice message is attached. Voice playback is coming in the voice update.</Text>}</Card></Animated.View>;
+  return <Animated.View style={style}><Card style={{ gap: spacing.md }}><Text variant="title/L">{capsule.title || 'A letter for you'}</Text><Text accessibilityLabel={capsule.body}>{capsule.body.slice(0, letters)}</Text>{capsule.media_paths.map(path => <CapsulePhoto key={path} path={path} />)}{capsule.voice_path && <VoicePlayer id={capsule.id} path={capsule.voice_path} bucket="capsules" />}</Card></Animated.View>;
 }
 export function Ceremony({ id, together, onClose }: { id: string; together: boolean; onClose: () => void }) {
   const { spacing, colors, radius } = useTheme(); const motion = useMotion(); const { data: session } = useSession();

@@ -1,3 +1,6 @@
+import { VoiceRecorder } from '@/features/voice';
+import { persistVoice } from '@/features/voice/storage';
+import { setVoiceQueue, pauseVoice } from '@/features/voice/playback';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, AppState, FlatList, ScrollView, StyleSheet, Text, TextInput, View, type ViewToken } from 'react-native';
 import { useIsFocused } from 'expo-router';
@@ -64,6 +67,7 @@ function Conversation({ coupleId, uid }: { coupleId: string; uid: string }) {
   const [reply, setReply] = useState<ChatMessage | null>(null);
   const [emojiOpen, setEmojiOpen] = useState(false);
   const [picking, setPicking] = useState(false);
+  const [voiceBusy, setVoiceBusy] = useState(false);
   const [newMessages, setNewMessages] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [showInfo, setShowInfo] = useState(false);
@@ -151,6 +155,11 @@ function Conversation({ coupleId, uid }: { coupleId: string; uid: string }) {
   }, [chat.messages, uid, motion.level]);
 
   const edit = (text: string) => { setDraft(text); updateTyping(text); };
+  useEffect(() => {
+    setVoiceQueue([...chat.messages].reverse().map(message => ({ id: message.id, path: message.kind === 'voice' && !message.deleted_at && message.status === 'sent' ? message.media_path : null, couple: coupleId, receiver: message.sender_id !== uid, meta: message.meta })));
+    return () => { setVoiceQueue([]); };
+  }, [chat.messages, coupleId, uid]);
+  useEffect(() => { if (!active) pauseVoice(); return () => pauseVoice(); }, [active]);
   const sendText = () => {
     if (!draft.trim() || !chat.ready) return;
     chat.send(draft, reply?.id ?? null);
@@ -232,17 +241,17 @@ function Conversation({ coupleId, uid }: { coupleId: string; uid: string }) {
       {emojiOpen && <ScrollView horizontal keyboardShouldPersistTaps="always" contentContainerStyle={styles.emojis} style={styles.emojiPanel}>{EMOJI.map((emoji) => <PressableScale key={emoji} accessibilityRole="button" accessibilityLabel={`Insert ${emoji}`} onPress={() => { if (draft.length < 3998) edit(`${draft}${emoji}`); }} style={styles.emoji}><Text style={styles.emojiText}>{emoji}</Text></PressableScale>)}</ScrollView>}
       <PressableScale accessibilityRole="switch" accessibilityState={{ checked: viewOnce }} onPress={() => setViewOnce(!viewOnce)} style={{ paddingHorizontal: spacing.lg, justifyContent: 'center' }}><Text style={styles.subtitle}>① Next photo: {viewOnce ? 'view once · On' : 'view once · Off'}</Text></PressableScale>
       <View style={styles.composer}>
-        <PressableScale accessibilityRole="button" accessibilityLabel="Choose photo" disabled={!chat.ready || picking} onPress={() => void sendPhoto()} style={styles.icon}>{picking ? <ActivityIndicator color={colors.primary} /> : <Ionicons name="image-outline" size={geometry.icon} color={colors.primary} />}</PressableScale>
-        <PressableScale accessibilityRole="button" accessibilityLabel="Show emoji" onPress={() => setEmojiOpen(!emojiOpen)} style={styles.icon}><Ionicons name="happy-outline" size={geometry.icon} color={colors.textSecondary} /></PressableScale>
-        <Animated.View style={[{ flex: 1 }, inputSize]}>
+        <PressableScale accessibilityRole="button" accessibilityLabel="Choose photo" disabled={!chat.ready || picking || voiceBusy} onPress={() => void sendPhoto()} style={styles.icon}>{picking ? <ActivityIndicator color={colors.primary} /> : <Ionicons name="image-outline" size={geometry.icon} color={colors.primary} />}</PressableScale>
+        <PressableScale accessibilityRole="button" accessibilityLabel="Show emoji" disabled={voiceBusy} onPress={() => setEmojiOpen(!emojiOpen)} style={styles.icon}><Ionicons name="happy-outline" size={geometry.icon} color={colors.textSecondary} /></PressableScale>
+        <Animated.View style={[{ flex: 1, display: voiceBusy ? 'none' : 'flex' }, inputSize]}>
           <TextInput accessibilityLabel="Message" placeholder="A message for your person…" placeholderTextColor={colors.textSecondary} value={draft} onChangeText={edit}
             onContentSizeChange={event => {
               const height = Math.max(geometry.touch, Math.min(geometry.touch * 3, event.nativeEvent.contentSize.height));
               inputHeight.value = motion.level === 'full' ? withTiming(height, { duration: motion.duration('fast') }) : height;
             }}
-            editable={chat.ready && !picking} multiline maxLength={4000} style={styles.input} textAlignVertical="center" />
+            editable={chat.ready && !picking && !voiceBusy} multiline maxLength={4000} style={styles.input} textAlignVertical="center" />
         </Animated.View>
-        <ComposerSend visible={!!draft.trim()} disabled={!chat.ready || picking} onPress={sendText} onLongPress={() => setScheduleOpen(true)} />
+        {draft.trim() ? <ComposerSend visible disabled={!chat.ready || picking || voiceBusy} onPress={sendText} onLongPress={() => setScheduleOpen(true)} /> : <VoiceRecorder onBusyChange={busy => { setVoiceBusy(busy); if (busy) { setEmojiOpen(false); updateTyping(''); } }} disabled={!chat.ready || picking || !active} onRecorded={async recording => { const voice = await persistVoice(recording, coupleId, uid); chat.send('', replyRef.current?.id ?? null, voice); setReply(null); toBottom(); }} />}
       </View>
     </KeyboardAvoidingView>
     <BottomSheet visible={!!selected} onClose={closeActions} title={showInfo ? 'Message info' : 'Message actions'}>

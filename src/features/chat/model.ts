@@ -1,4 +1,5 @@
 import type { ChatRow } from './types';
+import { isVoiceMeta } from '../voice/types';
 
 export type ChatMessage = ChatRow & {
   status: 'sending' | 'sent' | 'failed';
@@ -18,6 +19,7 @@ export function mergeMessages(current: ChatMessage[], incoming: ChatMessage[]): 
     const stale = previous?.status === 'sent' && next.status === 'sent'
       && (!!previous.deleted_at && !next.deleted_at || !!previous.edited_at && (!next.edited_at || previous.edited_at > next.edited_at));
     const merged = { ...(stale ? previous : next), read_at: next.read_at ?? previous?.read_at ?? null,
+      meta: next.meta && previous?.meta?.played_at ? { ...next.meta, played_at: next.meta.played_at ?? previous.meta.played_at } : next.meta,
       viewed_at: next.viewed_at ?? previous?.viewed_at ?? null };
     const keys = Object.keys(merged) as (keyof ChatMessage)[];
     byClient.set(next.client_id, previous && keys.every(key => merged[key] === previous[key])
@@ -31,7 +33,8 @@ export function isMessage(value: unknown): value is ChatMessage {
   const row = value as Record<string, unknown>;
   return ['id', 'client_id', 'couple_id', 'sender_id', 'created_at'].every((key) => typeof row[key] === 'string')
     && typeof row.created_at === 'string' && Number.isFinite(Date.parse(row.created_at))
-    && ['text', 'image', 'system'].includes(String(row.kind))
+    && ['text', 'image', 'system', 'voice'].includes(String(row.kind))
+    && (row.kind !== 'voice' || isVoiceMeta(row.meta))
     && ['body', 'media_path', 'reply_to', 'read_at'].every((key) => row[key] === null || typeof row[key] === 'string')
     && ['edited_at','deleted_at','pinned_at','expires_at','viewed_at'].every(key=>row[key]===undefined || row[key]===null || typeof row[key]==='string' && Number.isFinite(Date.parse(row[key])))
     && (row.view_once===undefined || typeof row.view_once==='boolean')

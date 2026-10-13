@@ -7,7 +7,9 @@ import ts from 'typescript';
 const source = readFileSync(new URL('./model.ts', import.meta.url), 'utf8');
 const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
 const model = {};
-new Function('exports', compiled)(model);
+const voice = {};
+new Function('exports', ts.transpileModule(readFileSync(new URL('../voice/types.ts', import.meta.url), 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText)(voice);
+new Function('exports', 'require', compiled)(model, () => voice);
 const { mergeMessages, cacheWindow, dayLabel, grouped, isMessage } = model;
 const row = (id, extra = {}) => ({ id, client_id: id, couple_id: 'couple', sender_id: 'me', kind: 'text', body: 'Hi ♥', media_path: null, reply_to: null, created_at: '2026-10-12T10:00:00Z', read_at: null, status: 'sent', ...extra });
 

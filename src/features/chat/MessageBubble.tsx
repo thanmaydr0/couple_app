@@ -11,6 +11,7 @@ import { PressableScale, useMotion, motionTokens } from '@/motion';
 import { MessageStatusTicks } from '@/ui';
 import { dayLabel, type ChatMessage } from './model';
 import { ReplyPreview } from './ReplyPreview';
+import { VoicePlayer } from '@/features/voice';
 import { ChatImage } from './ChatImage';
 import { useChatStyles } from './styles';
 import { bodyText, firstLink } from './body';
@@ -31,9 +32,9 @@ function Receipt({ message }: { message: ChatMessage }) {
     previous.current = status;
   }, [status, motion.level, scale]);
   const animated = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
-  const { colors, radius } = useTheme();
+  const { colors, radius, geometry } = useTheme();
   if (message.deleted_at || message.kind === 'system') return null;
-  return <Animated.View style={[status === 'failed' && { backgroundColor: colors.surface, borderRadius: radius.pill }, animated]}><MessageStatusTicks status={status} /></Animated.View>;
+  return <Animated.View style={[status === 'failed' && { backgroundColor: colors.surface, borderRadius: radius.pill }, animated]}><MessageStatusTicks status={status} />{message.kind === 'voice' && !!message.meta?.played_at && <Ionicons accessibilityLabel="Voice heard" name="mic" size={geometry.dot} color={colors.bubbleMineText} />}</Animated.View>;
 }
 
 type Props = {
@@ -73,7 +74,7 @@ function Bubble({ message, uid, partnerName, sameOlder, sameNewer, showDate, kno
   const arrow = useAnimatedStyle(() => ({ opacity: Math.min(1, translate.value / geometry.touch) }));
   const haptic = () => { if (motion.level === 'full') void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {}); };
   const reply = () => onReply(message);
-  const swipe = Gesture.Pan().enabled(message.status === 'sent' && !message.deleted_at && message.kind !== 'system').activeOffsetX(spacing.md).failOffsetY([-spacing.sm, spacing.sm])
+  const swipe = Gesture.Pan().enabled(message.kind !== 'voice' && message.status === 'sent' && !message.deleted_at && message.kind !== 'system').activeOffsetX(spacing.md).failOffsetY([-spacing.sm, spacing.sm])
     .onUpdate(event => {
       translate.value = Math.max(0, Math.min(geometry.touch + spacing.md, event.translationX));
       if (translate.value >= geometry.touch && !crossed.value) { crossed.value = true; scheduleOnRN(haptic); }
@@ -84,7 +85,7 @@ function Bubble({ message, uid, partnerName, sameOlder, sameNewer, showDate, kno
     <View style={[styles.messageRow, { alignItems: mine ? 'flex-end' : 'flex-start', marginTop: sameOlder ? spacing.xs : spacing.s12 }]}>
       <Animated.View pointerEvents="none" style={[{ position: 'absolute', left: 0, top: spacing.s12 }, arrow]}><Ionicons name="arrow-undo" size={geometry.icon} color={colors.primary} /></Animated.View>
       <GestureDetector gesture={swipe}><Animated.View style={[{ maxWidth: '85%' }, animated]}>
-        <PressableScale accessibilityRole="button" accessibilityLabel={message.status === 'failed' ? 'Message failed. Tap to retry' : `${mine ? 'You' : partnerName}: ${text || 'Photo'}. Hold for message actions`}
+        <PressableScale accessibilityRole="button" accessibilityLabel={message.status === 'failed' ? 'Message failed. Tap to retry' : `${mine ? 'You' : partnerName}: ${text || (message.kind === 'voice' ? 'Voice message' : 'Photo')}. Hold for message actions`}
           accessibilityActions={[{ name: 'longpress', label: 'Message actions' }]}
           onAccessibilityAction={() => onActions(message)} onLongPress={() => onActions(message)} delayLongPress={motionTokens.slow}
           onPress={() => { if (message.status === 'failed') { onRetry(message); return; } const now = Date.now(); if (now - lastTap.current < motionTokens.slow && !message.deleted_at && message.kind !== 'system') { onReact(message, '❤️', true); lastTap.current = 0; } else lastTap.current = now; }} style={[styles.bubble, { maxWidth: '100%', borderWidth: geometry.stroke, borderColor: highlighted ? colors.primary : mine ? colors.bubbleMineStart : colors.bubbleTheirs }, mine ? styles.mine : styles.theirs, {
@@ -94,6 +95,7 @@ function Bubble({ message, uid, partnerName, sameOlder, sameNewer, showDate, kno
           {mine && <LinearGradient pointerEvents="none" colors={[colors.bubbleMineStart, colors.bubbleMineEnd]} style={StyleSheet.absoluteFill} />}
           {!message.deleted_at && message.reply_to && <ReplyPreview message={message} uid={uid} known={knownReply} onJump={onJump} />}
           {!message.deleted_at && message.kind === 'image' && <ChatImage message={message} uid={uid} onReply={() => onActions(message)} onHeart={()=>onReact(message,'❤️',true)} />}
+          {!message.deleted_at && message.kind === 'voice' && <VoicePlayer id={message.id} path={message.media_path} uri={message.status !== 'sent' ? message.localUri : undefined} couple={message.couple_id} receiver={!mine} meta={message.meta} />}
           {!!text && <Text style={[styles.body, mine && styles.mineText]}>{text}</Text>}
           {link && <LinkCard url={link} couple={message.couple_id} uid={uid} animate={animateArrival} />}
           {message.kind === 'system' && !text && <Text style={styles.body}>System message</Text>}

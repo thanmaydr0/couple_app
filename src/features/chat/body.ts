@@ -12,7 +12,7 @@ export function bodyText(message: BodyMessage, uid?: string, sender?: string): s
   return decodeBody(message.body);
 }
 export function bodySummary(message: BodyMessage): string {
-  return bodyText(message) || (message.kind === 'image' ? message.view_once ? 'View-once photo' : '📷 Photo' : 'Message');
+  return bodyText(message) || (message.kind === 'voice' ? 'Voice message' : message.kind === 'image' ? message.view_once ? 'View-once photo' : '📷 Photo' : 'Message');
 }
 export function firstLink(body: string | null | undefined): string | null {
   const match = decodeBody(body).match(/https?:\/\/[^\s<>]+/i)?.[0]?.replace(/[),.!?;]+$/, '');
