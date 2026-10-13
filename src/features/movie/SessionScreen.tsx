@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Alert, ScrollView, Text, View } from 'react-native';
+import { Alert, ScrollView, Text } from 'react-native';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { usePartner, useProfile } from '@/lib/hooks';
 import { supabase } from '@/lib/supabase';
@@ -7,9 +7,11 @@ import type { WatchSessionRow } from '@/types/db';
 import { pickMovie, rememberedFile, saveFile } from './local';
 import { matches, type MovieFile } from './model';
 import MoviePlayer from './Player';
-import { MovieButton, movieStyles as s } from './Screen';
+import { Screen, Header, Skeleton } from '@/ui';
+import { MovieButton, MovieCard, MovieEntrance, useMovieStyles } from './presentation';
 
 export default function WatchSessionScreen() {
+  const s = useMovieStyles();
   const { id } = useLocalSearchParams<{ id: string }>();
   const profile = useProfile(); const partner = usePartner(); const router = useRouter();
   const user = profile.data?.id; const couple = profile.data?.couple_id;
@@ -62,25 +64,28 @@ export default function WatchSessionScreen() {
       void accept(candidate).catch(failure => setError(failure instanceof Error ? failure.message : 'Could not join.'));
     } }]);
   }
-  return <View style={s.root}>
-    <Stack.Screen options={{ title: session?.title ?? 'Watch together' }} />
+  return <Screen>
+    <Stack.Screen options={{ title: session?.title ?? 'Watch together', headerShown: false }} />
     {session && file && user && partner.data && session.status !== 'ended' ? <MoviePlayer session={session} file={file} user={user} partner={partner.data.id} onChangeFile={() => { setFile(null); setCandidate(null); }} /> : <ScrollView contentContainerStyle={s.content}>
-      <Text style={s.title}>{session?.title ?? 'Watch together'}</Text>
+      <Header title="Watch together" subtitle="STEP 2 OF 2 / YOUR LOCAL COPY" onBack={() => router.replace('/(tabs)/watch')} />
+      <Text style={s.title}>{candidate ? 'A different cut?' : session?.title ?? 'Getting your movie ready...'}</Text>
+      {!session && !error && <Skeleton />}
       {(error || profile.error || partner.error) && <Text accessibilityRole="alert" style={s.error}>{error ?? profile.error?.message ?? partner.error?.message}</Text>}
       {session?.status === 'ended' ? <Text style={s.muted}>This session ended. Local files and saved positions are kept. Create a new session from the Watch tab.</Text> : <>
         <Text style={s.muted}>Choose your own copy of this movie from this phone. No video is uploaded or streamed.</Text>
-        {candidate && <View style={s.card}>
+        {candidate && <MovieEntrance key={candidate.uri} shake style={s.card}>
+          <MovieCard file={candidate} title={candidate.name} size={candidate.size} durationMs={candidate.durationMs} />
           <Text accessibilityRole="alert" style={s.error}>These files do not match. Joining is blocked unless you override.</Text>
           <Text style={s.text}>Session: {session?.file_size?.toLocaleString() ?? 'unknown'} bytes · {session?.duration_ms ?? 'unknown'} ms</Text>
           <Text style={s.text}>Your file: {candidate.name} · {candidate.size.toLocaleString()} bytes · {candidate.durationMs} ms</Text>
           <Text style={s.muted}>Required: identical byte size and duration within 1,000 ms.</Text>
-          <MovieButton label="I know it's a different cut, continue anyway" onPress={override} />
-        </View>}
+          <MovieButton secondary label="I know it's a different cut, continue anyway" onPress={override} />
+        </MovieEntrance>}
         <MovieButton label={busy ? 'Reading video metadata…' : 'Pick my local video'} disabled={busy || !session || !partner.data} onPress={() => { void choose(); }} />
         {!partner.data && <Text style={s.muted}>Both partners need to be linked to join.</Text>}
       </>}
-      <MovieButton label="Reload session" onPress={() => setReload(v => v + 1)} />
-      <MovieButton label="Back to Watch" onPress={() => router.replace('/(tabs)/watch')} />
+      <MovieButton secondary label="Reload session" onPress={() => setReload(v => v + 1)} />
+      <MovieButton secondary label="Back to Watch" onPress={() => router.replace('/(tabs)/watch')} />
     </ScrollView>}
-  </View>;
+  </Screen>;
 }
