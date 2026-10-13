@@ -13,6 +13,10 @@ import { dayLabel, type ChatMessage } from './model';
 import { ReplyPreview } from './ReplyPreview';
 import { ChatImage } from './ChatImage';
 import { useChatStyles } from './styles';
+import { bodyText, firstLink } from './body';
+import { ReactionChips } from './ReactionChips';
+import { LinkCard } from './LinkCard';
+import type { Reaction } from './types';
 
 function Receipt({ message }: { message: ChatMessage }) {
   const status = message.status === 'sent' && message.read_at ? 'seen' : message.status;
@@ -28,6 +32,7 @@ function Receipt({ message }: { message: ChatMessage }) {
   }, [status, motion.level, scale]);
   const animated = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
   const { colors, radius } = useTheme();
+  if (message.deleted_at || message.kind === 'system') return null;
   return <Animated.View style={[status === 'failed' && { backgroundColor: colors.surface, borderRadius: radius.pill }, animated]}><MessageStatusTicks status={status} /></Animated.View>;
 }
 
@@ -36,13 +41,17 @@ type Props = {
   showDate: boolean; knownReply?: ChatMessage; highlighted: boolean; animateArrival: boolean;
   onReply: (message: ChatMessage) => void; onActions: (message: ChatMessage) => void;
   onRetry: (message: ChatMessage) => void; claimEntrance: (message: ChatMessage) => boolean;
+  reactions?: Reaction[]; onReact: (message: ChatMessage, emoji: string, ensure?: boolean) => void; onJump: (id: string) => void;
 };
 
-function Bubble({ message, uid, partnerName, sameOlder, sameNewer, showDate, knownReply, highlighted, animateArrival, onReply, onActions, onRetry, claimEntrance }: Props) {
+function Bubble({ message, uid, partnerName, sameOlder, sameNewer, showDate, knownReply, highlighted, animateArrival, onReply, onActions, onRetry, claimEntrance, reactions, onReact, onJump }: Props) {
   const styles = useChatStyles();
   const { colors, spacing, radius, geometry } = useTheme();
   const motion = useMotion();
   const mine = message.sender_id === uid;
+  const lastTap = useRef(0);
+  const text = bodyText(message, uid, message.sender_id);
+  const link = !message.deleted_at ? firstLink(message.body) : null;
   const enter = useSharedValue(1);
   const translate = useSharedValue(0);
   const crossed = useSharedValue(false);
@@ -64,7 +73,7 @@ function Bubble({ message, uid, partnerName, sameOlder, sameNewer, showDate, kno
   const arrow = useAnimatedStyle(() => ({ opacity: Math.min(1, translate.value / geometry.touch) }));
   const haptic = () => { if (motion.level === 'full') void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {}); };
   const reply = () => onReply(message);
-  const swipe = Gesture.Pan().enabled(message.status === 'sent').activeOffsetX(spacing.md).failOffsetY([-spacing.sm, spacing.sm])
+  const swipe = Gesture.Pan().enabled(message.status === 'sent' && !message.deleted_at && message.kind !== 'system').activeOffsetX(spacing.md).failOffsetY([-spacing.sm, spacing.sm])
     .onUpdate(event => {
       translate.value = Math.max(0, Math.min(geometry.touch + spacing.md, event.translationX));
       if (translate.value >= geometry.touch && !crossed.value) { crossed.value = true; scheduleOnRN(haptic); }
@@ -75,21 +84,23 @@ function Bubble({ message, uid, partnerName, sameOlder, sameNewer, showDate, kno
     <View style={[styles.messageRow, { alignItems: mine ? 'flex-end' : 'flex-start', marginTop: sameOlder ? spacing.xs : spacing.s12 }]}>
       <Animated.View pointerEvents="none" style={[{ position: 'absolute', left: 0, top: spacing.s12 }, arrow]}><Ionicons name="arrow-undo" size={geometry.icon} color={colors.primary} /></Animated.View>
       <GestureDetector gesture={swipe}><Animated.View style={[{ maxWidth: '85%' }, animated]}>
-        <PressableScale accessibilityRole="button" accessibilityLabel={message.status === 'failed' ? 'Message failed. Tap to retry' : `${mine ? 'You' : partnerName}: ${message.body || 'Photo'}. Hold for message actions`}
+        <PressableScale accessibilityRole="button" accessibilityLabel={message.status === 'failed' ? 'Message failed. Tap to retry' : `${mine ? 'You' : partnerName}: ${text || 'Photo'}. Hold for message actions`}
           accessibilityActions={[{ name: 'longpress', label: 'Message actions' }]}
           onAccessibilityAction={() => onActions(message)} onLongPress={() => onActions(message)} delayLongPress={motionTokens.slow}
-          onPress={() => onRetry(message)} style={[styles.bubble, { maxWidth: '100%' }, mine ? styles.mine : styles.theirs, {
+          onPress={() => { if (message.status === 'failed') { onRetry(message); return; } const now = Date.now(); if (now - lastTap.current < motionTokens.slow && !message.deleted_at && message.kind !== 'system') { onReact(message, '❤️', true); lastTap.current = 0; } else lastTap.current = now; }} style={[styles.bubble, { maxWidth: '100%', borderWidth: geometry.stroke, borderColor: highlighted ? colors.primary : mine ? colors.bubbleMineStart : colors.bubbleTheirs }, mine ? styles.mine : styles.theirs, {
             borderTopRightRadius: mine && sameOlder ? radius.sm : radius.lg, borderBottomRightRadius: mine && sameNewer ? radius.sm : radius.lg,
             borderTopLeftRadius: !mine && sameOlder ? radius.sm : radius.lg, borderBottomLeftRadius: !mine && sameNewer ? radius.sm : radius.lg,
           }]}>
           {mine && <LinearGradient pointerEvents="none" colors={[colors.bubbleMineStart, colors.bubbleMineEnd]} style={StyleSheet.absoluteFill} />}
-          {message.reply_to && <ReplyPreview message={message} uid={uid} known={knownReply} />}
-          {message.kind === 'image' && <ChatImage message={message} uid={uid} onReply={() => onActions(message)} />}
-          {!!message.body && <Text style={[styles.body, mine && styles.mineText]}>{message.body}</Text>}
-          {message.kind === 'system' && !message.body && <Text style={styles.body}>System message</Text>}
-          <View style={styles.meta}><Text style={[styles.time, mine && styles.mineText]}>{new Date(message.created_at).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}</Text>{mine && <Receipt message={message} />}</View>
+          {!message.deleted_at && message.reply_to && <ReplyPreview message={message} uid={uid} known={knownReply} onJump={onJump} />}
+          {!message.deleted_at && message.kind === 'image' && <ChatImage message={message} uid={uid} onReply={() => onActions(message)} onHeart={()=>onReact(message,'❤️',true)} />}
+          {!!text && <Text style={[styles.body, mine && styles.mineText]}>{text}</Text>}
+          {link && <LinkCard url={link} couple={message.couple_id} uid={uid} animate={animateArrival} />}
+          {message.kind === 'system' && !text && <Text style={styles.body}>System message</Text>}
+          <View style={styles.meta}><Text style={[styles.time, mine && styles.mineText]}>{message.pinned_at ? '📌 ' : ''}{message.edited_at && !message.deleted_at ? 'edited · ' : ''}{new Date(message.created_at).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}</Text>{mine && <Receipt message={message} />}</View>
         </PressableScale>
       </Animated.View></GestureDetector>
+      {!message.deleted_at && reactions && <ReactionChips reactions={reactions} uid={uid} animate={animateArrival} onReact={emoji => onReact(message, emoji)} />}
       {mine && message.status === 'failed' && <PressableScale onPress={() => onRetry(message)} accessibilityRole="button" style={styles.retry}><Text style={styles.errorText}>Couldn’t send · Retry</Text></PressableScale>}
     </View>
   </View>;
@@ -98,6 +109,7 @@ function Bubble({ message, uid, partnerName, sameOlder, sameNewer, showDate, kno
 // Reconciliation replaces only changed messages. Compare quote display fields so
 // a receipt update on the quoted original cannot invalidate another bubble.
 export const MessageBubble = memo(Bubble, (a, b) => a.message === b.message && a.uid === b.uid && a.partnerName === b.partnerName
+  && a.reactions === b.reactions && a.onReact === b.onReact && a.onJump === b.onJump && a.knownReply?.deleted_at === b.knownReply?.deleted_at
   && a.sameOlder === b.sameOlder && a.sameNewer === b.sameNewer && a.showDate === b.showDate && a.highlighted === b.highlighted && a.animateArrival === b.animateArrival
   && a.knownReply?.id === b.knownReply?.id && a.knownReply?.body === b.knownReply?.body && a.knownReply?.kind === b.knownReply?.kind
   && a.knownReply?.sender_id === b.knownReply?.sender_id && a.onReply === b.onReply && a.onActions === b.onActions && a.onRetry === b.onRetry && a.claimEntrance === b.claimEntrance);

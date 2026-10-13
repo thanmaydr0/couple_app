@@ -9,8 +9,13 @@ import { PressableScale, useMotion, motionTokens } from '@/motion';
 import { Header, Screen, Skeleton } from '@/ui';
 import type { ChatMessage } from './model';
 import { cachedPhotoUrl, savePhotoUrl } from './service';
+import { ViewOncePhoto } from './ViewOncePhoto';
+import { useBubbleTap } from './useBubbleTap';
 
-export function ChatImage({ message, uid, onReply }: { message: ChatMessage; uid: string; onReply: () => void }) {
+export function ChatImage({ message, uid, onReply, onHeart }: { message: ChatMessage; uid: string; onReply: () => void; onHeart: () => void }) {
+  return message.view_once ? <ViewOncePhoto message={message} uid={uid} onActions={onReply} onHeart={onHeart} /> : <RegularChatImage message={message} uid={uid} onReply={onReply} onHeart={onHeart} />;
+}
+function RegularChatImage({ message, uid, onReply, onHeart }: { message: ChatMessage; uid: string; onReply: () => void; onHeart: () => void }) {
   const { colors, spacing, radius, geometry, typography } = useTheme();
   const motion = useMotion();
   const styles = StyleSheet.create({
@@ -46,9 +51,10 @@ export function ChatImage({ message, uid, onReply }: { message: ChatMessage; uid
   const url = signed.data ?? offlineUrl;
   const source = message.localUri ? { uri: message.localUri } : url ? { uri: url, cacheKey } : null;
   const retry = () => { setImageFailed(false); void signed.refetch(); };
+  const taps = useBubbleTap(() => { if (imageFailed || !source) retry(); else setExpanded(true); },onHeart);
   return <>
-    <PressableScale accessibilityRole="button" accessibilityLabel={imageFailed || !source ? 'Retry loading photo' : 'Open photo. Hold for message actions'} onLongPress={onReply} delayLongPress={motionTokens.slow}
-      onPress={() => { if (imageFailed || !source) retry(); else setExpanded(true); }} style={styles.frame}>
+    <PressableScale accessibilityRole="button" accessibilityLabel={imageFailed || !source ? 'Retry loading photo' : 'Open photo. Double tap to react. Hold for message actions'} onLongPress={() => { taps.cancel();onReply(); }} delayLongPress={motionTokens.slow}
+      onPress={taps.tap} style={styles.frame}>
       {source && !imageFailed ? <Image source={source} style={styles.photo} contentFit="cover" cachePolicy="memory-disk" transition={motion.duration('fast')} onLoad={() => setLoadedUri(source.uri)} onError={() => setImageFailed(true)} />
         : <View style={styles.placeholder}>{signed.isPending && message.status === 'sent' ? <View style={styles.placeholder}><Skeleton width={geometry.touch} height={geometry.touch} /><Text style={styles.label}>Loading photo…</Text></View> : <Text style={styles.label}>Photo unavailable · tap to retry</Text>}</View>}
       {source && !imageFailed && loadedUri !== source.uri && <View pointerEvents="none" style={StyleSheet.absoluteFill}><Skeleton height={geometry.touch * 5} /></View>}

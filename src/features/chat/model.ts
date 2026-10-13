@@ -1,11 +1,11 @@
-import type { MessageRow } from '@/types/db';
+import type { ChatRow } from './types';
 
-export type ChatMessage = MessageRow & {
+export type ChatMessage = ChatRow & {
   status: 'sending' | 'sent' | 'failed';
   localUri?: string;
 };
 
-export const asSent = (row: MessageRow): ChatMessage => ({ ...row, status: 'sent' });
+export const asSent = (row: ChatRow): ChatMessage => ({ ...row, status: 'sent' });
 
 // Server state wins over late HTTP failures and stale cache reads. A receipt
 // cannot be rolled back by an INSERT echo which raced the read UPDATE.
@@ -14,7 +14,14 @@ export function mergeMessages(current: ChatMessage[], incoming: ChatMessage[]): 
   for (const next of incoming) {
     const previous = byClient.get(next.client_id);
     if (previous?.status === 'sent' && next.status !== 'sent') continue;
-    byClient.set(next.client_id, { ...next, read_at: next.read_at ?? previous?.read_at ?? null });
+    // A late INSERT echo must not resurrect deleted/edited content or un-open a photo.
+    const stale = previous?.status === 'sent' && next.status === 'sent'
+      && (!!previous.deleted_at && !next.deleted_at || !!previous.edited_at && (!next.edited_at || previous.edited_at > next.edited_at));
+    const merged = { ...(stale ? previous : next), read_at: next.read_at ?? previous?.read_at ?? null,
+      viewed_at: next.viewed_at ?? previous?.viewed_at ?? null };
+    const keys = Object.keys(merged) as (keyof ChatMessage)[];
+    byClient.set(next.client_id, previous && keys.every(key => merged[key] === previous[key])
+      && (Object.keys(previous) as (keyof ChatMessage)[]).every(key => merged[key] === previous[key]) ? previous : merged);
   }
   return [...byClient.values()].sort((a, b) => b.created_at.localeCompare(a.created_at) || b.id.localeCompare(a.id));
 }
@@ -26,6 +33,9 @@ export function isMessage(value: unknown): value is ChatMessage {
     && typeof row.created_at === 'string' && Number.isFinite(Date.parse(row.created_at))
     && ['text', 'image', 'system'].includes(String(row.kind))
     && ['body', 'media_path', 'reply_to', 'read_at'].every((key) => row[key] === null || typeof row[key] === 'string')
+    && ['edited_at','deleted_at','pinned_at','expires_at','viewed_at'].every(key=>row[key]===undefined || row[key]===null || typeof row[key]==='string' && Number.isFinite(Date.parse(row[key])))
+    && (row.view_once===undefined || typeof row.view_once==='boolean')
+    && (row.pinned_by===undefined || row.pinned_by===null || typeof row.pinned_by==='string')
     && (row.localUri === undefined || typeof row.localUri === 'string');
 }
 

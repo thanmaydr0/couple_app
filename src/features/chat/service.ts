@@ -7,6 +7,8 @@ import { randomUUID } from 'expo-crypto';
 import { supabase } from '@/lib/supabase';
 import type { MessageRow } from '@/types/db';
 import { asSent, cacheWindow, isMessage, type ChatMessage } from './model';
+import { bodySummary, expired } from './body';
+import { chatDb } from './plusService';
 
 export const PAGE_SIZE = 50;
 const cacheKey = (couple: string, uid: string) => `chat:v1:${couple}:${uid}`;
@@ -46,7 +48,7 @@ export async function loadCache(couple: string, uid: string): Promise<ChatMessag
     const raw = await AsyncStorage.getItem(cacheKey(couple, uid));
     const parsed: unknown = raw ? JSON.parse(raw) : [];
     if (!Array.isArray(parsed)) return [];
-    return parsed.filter(isMessage).filter((row) => row.couple_id === couple).map((row) => ({
+    return parsed.filter(isMessage).filter((row) => row.couple_id === couple && !expired(row)).map((row) => ({
       ...row, status: row.status === 'sent' ? 'sent' : 'failed',
     }));
   } catch { return []; }
@@ -54,7 +56,7 @@ export async function loadCache(couple: string, uid: string): Promise<ChatMessag
 
 export function persistCache(couple: string, uid: string, messages: ChatMessage[]): Promise<void> {
   const key = cacheKey(couple, uid);
-  const payload = JSON.stringify(cacheWindow(messages));
+  const payload = JSON.stringify(cacheWindow(messages.filter(message => !expired(message))));
   const next = (writes.get(key) ?? Promise.resolve()).then(() => AsyncStorage.setItem(key, payload)).catch(() => undefined);
   writes.set(key, next);
   void next.then(() => { if (writes.get(key) === next) writes.delete(key); });
@@ -101,42 +103,50 @@ export async function pickChatImage(couple: string, uid: string): Promise<{ uri:
   return { uri, path: `${couple}/chat/${id}.jpg` };
 }
 
+const lastPush = new Map<string, number>();
 export async function notifyPartnerOfMessage(message: MessageRow): Promise<void> {
+  const now = Date.now();
+  if (now - (lastPush.get(message.couple_id) ?? 0) < 1500) return;
+  lastPush.set(message.couple_id, now);
   try {
     const { error } = await supabase.functions.invoke('notify-partner', { body: {
-      type: 'message', title: 'A message for you',
-      body: message.kind === 'image' ? 'Sent you a photo' : (message.body ?? '').slice(0, 180),
-      data: { type: 'message', message_id: message.id, couple_id: message.couple_id, url: '/(tabs)/chat' },
+      channel: 'messages', title: 'A message for you', body: bodySummary(message).slice(0, 180),
+      data: { type: 'message', message_id: message.id, couple_id: message.couple_id, route: '/(tabs)/chat' },
     } });
     if (error) console.warn('[chat] Partner push could not be delivered.');
   } catch { console.warn('[chat] Partner push could not be delivered.'); }
 }
 
 export async function sendMessage(message: ChatMessage): Promise<ChatMessage> {
+  const accepted = async (row: MessageRow): Promise<ChatMessage> => {
+    if (message.view_once && message.localUri) await FileSystem.deleteAsync(message.localUri, { idempotent: true }).catch(() => undefined);
+    return asSent(row);
+  };
   // Recover an ambiguous timeout before uploading/inserting again.
   const lookup = await supabase.from('messages').select('*').eq('couple_id', message.couple_id)
     .eq('client_id', message.client_id).maybeSingle();
   if (lookup.error) throw lookup.error;
-  if (lookup.data) return asSent(lookup.data);
+  if (lookup.data) return accepted(lookup.data);
   if (message.kind === 'image') {
     if (!message.localUri || !message.media_path) throw new Error('Photo is unavailable. Please choose it again.');
     const base64 = await FileSystem.readAsStringAsync(message.localUri, { encoding: FileSystem.EncodingType.Base64 });
-    const upload = await supabase.storage.from('media').upload(message.media_path, decode(base64), { contentType: 'image/jpeg', upsert: true });
-    if (upload.error) throw upload.error;
+    const upload = await supabase.storage.from(message.view_once ? 'chat-once' : 'media').upload(message.media_path, decode(base64), { contentType: 'image/jpeg', upsert: !message.view_once });
+    // A durable retry may find its immutable private object already uploaded.
+    if (upload.error && !(message.view_once && (upload.error.statusCode === '409' || upload.error.message === 'The resource already exists'))) throw upload.error;
   }
-  const { data, error } = await supabase.from('messages').insert({
+  const { data, error } = await chatDb.from('messages').insert({
     id: message.id, client_id: message.client_id, couple_id: message.couple_id, sender_id: message.sender_id,
-    kind: message.kind, body: message.body, media_path: message.media_path, reply_to: message.reply_to,
+    kind: message.kind, body: message.body, media_path: message.media_path, reply_to: message.reply_to, view_once: message.view_once ?? false,
   }).select('*').single();
   if (error) {
     if (error.code === '23505') {
       const existing = await supabase.from('messages').select('*').eq('couple_id', message.couple_id).eq('client_id', message.client_id).single();
-      if (existing.data) return asSent(existing.data);
+      if (existing.data) return accepted(existing.data);
     }
     throw error;
   }
   void notifyPartnerOfMessage(data);
-  return asSent(data);
+  return accepted(data);
 }
 
 export async function cleanOutbox(couple: string, uid: string, messages: ChatMessage[]): Promise<void> {

@@ -3,6 +3,7 @@ import { AppState } from 'react-native';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useProfile, useSession } from '@/lib/hooks';
 import { supabase } from '@/lib/supabase';
+import { chatDb } from './plusService';
 
 export const unreadKey = (coupleId: string, uid: string) => ['chat-unread', coupleId, uid] as const;
 
@@ -18,8 +19,9 @@ export function useUnreadCount(): number {
     refetchInterval: 30_000,
     queryFn: async () => {
       if (!coupleId || !uid) return 0;
-      const { count, error } = await supabase.from('messages').select('id', { count: 'exact', head: true })
-        .eq('couple_id', coupleId).neq('sender_id', uid).is('read_at', null);
+      const { count, error } = await chatDb.from('messages').select('id', { count: 'exact', head: true })
+        .eq('couple_id', coupleId).neq('sender_id', uid).is('read_at', null).is('deleted_at',null).neq('kind','system')
+        .or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`);
       if (error) throw error;
       return count ?? 0;
     },
