@@ -1,2 +1,10 @@
-// Keep story database and domain types in this feature folder.
-export type FeatureId = "story";
+import { z } from 'zod';
+export const entrySchema = z.object({ id: z.string(), kind: z.string(), at: z.string(), title: z.string(), detail: z.string().nullable(), path: z.string().nullable() });
+export type Entry = z.infer<typeof entrySchema>;
+const groupSchema = z.object({ key: z.string(), count: z.number() });
+export const sourceSchema = z.object({ total: z.number(), photo_at: z.string().nullable(), win_at: z.string().nullable(), threshold_at: z.string().nullable(), first_at: z.string().nullable(), nth_at: z.string().nullable(), seconds: z.number(), longest: z.number(), by_day: z.array(groupSchema), by_hour: z.array(groupSchema), by_person: z.array(groupSchema), by_kind: z.array(groupSchema), wins: z.array(groupSchema) });
+export const summarySchema = z.record(z.string(), sourceSchema);
+export type Summary = z.infer<typeof summarySchema>;
+export type Milestone = Entry & { kind: 'milestone' };
+export type StoryFilter = 'all' | 'media' | 'list' | 'capsule' | 'event' | 'game' | 'milestone';
+export type RecapCard = { id: string; title: string; value: string; detail: string; clock?: { key: string; count: number }[]; memory?: Entry };

@@ -1,3 +1,5 @@
 import type { FeatureExtension } from '../registry-types';
-// Own this file: enable after implementation and optionally attach HomeCard / SettingsSection.
-export const feature: FeatureExtension = { enabled: false };
+import { HomeCard, SettingsSection } from './HomeCard';
+import { installStoryStartup } from './notifications';
+installStoryStartup();
+export const feature: FeatureExtension = { enabled: true, HomeCard, SettingsSection };
