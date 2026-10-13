@@ -1,5 +1,6 @@
 export type CapsuleKind = 'letter' | 'surprise' | 'future_us';
 export type Capsule = {
+  encrypted?: boolean; files?: import('@/features/e2ee/files').FileSecret[]; voiceMeta?: import('@/features/voice/types').VoiceMeta;
   id: string; couple_id: string; author_id: string; title: string; body: string;
   media_paths: string[]; voice_path: string | null; kind: CapsuleKind; unlock_at: string;
   open_together: boolean; ceremony_started_at: string | null; opened_at: string | null;

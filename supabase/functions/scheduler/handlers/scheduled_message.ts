@@ -10,7 +10,7 @@ export const scheduled_message: JobHandler = async (job, { admin, signal }) => {
   const push = await admin.functions.invoke('notify-partner', { body: {
     channel: 'messages', title: 'A message for you', body: 'Your partner sent a message.',
     scheduler_job_id: job.id, data: { route: '/(tabs)/chat', message_id: sent.data, job_id: job.id },
-  }, signal });
+  }, headers: { 'x-cron-secret': Deno.env.get('CRON_SECRET') ?? '' }, signal });
   if (push.error) throw new Error('notify-partner needs the service scheduler contract');
   const scrub = await admin.from('scheduled_jobs').update({ payload: {} }).eq('id', job.id).eq('couple_id', job.couple_id).abortSignal(signal);
   if (scrub.error) throw new Error('Scheduled payload cleanup failed');

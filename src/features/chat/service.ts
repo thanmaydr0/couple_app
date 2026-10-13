@@ -8,7 +8,9 @@ import { supabase } from '@/lib/supabase';
 import type { ChatRow as MessageRow } from './types';
 import { uploadVoice } from '@/features/voice/storage';
 import { asSent, cacheWindow, isMessage, type ChatMessage } from './model';
-import { bodySummary, expired } from './body';
+import { bodySummary, expired, prepareMessage, projectMessage } from './body';
+import { snapshot, localCacheKey, random } from '@/features/e2ee/runtime';
+import { open, seal, utf8, text } from '@/features/e2ee/crypto';
 import { chatDb } from './plusService';
 
 export const PAGE_SIZE = 50;
@@ -20,7 +22,11 @@ const photoKey = (couple: string, uid: string) => `chat-photos:v1:${couple}:${ui
 async function photoCache(couple: string, uid: string): Promise<SignedPhoto[]> {
   try {
     const raw = await AsyncStorage.getItem(photoKey(couple, uid));
-    const parsed: unknown = raw ? JSON.parse(raw) : [];
+    let parsed: unknown = raw ? JSON.parse(raw) : [];
+    if (parsed && typeof parsed === 'object' && 'sealed' in parsed) {
+      const key = localCacheKey();
+      try { parsed = JSON.parse(text(open((parsed as { sealed: { nonce: string; ciphertext: string } }).sealed, key))); } finally { key.fill(0); }
+    }
     if (!Array.isArray(parsed)) return [];
     return parsed.filter((value: unknown): value is SignedPhoto => !!value && typeof value === 'object'
       && 'path' in value && typeof value.path === 'string' && 'url' in value && typeof value.url === 'string');
@@ -47,17 +53,26 @@ export function savePhotoUrl(couple: string, uid: string, path: string, url: str
 export async function loadCache(couple: string, uid: string): Promise<ChatMessage[]> {
   try {
     const raw = await AsyncStorage.getItem(cacheKey(couple, uid));
-    const parsed: unknown = raw ? JSON.parse(raw) : [];
+    let parsed: unknown = raw ? JSON.parse(raw) : [];
+    if (parsed && typeof parsed === 'object' && 'sealed' in parsed) {
+      const secret = localCacheKey();
+      try { parsed = JSON.parse(text(open((parsed as { sealed: { nonce: string; ciphertext: string } }).sealed, secret))); }
+      finally { secret.fill(0); }
+    }
     if (!Array.isArray(parsed)) return [];
     return parsed.filter(isMessage).filter((row) => row.couple_id === couple && !expired(row)).map((row) => ({
-      ...row, status: row.status === 'sent' ? 'sent' : 'failed',
+      ...projectMessage(row), status: row.status === 'sent' ? 'sent' : 'failed',
     }));
   } catch { return []; }
 }
 
 export function persistCache(couple: string, uid: string, messages: ChatMessage[]): Promise<void> {
   const key = cacheKey(couple, uid);
-  const payload = JSON.stringify(cacheWindow(messages.filter(message => !expired(message))));
+  let payload = JSON.stringify(cacheWindow(messages.filter(message => !expired(message))));
+  if (snapshot().local) {
+    const secret = localCacheKey();
+    try { payload = JSON.stringify({ sealed: seal(utf8(payload), secret, random) }); } finally { secret.fill(0); }
+  } else if (messages.some(row => row.enc) || snapshot().enabled) return Promise.resolve();
   const next = (writes.get(key) ?? Promise.resolve()).then(() => AsyncStorage.setItem(key, payload)).catch(() => undefined);
   writes.set(key, next);
   void next.then(() => { if (writes.get(key) === next) writes.delete(key); });
@@ -111,7 +126,7 @@ export async function notifyPartnerOfMessage(message: MessageRow): Promise<void>
   lastPush.set(message.couple_id, now);
   try {
     const { error } = await supabase.functions.invoke('notify-partner', { body: {
-      channel: 'messages', title: 'A message for you', body: bodySummary(message).slice(0, 180),
+      channel: 'messages', title: 'A message for you', body: 'New message',
       data: { type: 'message', message_id: message.id, couple_id: message.couple_id, route: '/(tabs)/chat' },
     } });
     if (error) console.warn('[chat] Partner push could not be delivered.');
@@ -128,11 +143,18 @@ export async function sendMessage(message: ChatMessage): Promise<ChatMessage> {
     .eq('client_id', message.client_id).maybeSingle();
   if (lookup.error) throw lookup.error;
   if (lookup.data) return accepted(lookup.data);
-  if (message.kind === 'voice') {
+  // Immutable once-objects get a fresh attempt path, so a failed upload cannot
+  // leave ciphertext encrypted with a previous retry's per-file key.
+  if (message.view_once && message.media_path) message = { ...message, media_path: `${message.couple_id}/chat-once/${message.sender_id}/${randomUUID()}.jpg` };
+  const wire = await prepareMessage(message);
+  if (wire.encryptedFile && message.media_path) {
+    const upload = await supabase.storage.from(message.view_once ? 'chat-once' : 'media').upload(message.media_path, wire.encryptedFile, { contentType: 'application/octet-stream', upsert: !message.view_once });
+    if (upload.error) throw upload.error;
+  } else if (message.kind === 'voice') {
     if (!message.localUri || !message.media_path) throw new Error('Voice file unavailable. Record it again.');
     await uploadVoice('media', message.media_path, message.localUri);
   }
-  if (message.kind === 'image') {
+  if (!wire.enc && message.kind === 'image') {
     if (!message.localUri || !message.media_path) throw new Error('Photo is unavailable. Please choose it again.');
     const base64 = await FileSystem.readAsStringAsync(message.localUri, { encoding: FileSystem.EncodingType.Base64 });
     const upload = await supabase.storage.from(message.view_once ? 'chat-once' : 'media').upload(message.media_path, decode(base64), { contentType: 'image/jpeg', upsert: !message.view_once });
@@ -141,7 +163,7 @@ export async function sendMessage(message: ChatMessage): Promise<ChatMessage> {
   }
   const { data, error } = await chatDb.from('messages').insert({
     id: message.id, client_id: message.client_id, couple_id: message.couple_id, sender_id: message.sender_id,
-    kind: message.kind, meta: message.meta ?? null, body: message.body, media_path: message.media_path, reply_to: message.reply_to, view_once: message.view_once ?? false,
+    kind: message.kind, meta: wire.meta, body: wire.body, enc: wire.enc, media_path: message.media_path, reply_to: message.reply_to, view_once: message.view_once ?? false,
   }).select('*').single();
   if (error) {
     if (error.code === '23505') {

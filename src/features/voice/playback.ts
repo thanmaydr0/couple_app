@@ -4,8 +4,9 @@ import { supabase } from '@/lib/supabase';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { useCalls } from '@/features/calls/engine';
 import type { VoiceMeta } from './types';
+import { decryptedFile } from '@/features/e2ee/files';
 
-export type VoiceTrack = { id: string; path?: string | null; uri?: string; bucket?: 'media' | 'capsules'; couple?: string; receiver?: boolean; meta?: VoiceMeta | null };
+export type VoiceTrack = { id: string; path?: string | null; uri?: string; bucket?: 'media' | 'capsules'; couple?: string; receiver?: boolean; meta?: VoiceMeta | null; encrypted?: boolean };
 type Playback = { id: string | null; playing: boolean; loading: boolean; position: number; duration: number; speed: number; error: string | null };
 let state: Playback = { id: null, playing: false, loading: false, position: 0, duration: 0, speed: 1, error: null };
 let player: AudioPlayer | undefined; let listener: { remove(): void } | undefined;
@@ -54,8 +55,11 @@ export async function playVoice(track: VoiceTrack) {
     await setAudioModeAsync({ interruptionMode: 'doNotMix', allowsRecording: false, shouldPlayInBackground: false, shouldRouteThroughEarpiece: false });
     let uri = track.uri;
     if (!uri && track.path) {
-      const result = await supabase.storage.from(track.bucket ?? 'media').createSignedUrl(track.path, 600);
-      if (result.error) throw result.error; uri = result.data.signedUrl;
+      if (track.encrypted) uri = await decryptedFile(track.path, track.bucket ?? 'media');
+      else {
+        const result = await supabase.storage.from(track.bucket ?? 'media').createSignedUrl(track.path, 600);
+        if (result.error) throw result.error; uri = result.data.signedUrl;
+      }
     }
     if (!uri) throw new Error('Voice file unavailable.');
     if (token !== generation) return;
@@ -64,7 +68,7 @@ export async function playVoice(track: VoiceTrack) {
       if (status.error) { publish({ error: 'Voice unavailable. Reconnect and tap Retry.', loading: false, playing: false }); return; }
       publish({ loading: !status.isLoaded || status.isBuffering, playing: status.playing, position: status.currentTime, duration: status.duration || state.duration });
       if (status.isLoaded && requestedSeek?.id === track.id) void seekVoice(track.id, requestedSeek.fraction).catch(() => undefined);
-      if (status.playing && status.currentTime > 0 && track.receiver && track.couple && !heard.has(track.id)) {
+      if (!track.encrypted && status.playing && status.currentTime > 0 && track.receiver && track.couple && !heard.has(track.id)) {
         heard.add(track.id);
         void voiceDb.rpc('voice_mark_played', { message_id: track.id }).then(({ error }) => { if (error) heard.delete(track.id); });
       }

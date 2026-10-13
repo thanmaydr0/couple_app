@@ -89,6 +89,7 @@ export default function SettingsScreen() {
     <Card><ListItem title="Appearance" subtitle="Eight themes, your accent, your pace" onPress={() => router.push('/settings/appearance')} /></Card>
     </StaggerList>
     <ProfileDetails />
+    <Card><ListItem title="Privacy · Encryption" subtitle="Recovery keys, safety numbers and encrypted chat" onPress={() => router.push('/us/e2ee')} /></Card>
     <Card><ListItem title="Features" subtitle="Choose what appears on this phone" onPress={() => router.push('/settings/features')} /></Card>
     <SettingsSections />
     {!!message && <Text accessibilityLiveRegion="polite" color="success">{message}</Text>}

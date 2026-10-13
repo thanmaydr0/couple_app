@@ -1,12 +1,13 @@
 import type { ChatRow } from './types';
 import { isVoiceMeta } from '../voice/types';
+import { projectMessage } from './body';
 
 export type ChatMessage = ChatRow & {
   status: 'sending' | 'sent' | 'failed';
   localUri?: string;
 };
 
-export const asSent = (row: ChatRow): ChatMessage => ({ ...row, status: 'sent' });
+export const asSent = (row: ChatRow): ChatMessage => ({ ...projectMessage(row), status: 'sent' });
 
 // Server state wins over late HTTP failures and stale cache reads. A receipt
 // cannot be rolled back by an INSERT echo which raced the read UPDATE.
@@ -34,7 +35,7 @@ export function isMessage(value: unknown): value is ChatMessage {
   return ['id', 'client_id', 'couple_id', 'sender_id', 'created_at'].every((key) => typeof row[key] === 'string')
     && typeof row.created_at === 'string' && Number.isFinite(Date.parse(row.created_at))
     && ['text', 'image', 'system', 'voice'].includes(String(row.kind))
-    && (row.kind !== 'voice' || isVoiceMeta(row.meta))
+    && (row.kind !== 'voice' || !!row.enc || isVoiceMeta(row.meta))
     && ['body', 'media_path', 'reply_to', 'read_at'].every((key) => row[key] === null || typeof row[key] === 'string')
     && ['edited_at','deleted_at','pinned_at','expires_at','viewed_at'].every(key=>row[key]===undefined || row[key]===null || typeof row[key]==='string' && Number.isFinite(Date.parse(row[key])))
     && (row.view_once===undefined || typeof row.view_once==='boolean')

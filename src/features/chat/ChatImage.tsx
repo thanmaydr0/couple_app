@@ -11,6 +11,7 @@ import type { ChatMessage } from './model';
 import { cachedPhotoUrl, savePhotoUrl } from './service';
 import { ViewOncePhoto } from './ViewOncePhoto';
 import { useBubbleTap } from './useBubbleTap';
+import { decryptedFile } from '@/features/e2ee/files';
 
 export function ChatImage({ message, uid, onReply, onHeart }: { message: ChatMessage; uid: string; onReply: () => void; onHeart: () => void }) {
   return message.view_once ? <ViewOncePhoto message={message} uid={uid} onActions={onReply} onHeart={onHeart} /> : <RegularChatImage message={message} uid={uid} onReply={onReply} onHeart={onHeart} />;
@@ -41,6 +42,7 @@ function RegularChatImage({ message, uid, onReply, onHeart }: { message: ChatMes
     staleTime: 40 * 60_000, refetchInterval: 40 * 60_000,
     queryFn: async () => {
       if (!message.media_path?.startsWith(`${message.couple_id}/chat/`)) throw new Error('Invalid photo path');
+      if (message.enc) return decryptedFile(message.media_path, 'media');
       const { data, error } = await supabase.storage.from('media').createSignedUrl(message.media_path, 3600);
       if (error) throw error;
       void savePhotoUrl(message.couple_id, uid, message.media_path, data.signedUrl);
@@ -55,7 +57,7 @@ function RegularChatImage({ message, uid, onReply, onHeart }: { message: ChatMes
   return <>
     <PressableScale accessibilityRole="button" accessibilityLabel={imageFailed || !source ? 'Retry loading photo' : 'Open photo. Double tap to react. Hold for message actions'} onLongPress={() => { taps.cancel();onReply(); }} delayLongPress={motionTokens.slow}
       onPress={taps.tap} style={styles.frame}>
-      {source && !imageFailed ? <Image source={source} style={styles.photo} contentFit="cover" cachePolicy="memory-disk" transition={motion.duration('fast')} onLoad={() => setLoadedUri(source.uri)} onError={() => setImageFailed(true)} />
+      {source && !imageFailed ? <Image source={source} style={styles.photo} contentFit="cover" cachePolicy={message.enc ? 'none' : 'memory-disk'} transition={motion.duration('fast')} onLoad={() => setLoadedUri(source.uri)} onError={() => setImageFailed(true)} />
         : <View style={styles.placeholder}>{signed.isPending && message.status === 'sent' ? <View style={styles.placeholder}><Skeleton width={geometry.touch} height={geometry.touch} /><Text style={styles.label}>Loading photo…</Text></View> : <Text style={styles.label}>Photo unavailable · tap to retry</Text>}</View>}
       {source && !imageFailed && loadedUri !== source.uri && <View pointerEvents="none" style={StyleSheet.absoluteFill}><Skeleton height={geometry.touch * 5} /></View>}
       {message.status === 'sending' && <View pointerEvents="none" style={styles.progress}>
@@ -66,7 +68,7 @@ function RegularChatImage({ message, uid, onReply, onHeart }: { message: ChatMes
       <Screen bottomInset style={styles.modal}>
         <Header title="Photo" onBack={() => setExpanded(false)} />
         <View style={{ flex: 1 }}>
-          {source && !imageFailed ? <Image source={source} style={StyleSheet.absoluteFill} contentFit="contain" cachePolicy="memory-disk" onLoad={() => setLoadedUri(source.uri)} onError={() => setImageFailed(true)} /> : <View style={styles.placeholder}><Text style={styles.label}>Photo couldn’t load</Text><PressableScale accessibilityRole="button" onPress={retry}><Text style={styles.label}>Try again</Text></PressableScale></View>}
+          {source && !imageFailed ? <Image source={source} style={StyleSheet.absoluteFill} contentFit="contain" cachePolicy={message.enc ? 'none' : 'memory-disk'} onLoad={() => setLoadedUri(source.uri)} onError={() => setImageFailed(true)} /> : <View style={styles.placeholder}><Text style={styles.label}>Photo couldn’t load</Text><PressableScale accessibilityRole="button" onPress={retry}><Text style={styles.label}>Try again</Text></PressableScale></View>}
           {source && !imageFailed && loadedUri !== source.uri && <View style={styles.placeholder}><Skeleton height={geometry.touch * 5} /><Text style={styles.label}>Loading photo…</Text></View>}
         </View>
       </Screen>

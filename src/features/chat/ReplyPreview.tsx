@@ -4,7 +4,8 @@ import { supabase } from '@/lib/supabase';
 import { useTheme } from '@/theme';
 import { useChatStyles } from './styles';
 import type { ChatMessage } from './model';
-import { bodySummary } from './body';
+import { bodySummary, projectMessage } from './body';
+import type { ChatRow } from './types';
 import { PressableScale } from '@/motion';
 export function ReplyPreview({ message, uid, known, onJump }: { message: ChatMessage; uid: string; known: ChatMessage | undefined; onJump: (id: string) => void }) {
   const { colors } = useTheme();
@@ -17,7 +18,7 @@ export function ReplyPreview({ message, uid, known, onJump }: { message: ChatMes
       if (!message.reply_to) return null;
       const { data, error } = await supabase.from('messages').select('*').eq('couple_id', message.couple_id).eq('id', message.reply_to).maybeSingle();
       if (error) throw error;
-      return data;
+      return data ? projectMessage(data as ChatRow) : null;
     },
   });
   const original = known ?? reply.data;

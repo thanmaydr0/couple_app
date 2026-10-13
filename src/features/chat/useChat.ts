@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEncryption } from '@/features/e2ee/Status';
+import { projectMessage } from './body';
 import { useQueryClient } from '@tanstack/react-query';
 import NetInfo from '@react-native-community/netinfo';
 import { randomUUID } from 'expo-crypto';
@@ -13,6 +15,7 @@ import { messageContext } from './plusService';
 
 export function useChat(coupleId: string, uid: string, active: boolean) {
   const client = useQueryClient();
+  const encryption = useEncryption();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [ready, setReady] = useState(false);
   const [loadingOlder, setLoadingOlder] = useState(false);
@@ -43,10 +46,11 @@ export function useChat(coupleId: string, uid: string, active: boolean) {
 
   const merge = useCallback((incoming: ChatMessage[]) => {
     if (!alive.current) return;
-    rows.current = mergeMessages(rows.current, incoming).filter(message => !expired(message));
+    rows.current = mergeMessages(rows.current, incoming.map(projectMessage)).filter(message => !expired(message));
     if (rows.current.length===published.current.length && rows.current.every((row,index)=>row===published.current[index])) return;
     published.current = rows.current;
     setMessages(rows.current);
+    client.setQueryData(['chat-decrypted', coupleId, uid], rows.current.filter(row => row.status === 'sent' && !row.decryptionError && !row.deleted_at));
     if (initialized.current) void persistCache(coupleId, uid, durableRows());
   }, [coupleId, uid, durableRows]);
 
@@ -168,6 +172,11 @@ export function useChat(coupleId: string, uid: string, active: boolean) {
     const timer = setInterval(() => { void refresh(); }, 30_000);
     return () => clearInterval(timer);
   }, [active, ready, refresh]);
+  useEffect(() => {
+    if (!ready || !encryption.local) return;
+    void loadCache(coupleId, uid).then(merge);
+    void refresh();
+  }, [encryption.local, coupleId, uid, ready, merge, refresh]);
 
   const loadOlder = useCallback(async () => {
     if (paging.current || !hasOlder || !ready) return;
@@ -194,7 +203,7 @@ export function useChat(coupleId: string, uid: string, active: boolean) {
     // a retryable message with exactly the same client_id and durable photo.
     await persistCache(coupleId, uid, durableRows());
     try { merge([await sendMessage(message)]); }
-    catch { merge([{ ...message, status: 'failed' }]); }
+    catch (reason) { merge([{ ...message, status: 'failed' }]); setError(reason instanceof Error ? reason.message : 'Couldn’t send. Reconnect and retry.'); }
     finally { sending.current.delete(message.client_id); }
   }, [coupleId, uid, merge, durableRows]);
 

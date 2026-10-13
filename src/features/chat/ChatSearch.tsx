@@ -32,7 +32,7 @@ export function ChatSearch({ visible, onClose, messages, couple, onJump }: { vis
   const results = useMemo(() => mergeMessages(local, remote).filter(message => !message.deleted_at && !expired(message)
     && (filter !== 'photos' || message.kind === 'image') && (filter !== 'links' || !!firstLink(message.body)) && (filter !== 'pinned' || !!message.pinned_at)), [local, remote, filter]);
   return <Modal visible={visible} onRequestClose={onClose} animationType={motion.level === 'off' ? 'none' : 'fade'}>
-    <Screen><Header title="Search your chat" subtitle="Instant saved messages · older matches while online" onBack={onClose} />
+    <Screen><Header title="Search your chat" subtitle="Private search · loaded and saved messages only" onBack={onClose} />
       <TextInput accessibilityLabel="Search messages" value={query} onChangeText={setQuery} placeholder="Search words or a phrase…" placeholderTextColor={colors.textSecondary} style={styles.input} />
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>{['all','photos','links','pinned'].map(value => <PressableScale key={value} accessibilityRole="button" accessibilityState={{ selected: value === filter }} onPress={() => setFilter(value)} style={styles.icon}><Text style={{ ...typography.label, color: value === filter ? colors.primary : colors.textPrimary }}>{value}</Text></PressableScale>)}</View>
       {busy && <ActivityIndicator accessibilityLabel="Searching older messages" color={colors.primary} />}

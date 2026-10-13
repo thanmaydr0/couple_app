@@ -95,11 +95,11 @@ function Bubble({ message, uid, partnerName, sameOlder, sameNewer, showDate, kno
           {mine && <LinearGradient pointerEvents="none" colors={[colors.bubbleMineStart, colors.bubbleMineEnd]} style={StyleSheet.absoluteFill} />}
           {!message.deleted_at && message.reply_to && <ReplyPreview message={message} uid={uid} known={knownReply} onJump={onJump} />}
           {!message.deleted_at && message.kind === 'image' && <ChatImage message={message} uid={uid} onReply={() => onActions(message)} onHeart={()=>onReact(message,'❤️',true)} />}
-          {!message.deleted_at && message.kind === 'voice' && <VoicePlayer id={message.id} path={message.media_path} uri={message.status !== 'sent' ? message.localUri : undefined} couple={message.couple_id} receiver={!mine} meta={message.meta} />}
+          {!message.deleted_at && !message.decryptionError && message.kind === 'voice' && <VoicePlayer id={message.id} path={message.media_path} encrypted={!!message.enc} uri={message.status !== 'sent' ? message.localUri : undefined} couple={message.couple_id} receiver={!mine} meta={message.meta} />}
           {!!text && <Text style={[styles.body, mine && styles.mineText]}>{text}</Text>}
           {link && <LinkCard url={link} couple={message.couple_id} uid={uid} animate={animateArrival} />}
           {message.kind === 'system' && !text && <Text style={styles.body}>System message</Text>}
-          <View style={styles.meta}><Text style={[styles.time, mine && styles.mineText]}>{message.pinned_at ? '📌 ' : ''}{message.edited_at && !message.deleted_at ? 'edited · ' : ''}{new Date(message.created_at).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}</Text>{mine && <Receipt message={message} />}</View>
+          <View style={styles.meta}><Text style={[styles.time, mine && styles.mineText]}>{message.kind !== 'system' ? message.enc ? '🔒 · ' : 'Legacy plaintext · ' : ''}{message.pinned_at ? '📌 ' : ''}{message.edited_at && !message.deleted_at ? 'edited · ' : ''}{new Date(message.created_at).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}</Text>{mine && <Receipt message={message} />}</View>
         </PressableScale>
       </Animated.View></GestureDetector>
       {!message.deleted_at && reactions && <ReactionChips reactions={reactions} uid={uid} animate={animateArrival} onReact={emoji => onReact(message, emoji)} />}

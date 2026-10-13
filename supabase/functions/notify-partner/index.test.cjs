@@ -10,8 +10,8 @@ function harness(options = {}) {
     let partner = false;
     const query = { select() { return query; }, eq(key, value) { filters.push([table, key, value]); return query; },
       neq() { partner = true; return query; }, limit() { return query; },
-      async maybeSingle() { return { data: table === 'profiles' ? { couple_id: 'couple', display_name: 'Verified caller' } : table === 'calls' ? options.missing ? null : call : { token: 'ExpoPushToken[example]' } }; },
-      then(resolve) { return Promise.resolve({ data: partner ? [{ id: 'partner' }] : [] }).then(resolve); } };
+      async maybeSingle() { return { data: table === 'profiles' ? { couple_id: 'couple', display_name: 'Verified caller', privacy: options.privacy ?? { hide_message_previews: false } } : table === 'calls' ? options.missing ? null : call : { token: 'ExpoPushToken[example]' } }; },
+      then(resolve) { return Promise.resolve({ data: partner ? [{ id: 'partner', privacy: options.privacy ?? { hide_message_previews: false } }] : [] }).then(resolve); } };
     return query;
   } };
   const code = ts.transpileModule(readFileSync(`${__dirname}/index.ts`, 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS } }).outputText;
@@ -37,7 +37,18 @@ test('stale, terminal, and missing calls never push', async () => {
     const h = harness(options); assert.equal((await h.request({ channel: 'calls', dataOnly: true, data: { callId: 'call-id' } })).status, 409); assert.equal(h.pushes.length, 0);
   }
 });
-test('ordinary message push keeps display title and body', async () => {
-  const h = harness(); assert.equal((await h.request({ type: 'message', title: 'Hello', body: 'Message', data: {} })).status, 200);
-  assert.equal(h.pushes[0].title, 'Hello'); assert.equal(h.pushes[0].body, 'Message'); assert.equal(h.pushes[0].sound, 'default');
+test('all message pushes are generic and scrub content from data', async () => {
+  const h = harness(); assert.equal((await h.request({ type: 'message', title: 'secret title', body: 'secret body', data: { text: 'secret text', route: '/(tabs)/chat' } })).status, 200);
+  assert.equal(h.pushes[0].title, 'Us'); assert.equal(h.pushes[0].body, 'New message'); assert.equal(h.pushes[0].sound, 'default');
+  assert(!JSON.stringify(h.pushes[0]).includes('secret'));
+});
+test('hide previews applies to every feature channel and call display data', async () => {
+  for (const channel of ['messages','pulse','plans','capsule','location']) {
+    const h = harness({ privacy: { hide_message_previews: true } });
+    assert.equal((await h.request({ channel, title: 'secret title', body: 'secret body', data: { route: '/us', body: 'secret' } })).status, 200);
+    assert(!JSON.stringify(h.pushes[0]).includes('secret'));
+  }
+  const h = harness({ privacy: { hide_message_previews: true } });
+  assert.equal((await h.request({ channel: 'calls', dataOnly: true, data: { callId: 'call-id' } })).status, 200);
+  assert.equal(h.pushes[0].data.callerName, 'Your partner');
 });

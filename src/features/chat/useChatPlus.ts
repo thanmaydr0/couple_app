@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { chatDb } from './plusService';
+import { chatDb, projectSchedule } from './plusService';
+import { prepareReaction, projectReaction } from './body';
 import { asSent, isMessage, type ChatMessage } from './model';
 import type { ChatSettings, Reaction, ScheduledMessage } from './types';
 export function useChatPlus(couple: string, uid: string, messages: ChatMessage[], active: boolean, visibleIds: string[]) {
@@ -12,7 +13,7 @@ export function useChatPlus(couple: string, uid: string, messages: ChatMessage[]
     for (let index = 0; index < values.length; index += 100) {
       const result = await chatDb.from('message_reactions').select('*').eq('couple_id', couple).in('message_id', values.slice(index, index + 100));
       if (result.error) throw result.error;
-      all.push(...result.data as Reaction[]);
+      all.push(...(result.data as Reaction[]).map(projectReaction));
     }
     return all;
   } });
@@ -31,7 +32,7 @@ export function useChatPlus(couple: string, uid: string, messages: ChatMessage[]
     const result = await chatDb.from('scheduled_jobs').select('*').eq('couple_id', couple).eq('created_by', uid).eq('kind', 'scheduled_message')
       .in('status', ['pending','failed']).order('run_at').limit(100);
     if (result.error) throw result.error;
-    const jobs = result.data as ScheduledMessage[];
+    const jobs = (result.data as ScheduledMessage[]).map(projectSchedule);
     if (!jobs.length) return jobs;
     const sent = await chatDb.from('messages').select('client_id,created_at').eq('couple_id',couple).in('client_id',jobs.map(job=>`scheduled:${job.id}`));
     if (sent.error) throw sent.error;
@@ -64,12 +65,13 @@ export function useChatPlus(couple: string, uid: string, messages: ChatMessage[]
     if (reactionBusy.current.has(message.id) || message.status !== 'sent' || message.deleted_at) return;
     reactionBusy.current.add(message.id);
     try {
-      const current = await chatDb.from('message_reactions').select('emoji').eq('couple_id', couple).eq('message_id', message.id).eq('user_id', uid).maybeSingle();
+      const current = await chatDb.from('message_reactions').select('*').eq('couple_id', couple).eq('message_id', message.id).eq('user_id', uid).maybeSingle();
       if (current.error) throw current.error;
-      if (ensure && current.data?.emoji === emoji) return;
-      const result = current.data?.emoji === emoji
+      const previous = current.data ? projectReaction(current.data as Reaction) : null;
+      if (ensure && previous?.emoji === emoji) return;
+      const result = previous?.emoji === emoji
         ? await chatDb.from('message_reactions').delete().eq('couple_id', couple).eq('message_id', message.id).eq('user_id', uid)
-        : await chatDb.from('message_reactions').upsert({ couple_id: couple, message_id: message.id, user_id: uid, emoji }, { onConflict: 'message_id,user_id' });
+        : await chatDb.from('message_reactions').upsert({ couple_id: couple, message_id: message.id, user_id: uid, ...await prepareReaction(couple, uid, message.id, emoji) }, { onConflict: 'message_id,user_id' });
       if (result.error) throw result.error;
       await refresh();
     } finally { reactionBusy.current.delete(message.id); }

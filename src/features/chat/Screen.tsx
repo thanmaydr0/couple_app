@@ -27,6 +27,7 @@ import { chatDb, updateMessage } from './plusService';
 import { ChatSearch } from './ChatSearch';
 import { ScheduleSheet } from './ScheduleSheet';
 import { validReaction } from './ReactionChips';
+import { EncryptionStatus } from '@/features/e2ee/Status';
 
 const EMOJI = ['❤️', '🥰', '😘', '😂', '🥺', '🫂', '✨', '💕', '🙈', '👍', '🌙', '☀️'];
 
@@ -156,7 +157,7 @@ function Conversation({ coupleId, uid }: { coupleId: string; uid: string }) {
 
   const edit = (text: string) => { setDraft(text); updateTyping(text); };
   useEffect(() => {
-    setVoiceQueue([...chat.messages].reverse().map(message => ({ id: message.id, path: message.kind === 'voice' && !message.deleted_at && message.status === 'sent' ? message.media_path : null, couple: coupleId, receiver: message.sender_id !== uid, meta: message.meta })));
+    setVoiceQueue([...chat.messages].reverse().map(message => ({ id: message.id, path: message.kind === 'voice' && !message.deleted_at && !message.decryptionError && message.status === 'sent' ? message.media_path : null, encrypted: !!message.enc, couple: coupleId, receiver: message.sender_id !== uid, meta: message.meta })));
     return () => { setVoiceQueue([]); };
   }, [chat.messages, coupleId, uid]);
   useEffect(() => { if (!active) pauseVoice(); return () => pauseVoice(); }, [active]);
@@ -195,6 +196,7 @@ function Conversation({ coupleId, uid }: { coupleId: string; uid: string }) {
   return <Screen style={styles.screen}>
     <KeyboardAvoidingView behavior="height" automaticOffset style={styles.flex}>
       <View style={[styles.header, { flexDirection: 'row', alignItems: 'center', gap: spacing.s12 }]}><Avatar name={partnerName} /><View style={styles.flex}><Header title={partnerName} subtitle={typing ? 'typing…' : chat.live ? 'Just the two of you' : 'Reconnecting…'} /></View></View>
+      <EncryptionStatus />
       <View style={{ flexDirection: 'row', justifyContent: 'space-around', backgroundColor: colors.bgElevated }}>
         <PressableScale accessibilityRole="button" onPress={() => setSearchOpen(true)}><Text style={styles.body}>Search</Text></PressableScale>
         <PressableScale accessibilityRole="button" onPress={() => setScheduleOpen(true)}><Text style={styles.body}>Scheduled</Text></PressableScale>

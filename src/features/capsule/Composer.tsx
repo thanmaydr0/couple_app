@@ -85,7 +85,7 @@ export function Composer({ existing, serverNow, offline, onClose, onSaved }: { e
       <Button title="Add photos" disabled={busy || offline || count >= 6} onPress={() => { setBusy(true); void pickPhotos(6 - count).then(items => setPhotos(current => [...current, ...items])).catch(report).finally(() => setBusy(false)); }} />
       <Text variant="title/S">Record a voice message</Text>
       <VoiceRecorder disabled={busy || !profile?.couple_id} onBusyChange={setRecording} onRecorded={async result => { if (!profile?.couple_id) throw new Error('Sign in first.'); const saved = await persistVoice(result, profile.couple_id, profile.id, 'capsule'); if (voiceRef.current) await FileSystem.deleteAsync(voiceRef.current.uri, { idempotent: true }); voiceRef.current = { uri: saved.uri, meta: saved.meta }; setVoice(voiceRef.current); }} />
-      {voice ? <VoicePlayer id={voice.uri} uri={voice.uri} meta={voice.meta} /> : existing?.voice_path ? <VoicePlayer id={existing.id} path={existing.voice_path} bucket="capsules" /> : null}
+      {voice ? <VoicePlayer id={voice.uri} uri={voice.uri} meta={voice.meta} /> : existing?.voice_path ? <VoicePlayer id={existing.id} path={existing.voice_path} bucket="capsules" encrypted={existing.encrypted} meta={existing.voiceMeta} /> : null}
       <Text variant="caption" color="textSecondary">Sealed content stays private until the server unlocks it.</Text>
       {!!error && <Text color="danger" accessibilityLiveRegion="polite">{error}</Text>}
       <Button title={busy ? 'Sealing…' : existing ? 'Save capsule' : 'Seal for later'} disabled={busy || recording || offline} onPress={() => void save()} />

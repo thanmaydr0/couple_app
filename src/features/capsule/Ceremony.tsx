@@ -12,6 +12,7 @@ import { supabase } from '@/lib/supabase';
 import { useSession } from '@/lib/hooks';
 import { capsuleTiming, holdCapsule, readCapsule } from './service';
 import type { Capsule } from './types';
+import { decryptedFile } from '@/features/e2ee/files';
 
 export function WaxSeal({ cracked = false, ready = false }: { cracked?: boolean; ready?: boolean }) {
   const { colors, spacing, geometry } = useTheme();
@@ -33,10 +34,10 @@ function Envelope({ opening }: { opening: boolean }) {
   const width = geometry.touch * 4; const height = geometry.touch * 2;
   return <Animated.View importantForAccessibility="no-hide-descendants" style={[{ alignSelf: 'center', height: opening ? spacing.s56 : height }, style]}><Svg width={width} height={height} viewBox={`0 0 ${width} ${height}`}><Path d={`M 0 0 H ${width} V ${height} H 0 Z`} fill={colors.surfaceAlt} stroke={colors.border} strokeWidth={geometry.stroke} /><Path d={`M 0 0 L ${width / 2} ${height / 2} L ${width} 0`} fill="none" stroke={colors.primary} strokeWidth={geometry.stroke} /></Svg></Animated.View>;
 }
-function CapsulePhoto({ path }: { path: string }) {
+function CapsulePhoto({ path, encrypted }: { path: string; encrypted?: boolean }) {
   const { spacing, geometry, radius } = useTheme(); const { data: session } = useSession();
   const query = useQuery({ queryKey: ['capsule-photo', session?.user.id, path], staleTime: 0,
-    queryFn: async () => { const result = await supabase.storage.from('capsules').createSignedUrl(path, 120); if (result.error) throw result.error; return result.data.signedUrl; } });
+    queryFn: async () => { if (encrypted) return decryptedFile(path, 'capsules'); const result = await supabase.storage.from('capsules').createSignedUrl(path, 120); if (result.error) throw result.error; return result.data.signedUrl; } });
   return <FadeInView style={{ marginTop: spacing.md }}>{query.data ? <Image accessibilityLabel="A photo inside your capsule" source={{ uri: query.data }} resizeMode="contain" style={{ width: '100%', height: geometry.touch * 5, borderRadius: radius.md }} /> : <Text>{query.isError ? 'Photo unavailable' : 'Loading photo…'}</Text>}{query.isError && <Button title="Retry photo" onPress={() => { void query.refetch(); }} />}</FadeInView>;
 }
 function Paper({ capsule }: { capsule: Capsule }) {
@@ -49,7 +50,7 @@ function Paper({ capsule }: { capsule: Capsule }) {
     return () => clearInterval(timer);
   }, [capsule.body, motion.level]);
   const style = useAnimatedStyle(() => ({ opacity: unfold.value, transform: [{ scaleY: motion.level === 'full' ? 0.5 + unfold.value / 2 : 1 }] }));
-  return <Animated.View style={style}><Card style={{ gap: spacing.md }}><Text variant="title/L">{capsule.title || 'A letter for you'}</Text><Text accessibilityLabel={capsule.body}>{capsule.body.slice(0, letters)}</Text>{capsule.media_paths.map(path => <CapsulePhoto key={path} path={path} />)}{capsule.voice_path && <VoicePlayer id={capsule.id} path={capsule.voice_path} bucket="capsules" />}</Card></Animated.View>;
+  return <Animated.View style={style}><Card style={{ gap: spacing.md }}><Text variant="title/L">{capsule.title || 'A letter for you'}</Text><Text accessibilityLabel={capsule.body}>{capsule.body.slice(0, letters)}</Text>{capsule.media_paths.map(path => <CapsulePhoto key={path} path={path} encrypted={capsule.encrypted} />)}{capsule.voice_path && <VoicePlayer id={capsule.id} path={capsule.voice_path} bucket="capsules" encrypted={capsule.encrypted} meta={capsule.voiceMeta} />}</Card></Animated.View>;
 }
 export function Ceremony({ id, together, onClose }: { id: string; together: boolean; onClose: () => void }) {
   const { spacing, colors, radius } = useTheme(); const motion = useMotion(); const { data: session } = useSession();

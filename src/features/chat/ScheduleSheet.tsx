@@ -25,7 +25,7 @@ export function ScheduleSheet({ visible, onClose, couple, uid, draft, replyTo, j
   const days = new Date(month.getFullYear(), month.getMonth()+1,0).getDate(); const offset = new Date(month.getFullYear(),month.getMonth(),1).getDay();
   return <BottomSheet visible={visible} onClose={onClose} title="Scheduled messages">
     <ScrollView keyboardShouldPersistTaps="handled" style={{ maxHeight: geometry.touch * 10 }} contentContainerStyle={{ gap: spacing.sm }}>
-      <Text style={styles.subtitle}>Hold Send to choose a time. Scheduled messages have no delivery ticks until sent.</Text>
+      <Text style={styles.subtitle}>Hold Send to choose a time. Encrypted daily messages queue the next 30 days on this phone; each occurrence can be edited or cancelled separately.</Text>
       <TextInput accessibilityLabel="Scheduled message" value={body} onChangeText={setBody} multiline maxLength={4000} style={styles.input} placeholder="A message for later…" placeholderTextColor={colors.textSecondary} />
       <ListItem title="Tomorrow 8:00 AM" onPress={() => setPreset(8)} />
       <ListItem title="Tomorrow 10:00 PM" onPress={() => setPreset(22)} />

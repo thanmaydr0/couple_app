@@ -2,7 +2,7 @@ import { createClient } from "npm:@supabase/supabase-js@2.117.3";
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, apikey, content-type, x-client-info",
+  "Access-Control-Allow-Headers": "authorization, apikey, content-type, x-client-info, x-cron-secret",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 const json = (value: unknown, status = 200) =>
@@ -23,10 +23,14 @@ export async function handleRequest(req: Request): Promise<Response> {
     const client = createClient(url, anonKey, {
       auth: { persistSession: false, autoRefreshToken: false },
     });
-    const { data: auth, error: authError } = await client.auth.getUser(match[1]);
-    if (authError || !auth.user || auth.user.is_anonymous) return json({ error: "Invalid user access token" }, 401);
+    // A scheduled send needs both server credentials, plus a live leased job
+    // checked below. Ordinary clients are always authenticated with getUser.
+    const cronSecret = Deno.env.get('CRON_SECRET');
+    const scheduler = !!cronSecret && req.headers.get('x-cron-secret') === cronSecret && match[1] === serviceKey;
+    const { data: auth, error: authError } = scheduler ? { data: { user: null }, error: null } : await client.auth.getUser(match[1]);
+    if (!scheduler && (authError || !auth.user || auth.user.is_anonymous)) return json({ error: "Invalid user access token" }, 401);
 
-    let payload: { type?: unknown; channel?: unknown; title?: unknown; body?: unknown; data?: Record<string, unknown>; priority?: unknown; dataOnly?: unknown };
+    let payload: { type?: unknown; channel?: unknown; title?: unknown; body?: unknown; data?: Record<string, unknown>; priority?: unknown; dataOnly?: unknown; scheduler_job_id?: unknown };
     try {
       // Expo limits the whole notification to 4096 bytes; leave room for routing.
       const raw = await req.text();
@@ -55,27 +59,52 @@ export async function handleRequest(req: Request): Promise<Response> {
     const admin = createClient(url, serviceKey, {
       auth: { persistSession: false, autoRefreshToken: false },
     });
+    let callerId = auth.user?.id;
+    if (scheduler) {
+      if (typeof payload.scheduler_job_id !== 'string' || channel !== 'messages') return json({ error: 'Scheduled message job required' }, 403);
+      const job = await admin.from('scheduled_jobs').select('id,created_by,couple_id,status,locked_until,kind').eq('id', payload.scheduler_job_id).maybeSingle();
+      if (job.error || !job.data || job.data.kind !== 'scheduled_message' || job.data.status !== 'pending' || Date.parse(job.data.locked_until) <= Date.now()) return json({ error: 'Live scheduled lease required' }, 403);
+      const sent = await admin.from('messages').select('id').eq('couple_id', job.data.couple_id).eq('sender_id', job.data.created_by).eq('client_id', `scheduled:${job.data.id}`).maybeSingle();
+      if (sent.error || !sent.data) return json({ error: 'Dispatched message required' }, 403);
+      callerId = job.data.created_by;
+      payload.title = 'A message for you'; payload.body = 'New message';
+      payload.data = { route: '/(tabs)/chat', message_id: sent.data.id, type: 'message' };
+    }
+    if (!callerId) return json({ error: 'Verified caller required' }, 401);
     const { data: caller, error: callerError } = await admin.from("profiles")
-      .select("couple_id,display_name").eq("id", auth.user.id).maybeSingle();
+      .select("couple_id,display_name").eq("id", callerId).maybeSingle();
     if (callerError) return json({ error: "Membership lookup failed" }, 500);
     if (!caller?.couple_id) return json({ error: "Couple membership required" }, 403);
     const { data: partners, error: partnerError } = await admin.from("profiles")
-      .select("id").eq("couple_id", caller.couple_id).neq("id", auth.user.id).limit(2);
+      .select("id,privacy").eq("couple_id", caller.couple_id).neq("id", callerId).limit(2);
     if (partnerError) return json({ error: "Partner lookup failed" }, 500);
     if (payload.type !== "test" && !partners?.length) return ok();
     if (payload.type !== "test" && partners?.length !== 1) return json({ error: "Invalid couple configuration" }, 409);
     // Test notifications always target the VERIFIED caller, never a supplied ID.
-    const recipientId = payload.type === "test" ? auth.user.id : partners![0].id;
+    const recipientId = payload.type === "test" ? callerId : partners![0].id;
+    const recipient = payload.type === 'test'
+      ? await admin.from('profiles').select('privacy').eq('id', recipientId).maybeSingle()
+      : { data: partners![0], error: null };
+    if (recipient.error) return json({ error: 'Privacy lookup failed' }, 500);
+    const privacy = recipient.data?.privacy;
+    const hidePreviews = privacy?.hide_message_previews !== false || privacy?.hide_previews === true;
+    // Message pushes are ALWAYS generic, including callers on old clients.
+    const generic = hidePreviews || channel === 'messages';
+    const safeData: Record<string, unknown> = {};
+    for (const field of ['route', 'message_id', 'callId', 'job_id', 'capsule_id', 'plan_id', 'type']) {
+      const value = payload.data[field];
+      if (typeof value === 'string' && value.length <= 160) safeData[field] = value;
+    }
     let callData: Record<string, unknown> | undefined;
     if (channel === 'calls') {
       if (typeof payload.data.callId !== 'string') return json({ error: 'Call ID required' }, 400);
       const { data: call, error: callError } = await admin.from('calls').select('id,kind,started_at,status')
-        .eq('id', payload.data.callId).eq('couple_id', caller.couple_id).eq('caller_id', auth.user.id).maybeSingle();
+        .eq('id', payload.data.callId).eq('couple_id', caller.couple_id).eq('caller_id', callerId).maybeSingle();
       if (callError) return json({ error: 'Call lookup failed' }, 500);
       const expiresAt = call ? Date.parse(call.started_at) + 40_000 : 0;
       if (!call || call.status !== 'ringing' || expiresAt <= Date.now() || expiresAt > Date.now() + 45_000) return json({ error: 'No fresh ringing call' }, 409);
       // Derive all display/security fields server-side; caller cannot forge another call or expiry.
-      callData = { callId: call.id, kind: call.kind, callerName: caller.display_name || 'Your partner',
+      callData = { callId: call.id, kind: call.kind, callerName: hidePreviews ? 'Your partner' : caller.display_name || 'Your partner',
         expiresAt: new Date(expiresAt).toISOString(), url: '/call', route: '/call' };
     }
     const { data: push, error: pushError } = await admin.from("push_tokens")
@@ -94,8 +123,8 @@ export async function handleRequest(req: Request): Promise<Response> {
       headers: expoHeaders,
       body: JSON.stringify({
         to: push.token,
-        ...(channel === 'calls' || payload.dataOnly ? { _contentAvailable: true } : { title: payload.title, body: payload.body, sound: 'default' }),
-        data: { ...(callData ?? payload.data), type: channel === 'calls' ? 'call' : type, channel, recipientId, coupleId: caller.couple_id },
+        ...(channel === 'calls' || payload.dataOnly ? { _contentAvailable: true } : { title: generic ? 'Us' : payload.title, body: generic ? channel === 'messages' ? 'New message' : 'New activity from your partner' : payload.body, sound: 'default' }),
+        data: { ...(callData ?? (generic ? safeData : payload.data)), type: channel === 'calls' ? 'call' : type, channel, recipientId, coupleId: caller.couple_id },
         priority: channel === 'calls' ? "high" : payload.priority ?? "high",
         channelId: channel,
         ttl: callData ? Math.max(1, Math.ceil((Date.parse(String(callData.expiresAt)) - Date.now()) / 1000)) : 86400,
