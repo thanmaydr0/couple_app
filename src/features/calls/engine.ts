@@ -1,6 +1,9 @@
+import Constants from 'expo-constants';
+import { startCallService, stopCallService, dismissIncoming } from '../ringing/runtime';
+import { setAvailability } from '@/features/pulse';
 import { AppState, DeviceEventEmitter } from 'react-native';
 import InCallManager from 'react-native-incall-manager';
-import { mediaDevices, RTCPeerConnection, RTCIceCandidate, RTCSessionDescription, MediaStream, type MediaStreamTrack } from 'react-native-webrtc';
+import { mediaDevices, RTCPeerConnection, RTCIceCandidate, RTCSessionDescription, MediaStream, type RTCRtpSender, type MediaStreamTrack } from 'react-native-webrtc';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import { create } from 'zustand';
 import { supabase } from '@/lib/supabase';
@@ -31,6 +34,13 @@ export function attachEngine(engine: CallEngine) { currentEngine = engine; }
 export function detachEngine(engine: CallEngine) { if (currentEngine === engine) currentEngine = undefined; }
 
 export class CallEngine {
+  private screenSender: RTCRtpSender | undefined;
+  private screenStream: MediaStream | undefined;
+  private display: MediaStream | undefined;
+  private remoteStreams = new Map<string, MediaStream>();
+  private remoteScreenId: string | undefined;
+  private shareBusy = false;
+  private lastStart = 0;
   private channel: RealtimeChannel | undefined;
   private pc: NativePeer | undefined;
   private local: MediaStream | undefined;
@@ -95,7 +105,7 @@ export class CallEngine {
   }
 
   private alive(call: CallRow) { return !this.disposed && this.call?.id === call.id; }
-  private async send(event: SignalEvent, call: CallRow, extra: Partial<Pick<Signal, 'description' | 'candidate' | 'restart'>> = {}) {
+  private async send(event: SignalEvent, call: CallRow, extra: Partial<Pick<Signal, 'description' | 'candidate' | 'restart' | 'streamId' | 'screenMid' | 'sharing' | 'sleeping' | 'asleep'>> = {}) {
     if (this.disposed || !this.channel) return;
     const result = await this.channel.send({ type: 'broadcast', event, payload: {
       id: call.id, from: this.uid, to: this.partnerId, coupleId: this.coupleId,
@@ -114,8 +124,10 @@ export class CallEngine {
   }
 
   async start(kind: CallKind) {
+    if (Date.now() - this.lastStart < 5_000) return;
     if (this.disposed || this.call || this.preparing) return;
     if (!useCalls.getState().ready) { set({ error: 'Connecting to calling service. Please try again in a moment.' }); return; }
+    this.lastStart = Date.now();
     this.preparing = true;
     const generation = ++this.generation;
     set({ phase: 'preparing', error: null });
@@ -141,8 +153,8 @@ export class CallEngine {
       await this.send('invite', data);
       if (!this.alive(data)) return;
       void supabase.functions.invoke('notify-partner', { body: {
-        type: 'call', title: 'Incoming call', body: kind === 'video' ? 'Your partner is video calling you' : 'Your partner is calling you',
-        data: { type: 'call', callId: data.id, coupleId: this.coupleId, startedAt: data.started_at, url: '/call' },
+        type: 'call', channel: 'calls', dataOnly: true, priority: 'high', title: 'Incoming call', body: kind === 'video' ? 'Your partner is video calling you' : 'Your partner is calling you',
+        data: { type: 'call', callId: data.id, coupleId: this.coupleId, startedAt: data.started_at, kind, expiresAt: new Date(Date.parse(data.started_at) + RING_MS).toISOString(), url: '/call' },
       }}).then(({ error: pushError }) => { if (pushError) console.warn('[calls] Partner push could not be delivered.'); })
         .catch(() => { console.warn('[calls] Partner push could not be delivered.'); });
     } catch (error) { if (generation === this.generation) this.fail(error); }
@@ -165,6 +177,7 @@ export class CallEngine {
     InCallManager.setKeepScreenOn(true);
     this.armRing(call);
     void iceServers(this.uid);
+    if (useCalls.getState().ready) await this.send('ready', call);
   }
 
   async accept() {
@@ -189,6 +202,8 @@ export class CallEngine {
       this.stopRinging();
       set({ call: data, phase: 'connecting' });
       this.armConnectionTimeout(data);
+      await dismissIncoming(data.id);
+      await this.send('ready', data);
       await this.send('accept', data);
     } catch (error) { if (this.alive(call)) this.fail(error); }
     finally { if (this.alive(call)) this.accepting = false; }
@@ -213,12 +228,17 @@ export class CallEngine {
     const stream = await mediaDevices.getUserMedia({ audio: true, video: call.kind === 'video' ? { facingMode: 'user', width: 640, height: 480, frameRate: 24 } : false });
     if (!this.alive(call)) { stream.getTracks().forEach((t) => t.stop()); stream.release(); return; }
     this.local = stream;
+    await startCallService(call.id, call.kind === 'video').catch(() => set({ error: 'Background call service unavailable. Keep this call open on screen.' }));
+    if (!this.alive(call)) { await stopCallService(); return; }
     const state = useCalls.getState();
     stream.getAudioTracks().forEach((track) => { track.enabled = !state.muted; });
     stream.getVideoTracks().forEach((track) => { track.enabled = state.camera && AppState.currentState === 'active'; });
     this.backgroundCamera = AppState.currentState !== 'active';
     const pc = new RTCPeerConnection({ iceServers: servers }) as NativePeer; this.pc = pc;
     stream.getTracks().forEach((track) => pc.addTrack(track, stream));
+    // Reserve a separate m-line: screen replaceTrack never interrupts the camera or creates offer glare.
+    this.screenStream = new MediaStream();
+    this.screenSender = pc.addTransceiver('video', { direction: 'sendrecv', streams: [this.screenStream] }).sender;
     InCallManager.start({ media: call.kind, auto: true }); InCallManager.setKeepScreenOn(true);
     InCallManager.setMicrophoneMute(state.muted);
     set({ local: stream });
@@ -230,7 +250,9 @@ export class CallEngine {
       const track = event.track;
       const remote = event.streams[0] ?? useCalls.getState().remote ?? new MediaStream();
       if (!remote.getTracks().some((t) => t.id === track.id)) remote.addTrack(track);
-      set({ remote });
+      this.remoteStreams.set(remote.id, remote);
+      if (remote.id === this.remoteScreenId) set({ remoteScreen: remote });
+      else if (!useCalls.getState().remote || track.kind === 'audio') set({ remote });
     });
     const changed = () => {
       if (this.pc !== pc || !this.alive(call)) return;
@@ -291,7 +313,7 @@ export class CallEngine {
     if (!call || !this.pc || this.disposed || !useCalls.getState().ready) return;
     try {
       if (call.caller_id === this.uid) await this.offer(call, true);
-      else await this.send('accept', call, { restart: true }); // Only the caller creates restart offers.
+      else await this.send('ready', call, { restart: true }); // Only the caller creates restart offers.
     } catch { /* Recovery retries until its bounded connection timeout. */ }
   }
   private async flushIce(pc: RTCPeerConnection) {
@@ -313,6 +335,24 @@ export class CallEngine {
       await this.finish(event === 'decline' || event === 'busy' ? 'declined' : useCalls.getState().phase === 'incoming' ? 'missed' : 'ended', undefined,
         event === 'busy' ? 'Your partner is already in a call.' : event === 'decline' ? 'Your partner declined the call.' : undefined);
       return;
+    }
+    if (event === 'share') {
+      this.remoteScreenId = signal.streamId;
+      const track = this.pc?.getTransceivers().find(transceiver => transceiver.mid === signal.screenMid)?.receiver.track;
+      const remoteScreen = signal.sharing && track ? new MediaStream([track]) : null;
+      useCalls.getState().remoteScreen?.release();
+      set({ remoteSharing: !!signal.sharing, remoteScreen });
+      return;
+    }
+    if (event === 'sleep') {
+      set({ partnerAsleep: !!signal.asleep });
+      return;
+    }
+    if (event === 'ready' && call.caller_id === this.uid) {
+      const { data } = await supabase.from('calls').select('*').eq('id', call.id).eq('couple_id', this.coupleId).eq('status', 'answered').maybeSingle();
+      if (!data || !this.alive(call)) return; // Readiness never implies consent to answer.
+      if (this.pc) { await this.offer(call, signal.restart); return; }
+      event = 'accept';
     }
     if (event === 'accept' && call.caller_id === this.uid) {
       if (this.offered && !signal.restart) return;
@@ -362,12 +402,13 @@ export class CallEngine {
       if (current) {
         const { data } = await supabase.from('calls').select('*').eq('id', current.id).eq('couple_id', this.coupleId).maybeSingle();
         if (!this.alive(current) || !data) return;
-        if (['ended', 'declined', 'missed'].includes(data.status)) { this.cleanup(); return; }
+        if (['ended', 'declined', 'missed'].includes(data.status)) { this.cleanup(); if (data.status === 'declined') set({ error: 'Your partner declined the call.' }); return; }
         // The durable answer repairs a lost accept broadcast.
         if (data.status === 'answered' && current.caller_id === this.uid && useCalls.getState().phase === 'outgoing') {
           this.call = data; set({ call: data });
           this.queue = this.queue.then(() => this.receive('accept', { id: data.id, from: this.partnerId, to: this.uid, coupleId: this.coupleId, kind: data.kind, sentAt: Date.now() })).catch((e: unknown) => { if (this.alive(current)) this.fail(e); });
         }
+        if (current.caller_id === this.partnerId && this.pc && ['connecting', 'reconnecting'].includes(useCalls.getState().phase) && useCalls.getState().ready) await this.send('ready', current);
         return;
       }
       const { data, error } = await supabase.from('calls').select('*').eq('couple_id', this.coupleId).eq('caller_id', this.partnerId)
@@ -393,6 +434,56 @@ export class CallEngine {
     const phase = useCalls.getState().phase;
     return this.finish(phase === 'incoming' ? 'declined' : 'ended', phase === 'incoming' ? 'decline' : phase === 'outgoing' ? 'cancel' : 'end');
   }
+  async shareScreen() {
+    const call = this.call; const sender = this.screenSender;
+    if (!call || !sender || this.shareBusy || useCalls.getState().sharing || useCalls.getState().phase !== 'connected' || AppState.currentState !== 'active') return;
+    if (!Constants.expoConfig?.extra?.ringingMediaProjectionReady) { set({ error: 'Screen sharing requires the MediaProjection config plugin in the next Android build.' }); return; }
+    this.shareBusy = true;
+    let display: MediaStream | undefined;
+    try {
+      // WebRTC's own MediaProjection service starts after the system consent prompt.
+      display = await mediaDevices.getDisplayMedia({});
+      if (!this.alive(call)) { display.getTracks().forEach(t => t.stop()); display.release(); return; }
+      const track = display.getVideoTracks()[0];
+      if (!track) throw new Error('Screen capture did not provide a video track.');
+      await sender.replaceTrack(track);
+      if (sender.track !== track) throw new Error('Screen capture could not attach.');
+      this.display = display;
+      (track as MediaStreamTrack & { addEventListener: (event: string, listener: () => void) => void }).addEventListener('ended', () => { void this.stopSharing(); });
+      set({ sharing: true });
+      await this.send('share', call, { sharing: true, streamId: this.screenStream?.id, screenMid: this.pc?.getTransceivers().find(transceiver => transceiver.sender.id === sender.id)?.mid ?? undefined });
+      await startCallService(call.id, call.kind === 'video', true);
+    } catch {
+      display?.getTracks().forEach(t => t.stop()); display?.release(); this.display = undefined;
+      await sender.replaceTrack(null); set({ sharing: false, error: 'Screen sharing could not start. Allow screen capture and try again.' });
+    } finally { this.shareBusy = false; }
+  }
+  async stopSharing() {
+    const display = this.display; this.display = undefined;
+    if (!display) return;
+    await this.screenSender?.replaceTrack(null);
+    display.getTracks().forEach(t => t.stop()); display.release(); set({ sharing: false });
+    if (this.call) {
+      await this.send('share', this.call, { sharing: false });
+      await startCallService(this.call.id, this.call.kind === 'video');
+    }
+  }
+  async goodnight() {
+    if (!this.call || this.call.kind !== 'audio' || !this.pc) return;
+    try {
+      for (const sender of this.pc.getSenders()) if (sender.track?.kind === 'audio') {
+        const parameters = sender.getParameters();
+        parameters.encodings.forEach(encoding => { encoding.maxBitrate = 20_000; });
+        await sender.setParameters(parameters);
+      }
+      set({ sleeping: true });
+      await setAvailability('sleeping').catch(() => { /* Optional status; call continues offline. */ });
+    } catch { set({ error: 'Low-data mode could not be enabled on this device.' }); }
+  }
+  async markAsleep() {
+    if (!this.call || !useCalls.getState().sleeping) return;
+    set({ asleep: true }); await this.send('sleep', this.call, { asleep: true });
+  }
   mute() {
     const muted = !useCalls.getState().muted;
     this.local?.getAudioTracks().forEach((t) => { t.enabled = !muted; });
@@ -414,6 +505,12 @@ export class CallEngine {
   }
   private cleanup() {
     ++this.generation;
+    const endedId = this.call?.id;
+    if (endedId) void dismissIncoming(endedId).catch(() => {});
+    void stopCallService().catch(() => {});
+    this.display?.getTracks().forEach(t => t.stop()); this.display?.release(); this.display = undefined;
+    this.screenStream?.release(); this.screenStream = undefined; this.screenSender = undefined;
+    this.remoteStreams.clear(); this.remoteScreenId = undefined;
     this.call = undefined; this.preparing = false; this.accepting = false;
     this.stopRinging();
     if (this.connectTimer) clearTimeout(this.connectTimer);
@@ -421,7 +518,7 @@ export class CallEngine {
     this.connectTimer = undefined; this.retryTimer = undefined;
     const pc = this.pc; this.pc = undefined; pc?.close();
     this.local?.getTracks().forEach((t) => t.stop()); this.local?.release(); this.local = undefined;
-    useCalls.getState().remote?.release();
+    useCalls.getState().remote?.release(); useCalls.getState().remoteScreen?.release();
     this.pendingIce = []; this.offered = false; this.offerBusy = false; this.backgroundCamera = false;
     InCallManager.setMicrophoneMute(false); InCallManager.stop(); InCallManager.setKeepScreenOn(false);
     set({ ...initialState, ready: useCalls.getState().ready });

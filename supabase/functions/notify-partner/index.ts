@@ -48,7 +48,7 @@ export async function handleRequest(req: Request): Promise<Response> {
     // Legacy call/message types retain their channel and call-engine behavior.
     const channel = payload.type === 'call' ? 'calls' : payload.type === 'message' || payload.type === 'test' ? 'messages' : String(payload.channel);
     const type = payload.type ?? 'feature';
-    if (payload.data.route !== undefined && (typeof payload.data.route !== 'string' || !/^\/(?:us(?:\/[a-z0-9_-]+)?|\(tabs\)(?:\/(?:chat|memories|watch|games))?|settings(?:\/(?:features|appearance))?|games\/(?:chess|scribble))$/.test(payload.data.route))) return json({ error: 'Invalid notification route' }, 400);
+    if (payload.data.route !== undefined && (typeof payload.data.route !== 'string' || !/^\/(?:us(?:\/[a-z0-9_-]+)?|\(tabs\)(?:\/(?:chat|memories|watch|games))?|settings(?:\/(?:features|appearance))?|call|games\/(?:chess|scribble))$/.test(payload.data.route))) return json({ error: 'Invalid notification route' }, 400);
 
     // A separate admin client never inherits the caller's Authorization header.
     // Every privileged query is scoped using the VERIFIED caller's membership.
@@ -56,7 +56,7 @@ export async function handleRequest(req: Request): Promise<Response> {
       auth: { persistSession: false, autoRefreshToken: false },
     });
     const { data: caller, error: callerError } = await admin.from("profiles")
-      .select("couple_id").eq("id", auth.user.id).maybeSingle();
+      .select("couple_id,display_name").eq("id", auth.user.id).maybeSingle();
     if (callerError) return json({ error: "Membership lookup failed" }, 500);
     if (!caller?.couple_id) return json({ error: "Couple membership required" }, 403);
     const { data: partners, error: partnerError } = await admin.from("profiles")
@@ -66,6 +66,18 @@ export async function handleRequest(req: Request): Promise<Response> {
     if (payload.type !== "test" && partners?.length !== 1) return json({ error: "Invalid couple configuration" }, 409);
     // Test notifications always target the VERIFIED caller, never a supplied ID.
     const recipientId = payload.type === "test" ? auth.user.id : partners![0].id;
+    let callData: Record<string, unknown> | undefined;
+    if (channel === 'calls') {
+      if (typeof payload.data.callId !== 'string') return json({ error: 'Call ID required' }, 400);
+      const { data: call, error: callError } = await admin.from('calls').select('id,kind,started_at,status')
+        .eq('id', payload.data.callId).eq('couple_id', caller.couple_id).eq('caller_id', auth.user.id).maybeSingle();
+      if (callError) return json({ error: 'Call lookup failed' }, 500);
+      const expiresAt = call ? Date.parse(call.started_at) + 40_000 : 0;
+      if (!call || call.status !== 'ringing' || expiresAt <= Date.now() || expiresAt > Date.now() + 45_000) return json({ error: 'No fresh ringing call' }, 409);
+      // Derive all display/security fields server-side; caller cannot forge another call or expiry.
+      callData = { callId: call.id, kind: call.kind, callerName: caller.display_name || 'Your partner',
+        expiresAt: new Date(expiresAt).toISOString(), url: '/call', route: '/call' };
+    }
     const { data: push, error: pushError } = await admin.from("push_tokens")
       .select("token").eq("user_id", recipientId).maybeSingle();
     if (pushError) return json({ error: "Notification lookup failed" }, 500);
@@ -82,11 +94,11 @@ export async function handleRequest(req: Request): Promise<Response> {
       headers: expoHeaders,
       body: JSON.stringify({
         to: push.token,
-        ...(payload.dataOnly ? { _contentAvailable: true } : { title: payload.title, body: payload.body, sound: 'default' }),
-        data: { ...payload.data, type, channel, recipientId, coupleId: caller.couple_id },
-        priority: payload.priority ?? "high",
+        ...(channel === 'calls' || payload.dataOnly ? { _contentAvailable: true } : { title: payload.title, body: payload.body, sound: 'default' }),
+        data: { ...(callData ?? payload.data), type: channel === 'calls' ? 'call' : type, channel, recipientId, coupleId: caller.couple_id },
+        priority: channel === 'calls' ? "high" : payload.priority ?? "high",
         channelId: channel,
-        ttl: payload.type === "call" ? 40 : 86400,
+        ttl: callData ? Math.max(1, Math.ceil((Date.parse(String(callData.expiresAt)) - Date.now()) / 1000)) : 86400,
       }),
       signal: AbortSignal.timeout(8000),
     });

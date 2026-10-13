@@ -1,8 +1,11 @@
+import { RingingHealthScreen } from '../ringing/HealthScreen';
+import { ScreenShareView } from './ScreenShareView';
+import { GoodnightScreen, BedtimeReminder } from './Goodnight';
 import { useEffect, useRef, useState, type ComponentProps } from 'react';
 import { ActivityIndicator, Alert, Animated, PanResponder, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { RTCView } from 'react-native-webrtc';
-import { Stack } from 'expo-router';
+import { Stack, useLocalSearchParams } from 'expo-router';
 import { useAvatar, usePartner, useSession } from '@/lib/hooks';
 import { useTheme } from '@/theme';
 import { Screen, Header, Avatar } from '@/ui';
@@ -72,6 +75,7 @@ function LocalPreview() {
 export function ActiveCallScreen() {
   const styles = useCallStyles(); const { colors, spacing, geometry } = useTheme();
   const state = useCalls();
+  const [showCamera, setShowCamera] = useState(false);
   const { data: partner } = usePartner();
   const [now, setNow] = useState(Date.now());
   useEffect(() => { const timer = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(timer); }, []);
@@ -91,12 +95,14 @@ export function ActiveCallScreen() {
       })).concat([{ text: 'Cancel', onPress: () => {} }]));
     });
   };
+  if (state.sleeping) return <GoodnightScreen />;
   return <Screen bottomInset style={{ padding: 0 }}>
-    {(!video || !active) && <CallBackdrop />}
+    {(!video || !active) && !state.remoteSharing && <CallBackdrop />}
     {video && active && state.remote && <RTCView streamURL={state.remote.toURL()} objectFit="cover" zOrder={0} style={StyleSheet.absoluteFill} />}
-    <CallChrome hide={video && state.phase === 'connected' && !!state.remote && !state.error}>
+    {state.remoteSharing && state.remoteScreen && !showCamera && <ScreenShareView stream={state.remoteScreen} />}
+    <CallChrome hide={!state.remoteSharing && video && state.phase === 'connected' && !!state.remote && !state.error}>
       <View style={styles.callHeader}><View style={styles.headerCard}><Header title={video && active ? partner?.display_name ?? 'Your partner' : video ? 'Video call' : 'Voice call'} subtitle={status} /></View></View>
-      {(!video || !active || !state.remote) && <FadeInView key={state.phase === 'incoming' ? 'incoming' : 'call'} style={styles.identity}><PulseRing size={geometry.avatar * (state.phase === 'incoming' ? 5 : 4)}><PulseRing size={geometry.avatar * (state.phase === 'incoming' ? 4 : 3)}><PartnerAvatar /></PulseRing></PulseRing><Text style={styles.name}>{partner?.display_name ?? 'Your partner'}</Text>
+      {(!video || !active || !state.remote) && (!state.remoteSharing || showCamera) && <FadeInView key={state.phase === 'incoming' ? 'incoming' : 'call'} style={styles.identity}><PulseRing size={geometry.avatar * (state.phase === 'incoming' ? 5 : 4)}><PulseRing size={geometry.avatar * (state.phase === 'incoming' ? 4 : 3)}><PartnerAvatar /></PulseRing></PulseRing><Text style={styles.name}>{partner?.display_name ?? 'Your partner'}</Text>
         {state.phase === 'outgoing' && <CallDots />}
         <Text style={styles.subtitle}>{state.phase === 'incoming' ? `${video ? 'Video' : 'Voice'} call · just for you two` : active ? 'A little closer, wherever you are' : 'A moment together'}</Text>
         {state.phase === 'preparing' && <ActivityIndicator color={colors.primary} style={{ marginTop: spacing.lg }} />}
@@ -109,7 +115,11 @@ export function ActiveCallScreen() {
           <HeartbeatView><Control icon={video ? 'videocam' : 'call'} label="Accept" selected action={() => { void engine?.accept(); }} /></HeartbeatView>
         </View> : active ? <>
           <Text style={styles.routeLabel}>{state.route === 'BLUETOOTH' ? 'Bluetooth' : state.route === 'WIRED_HEADSET' ? 'Headset' : state.route === 'SPEAKER_PHONE' ? 'Speaker' : 'Earpiece'}</Text>
+          {state.sharing && <Text accessibilityLiveRegion="polite" style={styles.subtitle}>You’re sharing your screen</Text>}
+          {state.remoteSharing && <Control icon="swap-horizontal" label={showCamera ? 'View shared screen' : 'View camera'} action={() => setShowCamera(value => !value)} />}
           <View style={styles.controls}>
+            <Control icon="desktop-outline" label={state.sharing ? 'Stop sharing' : 'Share screen'} selected={state.sharing} action={() => { void (state.sharing ? engine?.stopSharing() : engine?.shareScreen()); }} />
+            {!video && <Control icon="moon-outline" label="Goodnight" action={() => { void engine?.goodnight(); }} />}
             <Control icon={state.muted ? 'mic-off' : 'mic'} label={state.muted ? 'Unmute' : 'Mute'} selected={state.muted} action={() => engine?.mute()} />
             {video && <Control icon={state.camera ? 'videocam' : 'videocam-off'} label={state.camera ? 'Camera off' : 'Camera on'} selected={!state.camera} action={() => engine?.camera()} />}
             {video && <Control icon="camera-reverse" label="Flip" action={() => engine?.flip()} />}
@@ -129,7 +139,10 @@ export default function CallsScreen() {
   const { data: session } = useSession();
   const ready = useCalls((s) => s.ready);
   const error = useCalls((s) => s.error);
+  const params = useLocalSearchParams<{ health?: string }>();
+  const [health, setHealth] = useState(params.health === '1');
   const [notice, setNotice] = useState<string | null>(null);
+  if (health) return <RingingHealthScreen onBack={() => setHealth(false)} />;
   return <Screen bottomInset><Stack.Screen options={{ title: 'Calls', headerShown: false }} /><Header title="Calls" subtitle="A little closer" />
     <ScrollView contentContainerStyle={styles.page}>
       <Text style={styles.eyebrow}>A LITTLE CLOSER</Text><Text style={styles.pageTitle}>Make time for{`\n`}each other.</Text>
@@ -146,6 +159,8 @@ export default function CallsScreen() {
         void registerCallNotifications(session.user.id, true).then(() => setNotice('Notification setup checked. Allow notifications in Settings to receive calls when the app is closed.')).catch(() => setNotice('Notifications could not register. Try again on your Android development build.'));
       }}><Text style={styles.link}>Enable call notifications</Text></PressableScale>
       {notice && <Text style={styles.subtitle}>{notice}</Text>}
+      <Control icon="notifications-outline" label="Ringing health check" action={() => setHealth(true)} />
+      <BedtimeReminder />
       <RecentCalls />
     </ScrollView>
   </Screen>;

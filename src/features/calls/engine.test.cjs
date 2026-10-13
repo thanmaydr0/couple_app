@@ -21,13 +21,16 @@ function harness(uid = 'a', partnerId = 'b') {
   const rows = new Map(); const sent = []; const peers = []; const streams = []; const timers = new Map();
   let sequence = 0; let allowed = true; let acquire;
   class Stream {
-    constructor() { this.tracks = [{ id: 'audio', enabled: true, stopped: false, stop() { this.stopped = true; } }]; this.released = false; streams.push(this); }
-    getTracks() { return this.tracks; } getAudioTracks() { return this.tracks; } getVideoTracks() { return []; }
+    constructor(video = false) { this.tracks = [{ id: 'audio', kind: 'audio', enabled: true, stopped: false, stop() { this.stopped = true; } }]; if (video === true) this.tracks.push({ id: 'video', kind: 'video', enabled: true, stopped: false, stop() { this.stopped = true; } }); this.released = false; streams.push(this); }
+    getTracks() { return this.tracks; } getAudioTracks() { return this.tracks.filter(t => t.kind === 'audio'); } getVideoTracks() { return this.tracks.filter(t => t.kind === 'video'); }
     addTrack(track) { this.tracks.push(track); } release() { this.released = true; }
   }
   class Peer {
-    constructor() { this.handlers = {}; this.signalingState = 'stable'; this.connectionState = 'new'; this.iceConnectionState = 'new'; this.offers = []; this.answers = 0; this.ice = []; peers.push(this); }
-    addTrack() {} addEventListener(event, fn) { this.handlers[event] = fn; }
+    constructor() { this.senders = []; this.transceivers = []; this.handlers = {}; this.signalingState = 'stable'; this.connectionState = 'new'; this.iceConnectionState = 'new'; this.offers = []; this.answers = 0; this.ice = []; peers.push(this); }
+    addTrack(track) { const sender = { id: String(this.senders.length), track, getParameters: () => ({ encodings: [{}] }), setParameters: async parameters => { sender.parameters = parameters; } }; this.senders.push(sender); return sender; }
+    addTransceiver() { const sender = this.addTrack(null); sender.replaceTrack = async track => { sender.track = track; }; const transceiver = { mid: String(this.transceivers.length), sender }; this.transceivers.push(transceiver); return transceiver; }
+    getSenders() { return this.senders; } getTransceivers() { return this.transceivers; }
+    addEventListener(event, fn) { this.handlers[event] = fn; }
     async createOffer(options) { this.offers.push(options); return { type: 'offer', sdp: 'test-offer' }; }
     async createAnswer() { this.answers++; return { type: 'answer', sdp: 'test-answer' }; }
     async setLocalDescription(description) { this.localDescription = description; this.signalingState = description.type === 'offer' ? 'have-local-offer' : 'stable'; }
@@ -58,11 +61,14 @@ function harness(uid = 'a', partnerId = 'b') {
   }
   const types = load('types.ts', {});
   const engineModule = load('engine.ts', {
+    'expo-constants': { expoConfig: { extra: { ringingMediaProjectionReady: true } } },
     'react-native': { AppState: { currentState: 'active', addEventListener: () => ({ remove() {} }) }, DeviceEventEmitter: { addListener: () => ({ remove() {} }) } },
     'react-native-incall-manager': new Proxy({}, { get: (_target, property) => property === '__esModule' ? false : () => {} }),
-    'react-native-webrtc': { RTCPeerConnection: Peer, MediaStream: Stream, RTCIceCandidate: class { constructor(candidate) { Object.assign(this, candidate); } }, RTCSessionDescription: class { constructor(description) { Object.assign(this, description); } }, mediaDevices: { getUserMedia: () => acquire ? acquire() : Promise.resolve(new Stream()) } },
+    'react-native-webrtc': { RTCPeerConnection: Peer, MediaStream: Stream, RTCIceCandidate: class { constructor(candidate) { Object.assign(this, candidate); } }, RTCSessionDescription: class { constructor(description) { Object.assign(this, description); } }, mediaDevices: { getDisplayMedia: async () => { const stream = new Stream(true); stream.getVideoTracks()[0].addEventListener = () => {}; return stream; }, getUserMedia: constraints => acquire ? acquire() : Promise.resolve(new Stream(!!constraints.video)) } },
     zustand: { create }, '@/lib/supabase': { supabase: { channel: () => channel, from: () => query(), removeChannel: async () => {}, functions: { invoke: async () => ({ error: null }) } } },
     './media': { clearIceCache() {}, iceServers: async () => [], requestCallPermissions: async () => allowed }, './types': types,
+    '../ringing/runtime': { startCallService: async () => {}, stopCallService: async () => {}, dismissIncoming: async () => {} },
+    '@/features/pulse': { setAvailability: async () => {} },
     './notifications': { requestBluetoothRouting: async () => {} },
   }, { setTimeout: (fn, ms) => { const token = {}; timers.set(token, { fn, ms }); return token; }, clearTimeout: (token) => timers.delete(token) });
   const engine = new engineModule.CallEngine(uid, 'couple', partnerId); engine.mount();
@@ -87,6 +93,49 @@ test('notification taps open only the requested fresh partner invite', async () 
   assert.equal(await h.engine.openIncomingNotification(row.id), true);
   assert.equal(h.store.getState().phase, 'incoming');
   h.engine.dispose();
+});
+
+test('ready does not answer a ringing call and resends the offer after durable consent', async () => {
+  const h = harness(); await tick(); await h.engine.start('audio');
+  const row = [...h.rows.values()][0];
+  h.channel.receive('ready', h.signal(row.id)); await tick();
+  assert.equal(h.peers.length, 0);
+  row.status = 'answered';
+  h.channel.receive('ready', h.signal(row.id)); await tick();
+  assert.equal(h.peers.length, 1);
+  const offers = h.sent.filter(message => message.event === 'offer').length;
+  h.channel.receive('ready', h.signal(row.id)); await tick();
+  assert.equal(h.sent.filter(message => message.event === 'offer').length, offers + 1);
+  assert.equal(h.peers[0].offers.length, 1);
+});
+
+test('video screen sharing uses a separate sender and stopping preserves camera and microphone', async () => {
+  const h = harness(); await tick(); await h.engine.start('video');
+  const row = [...h.rows.values()][0]; row.status = 'answered';
+  h.channel.receive('accept', h.signal(row.id, { kind: 'video' })); await tick();
+  const peer = h.peers[0]; peer.connectionState = 'connected'; peer.emit('connectionstatechange'); await tick();
+  const local = h.store.getState().local;
+  await h.engine.shareScreen();
+  assert.equal(h.store.getState().sharing, true);
+  assert.equal(local.getVideoTracks()[0].stopped, false);
+  assert.equal(local.getAudioTracks()[0].stopped, false);
+  assert(h.sent.some(message => message.event === 'share' && message.payload.sharing));
+  await h.engine.stopSharing();
+  assert.equal(h.store.getState().sharing, false);
+  assert.equal(peer.transceivers[0].sender.track, null);
+  assert.equal(local.getVideoTracks()[0].stopped, false);
+  await h.engine.end(); assert(local.getTracks().every(track => track.stopped));
+});
+
+test('goodnight caps only the audio sender and publishes sleeping availability', async () => {
+  const h = harness(); await tick(); await h.engine.start('audio');
+  const row = [...h.rows.values()][0]; row.status = 'answered';
+  h.channel.receive('accept', h.signal(row.id)); await tick();
+  await h.engine.goodnight();
+  assert.equal(h.store.getState().sleeping, true);
+  assert.equal(h.peers[0].senders[0].parameters.encodings[0].maxBitrate, 20000);
+  await h.engine.markAsleep();
+  assert(h.sent.some(message => message.event === 'sleep' && message.payload.asleep));
 });
 
 test('protocol validates envelopes and rejects malformed/stale invite timestamps', () => {
@@ -121,7 +170,7 @@ test('callee answers only and requests caller-owned restart', async () => {
   assert.equal(h.peers[0].answers, 1);
   h.peers[0].connectionState = 'failed'; h.peers[0].emit('connectionstatechange'); await tick();
   assert.equal(h.store.getState().phase, 'reconnecting'); assert.equal(h.peers[0].offers.length, 0);
-  assert(h.sent.some((s) => s.event === 'accept' && s.payload.restart)); h.engine.dispose();
+  assert(h.sent.some((s) => s.event === 'ready' && s.payload.restart)); h.engine.dispose();
 });
 test('cancellation during media acquisition cannot resurrect a call or leak a stream', async () => {
   const h = harness(); await tick(); const row = h.incoming();
