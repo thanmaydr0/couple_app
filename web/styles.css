@@ -309,6 +309,20 @@ textarea{
   transition:opacity var(--base)}
 .player-card:fullscreen .player-overlay .muted{
   color:inherit}
+.fullscreen-hide-controls{display:none}
+.player-card:fullscreen .fullscreen-hide-controls{
+  display:block;
+  position:absolute;
+  top:var(--md);
+  right:var(--md);
+  z-index:2}
+.player-card:fullscreen.controls-hidden .player-overlay,
+.player-card:fullscreen.controls-hidden .fullscreen-hide-controls,
+.player-card:fullscreen.controls-idle .fullscreen-hide-controls{
+  visibility:hidden;
+  opacity:0;
+  pointer-events:none}
+.player-card:fullscreen.controls-hidden,
 .player-card:fullscreen.controls-idle{
   cursor:none}
 .player-card:fullscreen.controls-idle .player-overlay{
