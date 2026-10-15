@@ -4,8 +4,10 @@ import { resolve, sep, extname } from 'node:path';
 import { build, root } from './build.mjs';
 await build();
 const directory = resolve(root, 'dist');
-const mime = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8' };
+const mime = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.wasm': 'application/wasm' };
 createServer(async (request, response) => {
+  response.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
+  response.setHeader('Cross-Origin-Embedder-Policy', 'require-corp');
   try {
     const pathname = decodeURIComponent(new URL(request.url, 'http://localhost').pathname);
     if (process.argv.includes('--qa') && pathname === '/qa.html') {

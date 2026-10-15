@@ -1,5 +1,5 @@
 /** Fullscreen presentation only; never changes playback or sends sync events. */
-export function fullscreenPlayer(container: HTMLElement, video: HTMLVideoElement, button: HTMLButtonElement) {
+export function fullscreenPlayer(container: HTMLElement, video: EventTarget & { readonly paused: boolean }, button: HTMLButtonElement) {
   let timer: ReturnType<typeof setTimeout> | undefined;
   const idleDelay = Number.parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--player-controls-idle')) || 0;
   const isFullscreen = () => document.fullscreenElement === container;

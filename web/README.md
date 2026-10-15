@@ -10,7 +10,7 @@ From `C:\5thsem\Projects\couple_app\web`:
 npm start
 ```
 
-Open http://127.0.0.1:4173. `start` builds first. After editing source, restart the server or run `npm run build`, then reload your browser. No hot reload or dependency installation is required. Uses the existing repository's installed TypeScript, Supabase and crypto packages; this folder is a separate frontend, not a separately installed dependency tree.
+First run `npm ci --ignore-scripts` inside `web/` to install the pinned media engine (the existing repository dependencies must also be installed). Then `npm start` builds and opens a loopback server at http://127.0.0.1:4173. After editing source, restart the server or run `npm run build`, then reload the browser. No hot reload is configured. The first build downloads approximately 22 MB of pinned, SHA-256-verified WebAssembly codecs; later builds use the local cache. TypeScript, Supabase and crypto still use the existing repository packages. Root package manifests are unchanged.
 
 The build reads only `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_ANON_KEY` from the root `.env`, then `web/.env`, then the process environment. Override with `web/.env` using `.env.example` if needed. Only these public values enter `dist/config.js`. Secret/service-role keys are rejected. Never put admin credentials or a Metered key here.
 
@@ -20,17 +20,17 @@ The build reads only `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_ANON_K
 - **Dashboard:** actual partner name, anniversary when configured, chat and movie entry points, four existing theme palettes. No fabricated online status or sample content.
 - **Chat:** text sends, stable client IDs for retry after ambiguous failures, live insert/update/delete events, 50-message history pages, seen receipts for readable text in a focused tab, in-memory failed sends, partner notification rate limiting. Plaintext photos and voice messages are viewable. Deleted, expired and view-once content is protected. History and drafts are not persisted to browser storage.
 - **Encrypted chat:** uses the Android encryption protocol directly. Restore your existing recovery backup with its passphrase and compare the displayed safety number with your partner's Android Privacy screen before sending. No new keys are registered or encryption settings changed. Private keys live only in tab memory and clear when leaving Chat, locking or signing out. Encrypted attachments and view-once media must be opened in Android. Browser text chat works with encryption on or off.
-- **Watch:** uses Android's `WatchSync` class and private `watch:<session-id>` channel directly. Create/join invitations from either platform, validate file size and duration, enable local playback, then control play/pause/seek together. Includes clock compensation, drift correction, buffering pauses, reactions, local volume, fullscreen, reconnect, saved position and ending for both. Playback pauses when a browser tab backgrounds or the peer disconnects. Periodic browser sync traffic stops without a peer and while hidden.
+- **Watch:** uses a browser media engine (libmedia AVPlayer), with its own container demuxer, worker-based decoding, hardware/WebCodecs acceleration and WebAssembly fallback. Shared play/pause/seek still use the Android-compatible private `watch:<session-id>` protocol. Browser sync adds a busy-operation guard to the existing engine so a pending decoder seek cannot be mistaken for a frozen player. The Android source/protocol are unchanged. Includes clock compensation, bounded drift correction, reactions, local volume/mute, fullscreen, reconnect, saved position and ending for both. Backgrounding or peer disconnect pauses playback; periodic browser sync traffic stops without a peer and while hidden.
 
-Both partners need the **same unprotected local movie file**. The video is never uploaded. MP4 with H.264 video and AAC audio is the recommended common format. Browsers cannot play Netflix/DRM downloads or every codec that Android supports. A browser must choose its local copy again after a page refresh; browsers do not grant persistent file access by default. The saved position remains available.
+Both partners need the **same unprotected local movie file**. The movie is read lazily from disk and is never uploaded or transcoded on a server. The engine supports MP4, MKV and other libmedia containers, plus a broad decoder set including H.264/HEVC, VP8/VP9/AV1, AAC/AC-3/E-AC-3/DTS/MP3/Opus. Embedded text and ASS subtitle rendering is supplied by the engine. Streaming-service DRM downloads cannot be used. Performance and codec coverage remain bounded by the engine and device; this is not a guarantee of every VLC plugin or every media file. Rechoose the local file after page refresh; saved position remains available.
 
 Use two devices for real watching: backgrounding a tab intentionally pauses the session. Each browser must click **Enable playback on this browser** once, then either partner can choose **Play together** when both are ready.
 
 Fullscreen uses the entire display, preserves the movie aspect ratio, and overlays the controls. Controls hide after inactivity during playback; pointer/touch/keyboard input brings them back. Pausing or opening settings keeps the controls visible. Exit with Escape or the Exit fullscreen button.
 
-**Embedded audio and captions:** open **Audio & captions · this device**. The selectors list audio languages and subtitle/caption tracks exposed by your browser for the selected video. Captions include an Off choice. These controls change only the local video element; they do not send sync messages or change the partner's preferences. No separate audio/caption file picker is provided.
+**Embedded audio and captions:** open **Audio & captions · this device** after enabling playback. The selectors now read tracks from the file demuxer, independent of browser `audioTracks`/`textTracks` availability. Captions have an Off choice. Track changes are serialized with decoder operations and preserve local position; subtitle changes flush stale cues from the previous stream. An Off visibility gate persists through seeks and resume even if the upstream renderer restarts its cue loop. No language, caption, volume or subtitle content is broadcast. No separate file picker is provided.
 
-**Current limitation:** embedded track exposure varies by browser and container/codec. A generated MP4 with two AAC audio languages and a `mov_text` subtitle stream decoded in the tested Chromium browser, but its embedded tracks were not exposed for selection. The UI reports this rather than claiming the file has no tracks. The native browser player therefore does **not** yet provide VLC-equivalent embedded-track switching for all movies. Supporting that requires a separate demuxing/decoding playback engine and a dedicated dependency/integration task; no package was installed under the standing no-dependency rule. See [audio track availability](https://developer.mozilla.org/en-US/docs/Web/API/HTMLMediaElement/audioTracks).
+**Seeking:** dragging previews the requested time without a playback update resetting the slider. Release commits one shared seek. Held keyboard adjustments commit on key release. Rapid seek requests coalesce to the last target, while decoder operations run one at a time. Use **Go to time**, or the 10-second skip buttons, for precise jumps. Decoder waiting/seeking/track-switch callbacks do not generate shared pause/resume commands. A genuinely frozen player still pauses with a recovery message rather than repeatedly auto-resuming.
 
 ## Backend and hosting
 
@@ -38,7 +38,7 @@ Fullscreen uses the entire display, preserves the movie aspect ratio, and overla
 
 **Edge Functions to deploy:** none new. The existing `notify-partner` function supplies Android partner notifications.
 
-The browser adapter in `src/backend.ts` mirrors the existing Supabase configuration and uses the same tables and RLS. It cannot import Android's `src/lib/supabase.ts` at runtime because that module initializes native AsyncStorage. Shared movie and crypto source are read directly at build time and compiled into this frontend, preventing protocol forks.
+The browser adapter in `src/backend.ts` mirrors the existing Supabase configuration and uses the same tables and RLS. It cannot import Android's `src/lib/supabase.ts` at runtime because that module initializes native AsyncStorage. Movie packet types and crypto source are read at build time. `src/watch-sync.ts` preserves the shared packet contract while adding a browser-only busy-operation guard. No Android file was modified.
 
 For static hosting:
 
@@ -49,6 +49,14 @@ npm run build
 ```
 
 Deploy only `web/dist/` to an HTTPS static host, with `index.html` as the index document. Navigation uses URL hashes, so no route rewrites are required. No server runtime, secret environment variables or CDN imports are needed after the build. The included HTTP server is loopback development tooling. This task does not create a hosted deployment.
+
+**Render update required:** keep Root Directory blank and Publish Directory `web/dist`. Use this Build Command:
+
+```sh
+npm ci --include=dev --ignore-scripts && npm ci --prefix web --ignore-scripts && npm --prefix web run typecheck && npm --prefix web run build
+```
+
+Set `SKIP_INSTALL_DEPS=true`, keep the two public Supabase variables, and add response headers for `/*`: `Cross-Origin-Opener-Policy: same-origin` and `Cross-Origin-Embedder-Policy: require-corp`. These enable the engine's threaded path; the engine also has a non-isolated worker-proxy fallback. `web/render.yaml` records the equivalent optional Blueprint. All worker/chunk/WASM assets are emitted to `dist/vendor/libmedia`; deploy them together. No CDN requests are needed while watching. Engine licensing/source details are in `THIRD_PARTY.md` and the served LGPL notice.
 
 ## Verification
 
@@ -69,7 +77,7 @@ node scripts/serve.mjs --qa
 
 Open `/qa.html?user=host#chat` and `/qa.html?user=guest#chat`. This opt-in fixture uses localStorage and BroadcastChannel, with both tabs simulated as foreground devices. It never connects to Supabase, sends push notifications or appears in production output. Use a small test MP4 in both tabs to exercise video playback. Production `/` continues to use the real backend even when the QA server is running.
 
-Verified during implementation: production login renders without browser errors; isolated two-account chat send/history; actual H.264/AAC video decoding; both-ready gating; play on both players; partner pause (positions within approximately 2 ms at the observed pause); partner seek; reaction delivery; session end on both clients. This verifies browser media plus the shared protocol with a local transport, not Supabase Realtime connectivity between physical devices.
+Verified during implementation: production login and isolated chat; MP4/H.264/AAC and MKV/H.264/AC-3 playback; demuxed English/Hindi audio and English/French subtitle streams; French subtitle text actually rendering while the partner keeps captions Off; rapid shared 1:20 → 0:20 seeks while playing; playback continuing through the remainder of the two-minute fixture; partner pause/seek; fullscreen geometry/hiding/exit; reactions and session end. The browser tests use a local transport, not authenticated production Supabase Realtime between physical devices. Nine automated tests cover import/assets packaging, crypto compatibility, the Android sync suite, asynchronous seek coalescing, transport intent, caption flushing and slow-seek guards.
 
 Root `npx tsc --noEmit` passed. One Expo Doctor run passed 19/21 checks; existing warnings cover untested New Architecture call libraries and 11 Expo patch-version mismatches. These shared dependencies were not modified.
 
@@ -84,8 +92,8 @@ Root `npx tsc --noEmit` passed. One Expo Doctor run passed 19/21 checks; existin
 - Test your actual movie's codecs and long playback with headphones. Browser autoplay policies and Android media/audio focus require device checks.
 - Verify HTTPS deployment, public configuration, keyboard navigation, small-screen layouts and the available theme palettes.
 - Verify fullscreen uses the entire viewport with no fixed `65dvh` limit, controls overlay/hide while playing, Escape exits, and reopening preserves the same movie/time.
-- For a browser exposing embedded tracks, choose different audio/subtitle languages on each device, turn captions Off independently, and confirm play/pause/seek remain synchronized. For unsupported browsers, verify the explicit compatibility explanation.
+- With an embedded multitrack MP4/MKV, choose different audio/subtitle languages on each device, turn captions Off independently, seek both directions during playback, and confirm the choices persist and shared time converges.
 
 **Not verified:** real account sign-in, authenticated production queries, production Realtime/notification delivery, Android-to-browser playback on devices, and a hosted deployment. No user credentials were available and no native build was run.
 
-**Needs shared change:** a dedicated browser media-engine dependency/integration task is required for VLC-equivalent embedded audio/subtitle switching in browsers that do not expose the tracks. Native selectors are implemented, but this broader requirement is incomplete. Existing Expo Doctor warnings can be addressed in a dedicated dependency session. No migration or new Edge Function is required.
+**Needs shared change:** none. The requested media engine dependency and lockfile live only in `web/`, explicitly authorized for this task. Update the Render build command/headers above. Existing Expo Doctor warnings remain for a dedicated Android dependency session. No migration or new Edge Function is required.

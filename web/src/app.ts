@@ -54,7 +54,7 @@ function shell(value: Identity) {
   const buttons = new Map<string, HTMLButtonElement>();
   let pageCleanup = () => {};
   function mount(page: { screen: HTMLElement; cleanup: () => void }) { pageCleanup(); pageCleanup = page.cleanup; outlet.replaceChildren(page.screen); }
-  function openMovie(room: WatchSessionRow, file: File) { mount(watchRoom(value, room, file, () => route('watch'))); }
+  function openMovie(room: WatchSessionRow, file: File) { mount(watchRoom(value, room, file, () => route('watch'),()=>openMovie(room,file))); }
   function route(name: string) {
     const selected = ['home', 'chat', 'watch'].includes(name) ? name : 'home';
     for (const [key, button] of buttons) { button.classList.toggle('selected', key === selected); button.setAttribute('aria-current', key === selected ? 'page' : 'false'); }

@@ -2,6 +2,7 @@ import { readFile, writeFile, mkdir, copyFile, readdir } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url';
 import { resolve, dirname } from 'node:path';
 import { createRequire } from 'node:module';
+import { mediaAssets } from './media-assets.mjs';
 const require = createRequire(import.meta.url);
 const ts = require('typescript');
 export const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -48,6 +49,7 @@ export async function build() {
   for (const type of tokens.typeScale) css += `--${type.name.replace('/', '-')}:${type.size}px;--${type.name.replace('/', '-')}-line:${type.lineHeight}px;`;
   css += `--player-controls-idle:${tokens.motion.hero * 5}ms;--fullscreenInk:${tokens.themes.Midnight.textPrimary};}`;
   await emit('tokens.css', css);
+  await mediaAssets(output);
   console.log('Built web/dist using installed packages.');
 }
 if (process.argv[1] === fileURLToPath(import.meta.url)) await build();

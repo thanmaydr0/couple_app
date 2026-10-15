@@ -332,11 +332,48 @@ textarea{
 .local-track-controls>p{
   grid-column:1 / -1}
 .movie{
+  position:relative;
+  overflow:hidden;
   width:100%;
   max-height:65dvh;
   aspect-ratio:16 / 9;
   background:var(--shadowColor);
   border-radius:var(--radius-sm)}
+.movie canvas,.movie video{
+  display:block;
+  max-width:100%;
+  max-height:100%}
+.movie.captions-off>.ASS-box,.movie.captions-off>svg{
+  display:none!important}
+.seek-tools{
+  display:flex;
+  gap:var(--sm);
+  align-items:center}
+.seek-tools input{
+  max-width:var(--sidebar)}
+.volume-controls{
+  display:flex;
+  align-items:center;
+  flex-wrap:wrap;
+  gap:var(--sm)}
+.volume-controls input[type=range]{
+  flex:1;
+  min-width:var(--touch);
+  max-width:var(--sidebar)}
+.player-card:fullscreen .player-overlay{
+  display:grid;
+  grid-template-columns:1fr auto;
+  align-items:center}
+.player-card:fullscreen .player-overlay>input,
+.player-card:fullscreen .player-overlay>.controls,
+.player-card:fullscreen .player-overlay>button,
+.player-card:fullscreen .player-overlay>.track-settings,
+.player-card:fullscreen .player-overlay>.notice{
+  grid-column:1 / -1}
+@media(max-width:850px){
+  .player-card:fullscreen .player-overlay{
+    grid-template-columns:1fr}
+}
 .controls{
   display:flex;
   align-items:center;

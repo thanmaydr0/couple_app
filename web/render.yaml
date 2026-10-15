@@ -1,0 +1,24 @@
+# Optional Render Blueprint. Root Directory deliberately stays at repository root.
+services:
+  - type: web
+    runtime: static
+    name: couple-app-web
+    branch: main
+    buildCommand: npm ci --include=dev --ignore-scripts && npm ci --prefix web --ignore-scripts && npm --prefix web run typecheck && npm --prefix web run build
+    staticPublishPath: web/dist
+    envVars:
+      - key: SKIP_INSTALL_DEPS
+        value: "true"
+      - key: NODE_VERSION
+        value: "24.21.0"
+      - key: EXPO_PUBLIC_SUPABASE_URL
+        sync: false
+      - key: EXPO_PUBLIC_SUPABASE_ANON_KEY
+        sync: false
+    headers:
+      - path: /*
+        name: Cross-Origin-Opener-Policy
+        value: same-origin
+      - path: /*
+        name: Cross-Origin-Embedder-Policy
+        value: require-corp
