@@ -46,7 +46,7 @@ export async function build() {
   for (const [name, colors] of Object.entries(tokens.themes)) css += `${name === 'Auto' ? ':root,' : ''}[data-theme="${name}"]{${Object.entries(colors).map(([key, value]) => `--${key}:${value}`).join(';')}}\n`;
   css += ':root{--xs:4px;--sm:8px;--s12:12px;--md:16px;--s20:20px;--lg:24px;--xl:32px;--s40:40px;--s56:56px;--touch:48px;--radius-sm:8px;--radius:20px;--pill:999px;--sidebar:240px;--content:1120px;--login:460px;--player:960px;--line:1px;--weight:600;--display-font:Georgia,serif;--body-font:system-ui,sans-serif;--press-scale:' + tokens.motion.pressScale + ';--fast:' + tokens.motion.fast + 'ms;--base:' + tokens.motion.base + 'ms;';
   for (const type of tokens.typeScale) css += `--${type.name.replace('/', '-')}:${type.size}px;--${type.name.replace('/', '-')}-line:${type.lineHeight}px;`;
-  css += '}';
+  css += `--player-controls-idle:${tokens.motion.hero * 5}ms;--fullscreenInk:${tokens.themes.Midnight.textPrimary};}`;
   await emit('tokens.css', css);
   console.log('Built web/dist using installed packages.');
 }

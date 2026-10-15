@@ -26,6 +26,12 @@ Both partners need the **same unprotected local movie file**. The video is never
 
 Use two devices for real watching: backgrounding a tab intentionally pauses the session. Each browser must click **Enable playback on this browser** once, then either partner can choose **Play together** when both are ready.
 
+Fullscreen uses the entire display, preserves the movie aspect ratio, and overlays the controls. Controls hide after inactivity during playback; pointer/touch/keyboard input brings them back. Pausing or opening settings keeps the controls visible. Exit with Escape or the Exit fullscreen button.
+
+**Embedded audio and captions:** open **Audio & captions · this device**. The selectors list audio languages and subtitle/caption tracks exposed by your browser for the selected video. Captions include an Off choice. These controls change only the local video element; they do not send sync messages or change the partner's preferences. No separate audio/caption file picker is provided.
+
+**Current limitation:** embedded track exposure varies by browser and container/codec. A generated MP4 with two AAC audio languages and a `mov_text` subtitle stream decoded in the tested Chromium browser, but its embedded tracks were not exposed for selection. The UI reports this rather than claiming the file has no tracks. The native browser player therefore does **not** yet provide VLC-equivalent embedded-track switching for all movies. Supporting that requires a separate demuxing/decoding playback engine and a dedicated dependency/integration task; no package was installed under the standing no-dependency rule. See [audio track availability](https://developer.mozilla.org/en-US/docs/Web/API/HTMLMediaElement/audioTracks).
+
 ## Backend and hosting
 
 **SQL to run:** no new SQL. The existing app migrations must already be deployed, including chat/E2EE schema (`001`, `100`, `200`, `300`, `330`, `340`) and `src/features/movie/setup.sql` for private watch broadcasts. Do not duplicate or replace existing policies. Follow the Android backend's established migration order if provisioning a new project.
@@ -77,7 +83,9 @@ Root `npx tsc --noEmit` passed. One Expo Doctor run passed 19/21 checks; existin
 - Background either device: both pause. Return and explicitly resume. Confirm saved-position return after reselecting the same file.
 - Test your actual movie's codecs and long playback with headphones. Browser autoplay policies and Android media/audio focus require device checks.
 - Verify HTTPS deployment, public configuration, keyboard navigation, small-screen layouts and the available theme palettes.
+- Verify fullscreen uses the entire viewport with no fixed `65dvh` limit, controls overlay/hide while playing, Escape exits, and reopening preserves the same movie/time.
+- For a browser exposing embedded tracks, choose different audio/subtitle languages on each device, turn captions Off independently, and confirm play/pause/seek remain synchronized. For unsupported browsers, verify the explicit compatibility explanation.
 
 **Not verified:** real account sign-in, authenticated production queries, production Realtime/notification delivery, Android-to-browser playback on devices, and a hosted deployment. No user credentials were available and no native build was run.
 
-**Needs shared change:** none for the web frontend. Existing Expo Doctor warnings can be addressed in a dedicated dependency session. No dependencies, migrations or new Edge Functions are required by this implementation.
+**Needs shared change:** a dedicated browser media-engine dependency/integration task is required for VLC-equivalent embedded audio/subtitle switching in browsers that do not expose the tracks. Native selectors are implemented, but this broader requirement is incomplete. Existing Expo Doctor warnings can be addressed in a dedicated dependency session. No migration or new Edge Function is required.

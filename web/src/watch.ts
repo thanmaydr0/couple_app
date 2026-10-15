@@ -2,6 +2,8 @@ import { WatchSync, type SyncState } from '../../src/features/movie/sync';
 import { matches, type EventName } from '../../src/features/movie/model';
 import { db, messageError, type Identity, type WatchSessionRow } from './backend.js';
 import { card, el, notice, PressableScale, Screen, show, time } from './ui.js';
+import { embeddedTracks } from './embedded-tracks.js';
+import { fullscreenPlayer } from './fullscreen-player.js';
 
 export async function pickVideo(): Promise<{ file: File; durationMs: number } | null> {
   const input = el('input'); input.type = 'file'; input.accept = 'video/*,.mkv';
@@ -75,7 +77,7 @@ export function watchRoom(context: Identity, room: WatchSessionRow, file: File, 
   const clock = el('span', 'muted fine', '0:00');
   let sync: WatchSync;
   const play = PressableScale('▶ Play together', () => { sync.control(video.paused ? 'play' : 'pause'); }, 'primary');
-  const fullscreen = PressableScale('⛶ Fullscreen', async () => { try { await playerCard.requestFullscreen(); } catch { show(error, 'Fullscreen is unavailable in this browser.'); } });
+  const fullscreen = PressableScale('⛶ Fullscreen', async () => { try { if (document.fullscreenElement === playerCard) await document.exitFullscreen(); else await playerCard.requestFullscreen(); } catch { show(error, 'Fullscreen is unavailable in this browser.'); } });
   const enable = PressableScale('Enable playback on this browser', async () => {
     enable.disabled = true;
     try { await video.play(); video.pause(); enabled = true; sync.setReady(video.readyState >= HTMLMediaElement.HAVE_FUTURE_DATA); enable.hidden = true; show(error, ''); }
@@ -83,8 +85,12 @@ export function watchRoom(context: Identity, room: WatchSessionRow, file: File, 
     finally { enable.disabled = false; }
   }, 'primary');
   const playerCard = el('section', 'player-card'); const controls = el('div', 'controls');
+  const playerOverlay = el('div', 'player-overlay');
+  const trackSettings = el('details', 'track-settings'); const settingsToggle = el('summary', 'pressable', 'Audio & captions · this device');
+  const tracks = embeddedTracks(video); trackSettings.append(settingsToggle, tracks.node);
+  const presentation = fullscreenPlayer(playerCard, video, fullscreen);
   const volume = el('input'); volume.type = 'range'; volume.min = '0'; volume.max = '1'; volume.step = '0.05'; volume.value = '1'; volume.setAttribute('aria-label', 'Local volume'); volume.oninput = () => { video.volume = Number(volume.value); };
-  controls.append(play, clock, fullscreen); playerCard.append(video, timeline, controls, el('label', 'muted fine', 'Volume on this device'), volume);
+  controls.append(play, clock, fullscreen); playerOverlay.append(timeline, controls, trackSettings, el('label', 'muted fine', 'Volume on this device'), volume); playerCard.append(video, playerOverlay);
   function changed(state: SyncState) {
     if (disposed) return;
     show(status, state.notice); play.disabled = !enabled || state.ended || !state.bothReady;
@@ -145,5 +151,5 @@ export function watchRoom(context: Identity, room: WatchSessionRow, file: File, 
   });
   screen.append(PressableScale('← Back to movie nights', back), playerCard, enable, status, error, telemetry, reactions, reaction, PressableScale('Reconnect / retry playback', async () => { try { if (video.error) video.load(); await connect(); } catch (failure) { show(error, messageError(failure)); } }), end);
   video.src = url; void connect().catch(failure => show(error, messageError(failure)));
-  return { screen, cleanup() { save(); sync.leave(); disposed = true; generation++; clearInterval(timer); document.removeEventListener('visibilitychange', visibility); if (channel) void db.removeChannel(channel); video.pause(); video.removeAttribute('src'); video.load(); URL.revokeObjectURL(url); } };
+  return { screen, cleanup() { save(); sync.leave(); disposed = true; generation++; clearInterval(timer); presentation.cleanup(); tracks.cleanup(); document.removeEventListener('visibilitychange', visibility); if (channel) void db.removeChannel(channel); video.pause(); video.removeAttribute('src'); video.load(); URL.revokeObjectURL(url); } };
 }
