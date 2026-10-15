@@ -77,6 +77,10 @@ export class MediaController extends EventTarget {
         const id = this.subtitle; this.subtitle = null;
         if (id >= 0) {
           if (this.driver.getSelectedSubtitleStreamId?.() !== id) await this.driver.selectSubtitle(id);
+          // Selecting a stream is separate from enabling its renderer. In
+          // particular, Off keeps the last stream selected inside AVPlayer.
+          // Enable before seeking: enabling afterwards resets freshly read cues.
+          this.driver.setSubtitleEnable(true);
           // Flush cues queued from the old stream, retaining the local position.
           await this.driver.seek(this.driver.currentTime);
           this.appliedPlay = [5,6].includes(this.driver.getStatus());

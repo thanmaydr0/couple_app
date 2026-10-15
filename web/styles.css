@@ -347,6 +347,7 @@ textarea{
   grid-column:1 / -1}
 .movie{
   position:relative;
+  isolation:isolate;
   overflow:hidden;
   width:100%;
   max-height:65dvh;
@@ -357,8 +358,33 @@ textarea{
   display:block;
   max-width:100%;
   max-height:100%}
+.movie>.ASS-box{
+  z-index:1}
+.movie>svg{
+  position:absolute;
+  inset:0;
+  pointer-events:none}
 .movie.captions-off>.ASS-box,.movie.captions-off>svg{
   display:none!important}
+.movie-captions{
+  position:absolute;
+  inset:auto var(--lg) var(--lg);
+  z-index:2;
+  pointer-events:none;
+  text-align:center;
+  white-space:pre-line;
+  color:var(--fullscreenInk);
+  font-size:var(--body-M);
+  line-height:var(--body-M-line)}
+.movie-captions[hidden]{display:none}
+.movie-captions span{
+  background:var(--overlay);
+  padding:var(--xs) var(--sm);
+  box-decoration-break:clone;
+  -webkit-box-decoration-break:clone}
+.player-card:fullscreen .movie-captions{
+  font-size:var(--title-L);
+  line-height:var(--title-L-line)}
 .seek-tools{
   display:flex;
   gap:var(--sm);

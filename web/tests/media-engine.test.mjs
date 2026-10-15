@@ -5,7 +5,9 @@ import { readFile } from 'node:fs/promises';
 const compile = source => ts.transpileModule(source, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ESNext } }).outputText;
 const url = source => `data:text/javascript;base64,${Buffer.from(source).toString('base64')}`;
 const controllerUrl = url(compile(await readFile(new URL('../src/media-controller.ts', import.meta.url), 'utf8')));
-const source = compile(await readFile(new URL('../src/media-engine.ts', import.meta.url), 'utf8')).replace("'./media-controller.js'", JSON.stringify(controllerUrl));
+const captionsUrl = url('export const selections=[]; export class LocalCaptions { async select(file,stream){selections.push(stream);} hide(){} destroy(){} }');
+const { selections } = await import(captionsUrl);
+const source = compile(await readFile(new URL('../src/media-engine.ts', import.meta.url), 'utf8')).replace("'./media-controller.js'", JSON.stringify(controllerUrl)).replace("'./local-captions.js'", JSON.stringify(captionsUrl));
 const { MovieEngine } = await import(url(source));
 
 function fixture(streams) {
@@ -26,6 +28,7 @@ function fixture(streams) {
     getStreams() { return streams; }
     on() { return this; }
     getStatus() { return 4; }
+    setSubtitleEnable() {}
     async destroy() {}
   }
   globalThis.window = { AVPlayer };
@@ -62,4 +65,19 @@ test('native playback checks every audio track through the public codec proxy', 
 test('metadata probes retain the direct-file path and never start a playback buffer', async () => {
   const f = fixture([audio(1)]); const engine = f.create(false); const file = { name: 'probe.mp4' };
   await engine.load(file); assert.equal(f.raw().source, file); await engine.destroy();
+});
+
+test('embedded SRT changes use local stream indexes without seeking or changing playback', async () => {
+  const subtitle = (id, index) => ({ id, index, mediaType: 'Subtitle', metadata: { title: 'Same title' }, codecparProxy: { codecId: 94225 } });
+  const f = fixture([audio(1), subtitle(8, 3), subtitle(9, 4)]);
+  const engine = f.create(); await engine.load({ name: 'movie.mkv' }); engine.enabled = true;
+  const before = selections.length;
+  await engine.selectSubtitle(8); assert.equal(engine.selectedCaption, 8);
+  await engine.selectSubtitle(-1); assert.equal(engine.selectedCaption, -1);
+  await engine.selectSubtitle(9); assert.equal(engine.selectedCaption, 9);
+  assert.deepEqual(selections.slice(before), [3, 4]); assert.equal(engine.paused, true);
+  assert.deepEqual(engine.tracks.filter(track => track.kind === 'subtitle').map(track => track.label), ['Same title · Track 1', 'Same title · Track 2']);
+  // This driver intentionally has no seek/play/selectSubtitle implementation:
+  // calling any of them for an SRT selection would fail the regression.
+  await engine.destroy();
 });

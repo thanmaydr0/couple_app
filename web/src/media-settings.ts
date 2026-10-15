@@ -15,8 +15,8 @@ export function mediaSettings(engine: MovieEngine) {
     const audios = engine.tracks.filter(track=>track.kind==='audio'); const subtitles = engine.tracks.filter(track=>track.kind==='subtitle');
     options(audio,audios.length?audios:[{id:-1,label:'No audio track'}],engine.selectedAudio>=0?engine.selectedAudio:audios[0]?.id??-1);
     options(captions,[{id:-1,label:'Off'},...subtitles],engine.selectedCaption);
-    audio.disabled = !engine.enabled || engine.busy || audios.length<2; captions.disabled = !engine.enabled || engine.busy || !subtitles.length;
-    help.textContent = engine.tracks.length ? `${audios.length} audio · ${subtitles.length} subtitle tracks. Language, captions and volume stay on this device.` : 'Reading embedded tracks from your movie…';
+    audio.disabled = !engine.enabled || engine.busy || audios.length<2; captions.disabled = !engine.enabled || engine.busy || engine.captionLoading || !subtitles.length;
+    help.textContent = engine.captionLoading ? 'Reading embedded captions locally… Playback can continue while captions prepare.' : engine.tracks.length ? `${audios.length} audio · ${subtitles.length} subtitle tracks. Language, captions and volume stay on this device.` : 'Reading embedded tracks from your movie…';
   }
   audio.onchange = async () => { const id=Number(audio.value); audio.disabled=true; show(error,''); try { await engine.selectAudio(id); } catch(failure) { show(error,failure instanceof Error?failure.message:'Could not switch audio'); } finally { refresh(); } };
   captions.onchange = async () => { const id=Number(captions.value); captions.disabled=true; show(error,''); try { await engine.selectSubtitle(id); } catch(failure) { show(error,failure instanceof Error?failure.message:'Could not switch captions'); } finally { refresh(); } };

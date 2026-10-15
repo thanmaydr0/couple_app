@@ -1,6 +1,7 @@
 import { MediaController, type MediaDriver } from './media-controller.js';
+import { LocalCaptions } from './local-captions.js';
 export type EngineTrack = { id: number; label: string; kind: string };
-type Stream = { id: number; mediaType: string; metadata: Record<string, unknown>; codecparProxy: { codecId: number; sampleRate: number; profile: number; chLayout: { nbChannels: number } } };
+type Stream = { id: number; index: number; mediaType: string; metadata: Record<string, unknown>; codecparProxy: { codecId: number; sampleRate: number; profile: number; chLayout: { nbChannels: number } } };
 type ReadBuffer = { length: number; set(data: Uint8Array): void };
 interface FileLoader {
   open(info: { file: File }): Promise<number>;
@@ -54,8 +55,12 @@ function preferBufferedPlayback(streams: Stream[]) {
 }
 export class MovieEngine extends MediaController {
   tracks: EngineTrack[] = [];
+  captionLoading = false;
   private observer: ResizeObserver;
   private captions = -1;
+  private localCaptions: LocalCaptions | null = null;
+  private localSubtitleStreams = new Map<number, number>();
+  private file: File | null = null;
   constructor(readonly surface: HTMLDivElement, private buffered = true) {
     const raw: AVDriver = new window.AVPlayer({ container: surface, wasmBaseUrl: '/vendor/libmedia/wasm', enableWorker: true, enableHardware: true, enableWebCodecs: true, enableWebGPU: false, checkUseMSE: () => preferBufferedPlayback(raw.getStreams()), preLoadTime: 8, enableJitterBuffer: false, lowLatency: false, audioWorkletBufferLength: 40 });
     super(raw); this.raw = raw; surface.classList.add('captions-off');
@@ -68,16 +73,37 @@ export class MovieEngine extends MediaController {
   get selectedAudio() { return this.raw.getSelectedAudioStreamId(); }
   get selectedCaption() { return this.captions; }
   override async selectSubtitle(id: number) {
+    const localStream = this.localSubtitleStreams.get(id);
+    if (localStream !== undefined && this.file) {
+      await super.selectSubtitle(-1);
+      this.localCaptions ??= new LocalCaptions(this.surface, () => this.currentTime);
+      const previous = this.captions; this.captions = id;
+      this.captionLoading = true; this.dispatchEvent(new Event('statechange'));
+      try { await this.localCaptions.select(this.file, localStream); }
+      catch (error) { this.captions = previous; throw error; }
+      finally { this.captionLoading = false; this.dispatchEvent(new Event('statechange')); }
+      if (this.disposed) return;
+      this.captions = id;
+      this.surface.classList.add('captions-off');
+      this.dispatchEvent(new Event('trackschange'));
+      return;
+    }
+    this.localCaptions?.hide();
     await super.selectSubtitle(id);
     if (id >= 0 && this.enabled && this.raw.getSelectedSubtitleStreamId() !== id) throw new Error('The decoder could not select this embedded subtitle track.');
     this.captions = id; this.surface.classList.toggle('captions-off',id < 0); this.dispatchEvent(new Event('trackschange'));
   }
   async load(file: File) {
+    this.file = file;
     await this.raw.load(this.buffered ? bufferedFile(file) : file);
     if (this.disposed) return;
     this.duration = Number(this.raw.getDuration()) / 1000;
     if (!Number.isFinite(this.duration) || this.duration <= 0) throw new Error('The movie has no usable duration.');
-    this.tracks = this.raw.getStreams().map(stream => {
+    const streams = this.raw.getStreams();
+    if (/\.mkv$/i.test(file.name)) for (const stream of streams) {
+      if (stream.codecparProxy.codecId === 94225) this.localSubtitleStreams.set(stream.id, stream.index);
+    }
+    this.tracks = streams.map(stream => {
       const language = typeof stream.metadata.language === 'string' ? stream.metadata.language : '';
       const title = typeof stream.metadata.title === 'string' ? stream.metadata.title : '';
       const kind=stream.mediaType.replace(/^AVMEDIA_TYPE_/,'').toLowerCase();
@@ -85,10 +111,18 @@ export class MovieEngine extends MediaController {
       try { if (language && language !== 'und') languageName=new Intl.DisplayNames(['en'],{type:'language'}).of(language)||language; } catch { /* Keep the file's original language tag. */ }
       return { id: stream.id, label: [title, languageName === 'und' ? '' : languageName].filter(Boolean).join(' · ') || `${kind} ${stream.id + 1}`, kind };
     });
+    const subtitleTracks = this.tracks.filter(track => track.kind === 'subtitle');
+    for (let index = 0; index < subtitleTracks.length; index++) {
+      const track = subtitleTracks[index]!;
+      if (subtitleTracks.some(other => other !== track && other.label === track.label)) {
+        const label = track.label;
+        subtitleTracks.forEach((other, number) => { if (other.label === label) other.label += ` · Track ${number + 1}`; });
+      }
+    }
     await this.selectSubtitle(-1);
     this.dispatchEvent(new Event('loadedmetadata')); this.dispatchEvent(new Event('trackschange'));
   }
-  async destroy() { this.disposed = true; this.observer.disconnect(); try { await this.settled(); } catch { /* Preserve the original decoder error. */ } await this.raw.destroy(); }
+  async destroy() { this.disposed = true; this.localCaptions?.destroy(); this.file = null; this.observer.disconnect(); try { await this.settled(); } catch { /* Preserve the original decoder error. */ } await this.raw.destroy(); }
 }
 /** Probe the container, including MKV, using the same demuxer used for playback. */
 export async function movieDuration(file: File) {

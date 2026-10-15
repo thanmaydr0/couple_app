@@ -40,7 +40,21 @@ test('caption switches flush old cues at the same local time without transport c
   const f=fixture();await f.controller.enable();f.calls.length=0;
   f.raw.currentTime=42000n;f.raw.seek=async value=>{f.calls.push(['seek',Number(value)]);f.raw.currentTime=value;};
   await f.controller.selectAudio(3);await f.controller.selectSubtitle(4);await f.controller.selectSubtitle(-1);
-  assert.deepEqual(f.calls,[['audio',3],['caption',4],['seek',42000],['captions',false]]);assert.equal(f.controller.currentTime,42);
+  assert.deepEqual(f.calls,[['audio',3],['caption',4],['captions',true],['seek',42000],['captions',false]]);assert.equal(f.controller.currentTime,42);
+});
+
+test('Off to the already-selected subtitle explicitly enables rendering before refreshing cues',async()=>{
+  const f=fixture();await f.controller.enable();f.calls.length=0;
+  let rendering=false;let visible=false;
+  f.raw.getSelectedSubtitleStreamId=()=>4;
+  f.raw.setSubtitleEnable=value=>{rendering=value;visible=false;f.calls.push(['captions',value]);};
+  f.raw.seek=async()=>{visible=rendering;};
+  await f.controller.selectSubtitle(-1);
+  await f.controller.selectSubtitle(4);
+  assert.equal(visible,true);assert.deepEqual(f.calls,[['captions',false],['captions',true]]);
+  // Going Off again must clear the screen; enabling must remain reliable.
+  await f.controller.selectSubtitle(-1);assert.equal(visible,false);
+  await f.controller.selectSubtitle(4);assert.equal(visible,true);
 });
 test('slow demux seeks do not trigger a shared frozen-player pause',async()=>{
   const modelUrl=url(compile(await readFile(new URL('../../src/features/movie/model.ts',import.meta.url),'utf8')));
