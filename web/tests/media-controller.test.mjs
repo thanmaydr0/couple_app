@@ -44,7 +44,8 @@ test('caption switches flush old cues at the same local time without transport c
 });
 test('slow demux seeks do not trigger a shared frozen-player pause',async()=>{
   const modelUrl=url(compile(await readFile(new URL('../../src/features/movie/model.ts',import.meta.url),'utf8')));
-  const source=compile(await readFile(new URL('../src/watch-sync.ts',import.meta.url),'utf8')).replace("'../../src/features/movie/model'",JSON.stringify(modelUrl));
+  const smoothingUrl=url(compile(await readFile(new URL('../src/playback-smoothing.ts',import.meta.url),'utf8')));
+  const source=compile(await readFile(new URL('../src/watch-sync.ts',import.meta.url),'utf8')).replace("'../../src/features/movie/model'",JSON.stringify(modelUrl)).replace("'./playback-smoothing.js'",JSON.stringify(smoothingUrl));
   const {WatchSync}=await import(url(source));let now=100000;let pauses=0;const sent=[];
   const player={currentTime:0,duration:300,playbackRate:1,playing:false,busy:false,play(){this.playing=true;},pause(){this.playing=false;pauses++;}};
   const sync=new WatchSync({user:'host',partner:'guest',host:'host',client:'browser',player,now:()=>now,send:(event,payload)=>sent.push({event,payload}),change(){},reaction(){}});

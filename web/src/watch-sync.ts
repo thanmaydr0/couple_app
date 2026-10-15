@@ -1,5 +1,6 @@
 // Android-compatible packet contract; decoder busy guards are browser-specific.
-import { compare, driftCorrection, packet, reactions, type EventName, type Packet, type Stamp } from '../../src/features/movie/model';
+import { compare, packet, reactions, type EventName, type Packet, type Stamp } from '../../src/features/movie/model';
+import { PlaybackSmoother } from './playback-smoothing.js';
 
 export interface Playback {
   currentTime: number; playbackRate: number; readonly playing: boolean; readonly duration: number; readonly busy?: boolean;
@@ -40,6 +41,7 @@ export class WatchSync {
   private unexpectedPauseAt: number | null = null;
   private seekTarget: number | null = null;
   private now: () => number;
+  private smoother = new PlaybackSmoother();
   constructor(private o: Options) { this.authority = o.host; this.now = o.now ?? Date.now; }
   private update(notice?: string) {
     this.state = { ...this.state, bothReady: this.ready && this.peerReady && this.state.partnerHere && this.state.connected && this.foreground,
@@ -52,8 +54,10 @@ export class WatchSync {
       pos: this.seekTarget ?? this.o.player.currentTime, playing: this.desired, ready: this.ready && this.foreground,
       stamp: this.stamp, resume: this.resume, ...extra });
   }
-  private pauseNative() { this.unexpectedPauseAt = null; this.ignoreUntil = this.now() + 1500; this.o.player.pause(); this.o.player.playbackRate = 1; }
+  private pauseNative() { this.unexpectedPauseAt = null; this.ignoreUntil = this.now() + 1500; this.smoother.reset(this.now()); this.o.player.pause(); this.o.player.playbackRate = 1; }
   private seekNative(pos: number, userAction = true) {
+    this.smoother.reset(this.now());
+    this.o.player.playbackRate = 1;
     if (userAction) { this.ignoreUntil = this.now() + 1500; this.lastMovement = this.now(); }
     // Native seeks are asynchronous; callbacks can still report the old frame.
     this.seekTarget = Math.max(0, Math.min(pos, this.o.player.duration || pos));
@@ -96,6 +100,7 @@ export class WatchSync {
   control(event: 'play' | 'pause' | 'seek', position = this.o.player.currentTime) {
     if (this.state.ended) return;
     if (event !== 'pause' && !this.state.bothReady) { this.update('Both partners must be connected and ready first.'); return; }
+    this.smoother.reset(this.now());
     this.nextStamp(); this.resume = false;
     if (event === 'play') this.desired = true;
     if (event === 'pause') { this.desired = false; this.stalledAt = null; }
@@ -168,8 +173,8 @@ export class WatchSync {
         this.state.drift = target - this.o.player.currentTime;
         if (event === 'seek' || (event === 'play' && Math.abs(this.state.drift) > 0.6) ||
           (!p.playing && (order > 0 || !wasHere) && Math.abs(this.state.drift) > 0.02)) this.seekNative(target);
-        else if (this.desired) {
-          const correction = driftCorrection(this.state.drift);
+        else if (this.desired && !this.o.player.busy) {
+          const correction = this.smoother.correction(this.state.drift, this.now());
           if (correction.seek) this.seekNative(target, false);
           this.o.player.playbackRate = correction.seek ? 1 : correction.rate;
         }
@@ -183,7 +188,7 @@ export class WatchSync {
   }
   tick() {
     if (this.state.ended) return;
-    const now = this.now(); if (this.o.player.busy) this.lastMovement = now;
+    const now = this.now(); if (this.o.player.busy) { this.lastMovement = now; this.smoother.reset(now); this.o.player.playbackRate = 1; }
     // Cached seeks can complete without any loading/ready status transition.
     if (this.seekTarget !== null && Math.abs(this.o.player.currentTime - this.seekTarget) <= 0.6) this.seekTarget = null;
     if (this.unexpectedPauseAt !== null && now - this.unexpectedPauseAt >= 250) {
@@ -200,13 +205,13 @@ export class WatchSync {
     if (this.reference && this.authority !== this.o.user && this.desired && this.ready && this.peerReady && !this.o.player.busy) {
       const target = this.reference.pos + (now - this.reference.at) / 1000;
       this.state.drift = target - this.o.player.currentTime;
-      const correction = driftCorrection(this.state.drift);
+      const correction = this.smoother.correction(this.state.drift, now);
       if (correction.seek) this.seekNative(target, false);
       this.o.player.playbackRate = correction.seek ? 1 : correction.rate;
     }
     const pos = this.o.player.currentTime;
     if (Math.abs(pos - this.previousPos) > 0.02 || !this.desired) { this.lastMovement = now; this.previousPos = pos; }
-    else if (!this.o.player.busy && now - this.lastMovement > 3000 && now > this.ignoreUntil) {
+    else if (!this.o.player.busy && now - this.lastMovement > 10000 && now > this.ignoreUntil) {
       // No native loading transition occurred. Do not invent unready state and
       // wait forever for a ready event that the decoder will never send.
       this.control('pause');
