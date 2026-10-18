@@ -1,11 +1,12 @@
 import { WatchSync, type SyncState } from './watch-sync.js';
 import { matches, type EventName } from '../../src/features/movie/model';
 import { db, messageError, type Identity, type WatchSessionRow } from './backend.js';
-import { card, el, notice, PressableScale, Screen, show, time } from './ui.js';
+import { el, notice, PressableScale, Screen, show, time } from './ui.js';
 import { MovieEngine, movieDuration } from './media-engine.js';
 import { mediaSettings } from './media-settings.js';
 import { fullscreenPlayer } from './fullscreen-player.js';
 import { chatScreen } from './chat.js';
+import { mountWatchLobbyView, type WatchLobbyProps } from './watch-lobby-view.js';
 
 export async function pickVideo(): Promise<{ file: File; durationMs: number } | null> {
   const input = el('input'); input.type = 'file'; input.accept = 'video/*,.mkv,.avi,.mov,.m4v,.webm,.ts';
@@ -18,44 +19,57 @@ export async function pickVideo(): Promise<{ file: File; durationMs: number } | 
 }
 
 export function watchLobby(context: Identity, open: (room: WatchSessionRow, file: File) => void) {
-  const screen = Screen('Movie night, together.', 'SAME MOVIE. SAME MOMENT.');
-  const hero = card('A shared screen, miles apart.', 'Choose the same movie on both devices. Your file stays on your device; only playback controls travel between you.'); hero.classList.add('hero');
-  const status = notice(); const list = el('div', 'stack'); let disposed = false; let refreshing = false;
-  const create = PressableScale('＋ Pick a movie & invite', async () => {
-    create.disabled = true; show(status, '');
+  const screen = Screen('Movie night,\ntogether.', 'SAME MOVIE. SAME MOMENT.'); screen.classList.add('watch-lobby-screen');
+  const mount = el('div', 'watch-lobby-root'); screen.append(mount);
+  let sessions: WatchSessionRow[] | null = null; let error: string | null = null; let picking = false; let disposed = false; let refreshing = false;
+  const joining = new Set<string>(); const seenInvitations = new Set<string>(); const pendingEntrance = new Set<string>();
+  const view = mountWatchLobbyView(mount);
+  function render() {
+    if (disposed) return;
+    const props: WatchLobbyProps = { userId: context.profile.id, sessions, error, picking, joining, onPick: () => { void create(); }, onJoin: room => { void join(room); }, onRefresh: () => { void refresh(); } };
+    view.render(props);
+    const entering = new Set(pendingEntrance); pendingEntrance.clear();
+    if (entering.size) requestAnimationFrame(() => {
+      if (disposed) return;
+      for (const item of mount.querySelectorAll<HTMLElement>('[data-session-id]')) {
+        if (entering.has(item.dataset.sessionId ?? '') && item.getBoundingClientRect().top < window.innerHeight) item.classList.add('watch-invitation-enter');
+      }
+    });
+  }
+  async function create() {
+    if (picking || disposed) return;
+    picking = true; error = null; render();
     try {
       const picked = await pickVideo(); if (!picked || disposed) return;
       const result = await db.from('watch_sessions').insert({ couple_id: context.profile.couple_id, host_id: context.profile.id, title: picked.file.name, file_size: picked.file.size, duration_ms: picked.durationMs }).select('*').single();
       if (result.error) throw result.error; if (!disposed) open(result.data, picked.file);
-    } catch (error) { show(status, messageError(error)); } finally { create.disabled = false; }
-  }, 'primary');
+    } catch (failure) { if (!disposed) error = messageError(failure); }
+    finally { picking = false; render(); }
+  }
+  async function join(room: WatchSessionRow) {
+    if (joining.has(room.id) || disposed) return;
+    joining.add(room.id); error = null; render();
+    try {
+      const picked = await pickVideo(); if (!picked || disposed) return;
+      if (!matches({ uri: '', name: picked.file.name, size: picked.file.size, durationMs: picked.durationMs }, room)) throw new Error('This copy does not match. Choose the same file size and duration as your partner.');
+      open(room, picked.file);
+    } catch (failure) { if (!disposed) error = messageError(failure); }
+    finally { joining.delete(room.id); render(); }
+  }
   async function refresh() {
     if (disposed || refreshing || document.hidden) return; refreshing = true;
     try {
       const result = await db.from('watch_sessions').select('*').eq('couple_id', context.profile.couple_id).neq('status', 'ended').order('created_at', { ascending: false }).limit(30);
       if (result.error) throw result.error; if (disposed) return;
-      list.replaceChildren();
-      if (!result.data.length) list.append(card('Your next movie night starts here', 'No open invitations yet. Pick a movie you both have to start a session.'));
-      for (const room of result.data) {
-        const item = card(room.title || 'Untitled movie', `${room.host_id === context.profile.id ? 'Your invitation' : 'Your partner invited you'} · ${time((room.duration_ms || 0) / 1000)} · ${Math.round((room.file_size || 0) / 1048576)} MB`);
-        const join = PressableScale('Join with my local copy →', async () => {
-          join.disabled = true; show(status, '');
-          try {
-            const picked = await pickVideo(); if (!picked || disposed) return;
-            if (!matches({ uri: '', name: picked.file.name, size: picked.file.size, durationMs: picked.durationMs }, room)) throw new Error('This copy does not match. Choose the same file size and duration as your partner.');
-            open(room, picked.file);
-          } catch (error) { show(status, messageError(error)); } finally { join.disabled = false; }
-        });
-        item.append(join); list.append(item);
-      }
-      show(status, '');
-    } catch (error) { if (!disposed) show(status, messageError(error)); } finally { refreshing = false; }
+      sessions = result.data; error = null;
+      for (const room of sessions) { if (!seenInvitations.has(room.id)) { seenInvitations.add(room.id); pendingEntrance.add(room.id); } }
+    } catch (failure) { if (!disposed) error = messageError(failure); }
+    finally { refreshing = false; render(); }
   }
-  list.append(el('p', 'muted', 'Loading invitations…'));
-  screen.append(hero, create, status, el('h2', '', 'Your invitations'), list, PressableScale('Refresh invitations', refresh), el('p', 'muted fine', 'Choose the same unprotected movie file on both devices. Embedded audio languages and subtitles can be chosen independently. Streaming-service DRM downloads cannot be played here.'));
+  render();
   const channel = db.channel(`web-watch-list:${context.profile.couple_id}`).on('postgres_changes', { event: '*', schema: 'public', table: 'watch_sessions', filter: `couple_id=eq.${context.profile.couple_id}` }, () => { void refresh(); }).subscribe();
   const timer = setInterval(() => { void refresh(); }, 10000); void refresh();
-  return { screen, cleanup: () => { disposed = true; clearInterval(timer); void db.removeChannel(channel); } };
+  return { screen, cleanup: () => { disposed = true; clearInterval(timer); view.unmount(); void db.removeChannel(channel); } };
 }
 
 export function watchRoom(context: Identity, room: WatchSessionRow, file: File, back: () => void, restart = back) {

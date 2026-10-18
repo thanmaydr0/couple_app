@@ -5,6 +5,7 @@ import { createRequire } from 'node:module';
 import { mediaAssets } from './media-assets.mjs';
 const require = createRequire(import.meta.url);
 const ts = require('typescript');
+const esbuild = require('esbuild');
 export const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const repo = resolve(root, '..');
 const output = resolve(root, 'dist');
@@ -33,6 +34,11 @@ export async function build() {
       .replaceAll("'../../src/features/e2ee/crypto'", "'../shared/crypto.js'");
     await emit(`src/${name.replace(/\.ts$/, '.js')}`, source);
   }
+  await esbuild.build({
+    entryPoints: [resolve(root, 'src/watch-lobby-view.tsx')],
+    outfile: resolve(output, 'src/watch-lobby-view.js'),
+    bundle: true, format: 'esm', platform: 'browser', target: 'es2022', jsx: 'automatic', minify: true, legalComments: 'none',
+  });
   for (const name of ['model', 'sync']) await emit(`shared/${name}.js`, compile(await readFile(resolve(repo, `src/features/movie/${name}.ts`), 'utf8')).replaceAll("'./model'", "'./model.js'"));
   let crypto = compile(await readFile(resolve(repo, 'src/features/e2ee/crypto.ts'), 'utf8'));
   crypto = crypto.replace(/import nacl from 'tweetnacl';/, 'const nacl = globalThis.nacl;')
