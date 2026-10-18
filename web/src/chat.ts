@@ -1,15 +1,21 @@
 import { b64, bytes, decrypt, encrypt, open, passphraseKey, keyPair, text, backupParams, safetyNumber } from '../../src/features/e2ee/crypto';
 import { db, messageError, type Identity, type Message } from './backend.js';
-import { card, el, field, notice, PressableScale, Screen, show } from './ui.js';
+import { card, el, field, Header, notice, PressableScale, Screen, show } from './ui.js';
 
-export function chatScreen(context: Identity) {
-  const screen = Screen(context.partner.display_name || 'Your partner', 'YOUR CONVERSATION');
+export function chatScreen(context: Identity, options: { embedded?: boolean } = {}) {
+  const screen = options.embedded ? el('section', 'movie-chat-panel') : Screen(context.partner.display_name || 'Your partner', 'YOUR CONVERSATION');
+  if (options.embedded) {
+    screen.setAttribute('aria-label', 'Live movie chat');
+    screen.append(Header('Live chat', context.partner.display_name || 'Your partner'));
+  }
   const status = notice(); const security = card('Private, just for you two.', 'Loading your chat privacy settings…');
   const list = el('div', 'messages'); list.setAttribute('aria-label', 'Messages');
   const scroll = el('div', 'conversation'); const older = PressableScale('Load earlier messages', async () => { await load(true); }); scroll.append(older, list);
   const composer = el('form', 'composer'); const draft = el('textarea'); draft.rows = 2; draft.maxLength = 4000; draft.placeholder = 'A little hello…'; draft.setAttribute('aria-label', 'Message to your partner');
   const send = PressableScale('Send ↑', async () => { await sendDraft(); }, 'primary');
   const pending = el('div', 'stack'); composer.append(draft, send);
+  const privacyDetails = options.embedded ? el('details', 'chat-privacy') : null;
+  if (privacyDetails) privacyDetails.append(el('summary', 'pressable', 'Chat privacy'), security);
   let disposed = false; let loading = false; let sending = false; let hasEarlier = true; let ready = false; let required = false;
   let secret: Uint8Array | null = null; let ownKey = ''; let peerKey = ''; let trustedPeer = ''; let rows: Message[] = [];
   let lastPush = 0; let recoverPass: HTMLInputElement | null = null;
@@ -19,6 +25,7 @@ export function chatScreen(context: Identity) {
   function state() { send.disabled = !usable(); draft.disabled = !ready || (required && !secret); }
   function lock() { secret?.fill(0); secret = null; trustedPeer = ''; mediaUrls.clear(); recovery(); render(); state(); }
   function recovery() {
+    if (privacyDetails) privacyDetails.open = required && (!secret || trustedPeer !== peerKey);
     security.replaceChildren(el('h2', '', required ? secret ? 'Encrypted chat is unlocked' : 'Unlock your encrypted chat' : 'Your private conversation'));
     security.append(el('p', 'muted', required ? 'Your recovery key stays in this tab’s memory and is cleared when you leave this page.' : 'Your couple’s current chat privacy setting is shared with Android.'));
     if (!required && !rows.some(row => row.enc)) return;
@@ -100,6 +107,10 @@ export function chatScreen(context: Identity) {
   }
   async function markRead() {
     if (disposed || document.hidden || !document.hasFocus()) return;
+    if (options.embedded) {
+      const bounds = scroll.getBoundingClientRect();
+      if (document.fullscreenElement || bounds.bottom <= 0 || bounds.top >= window.innerHeight) return;
+    }
     const ids = rows.filter(row => row.sender_id !== context.profile.id && row.kind === 'text' && !row.read_at && !row.view_once && !row.deleted_at && (!row.enc || (!!secret && !body(row).startsWith('🔒'))) && !(row.expires_at && Date.parse(row.expires_at) <= Date.now())).map(row => row.id);
     if (!ids.length) return;
     const result = await db.from('messages').update({ read_at: new Date().toISOString() }).eq('couple_id', context.profile.couple_id).eq('sender_id', context.partner.id).in('id', ids).is('read_at', null);
@@ -150,6 +161,7 @@ export function chatScreen(context: Identity) {
   const refresh = async () => { try { await privacy(); await load(); if (!disposed) show(status, ''); } catch (failure) { if (!disposed) show(status, messageError(failure)); } };
   const visibility = () => { state(); if (!document.hidden) void refresh(); };
   document.addEventListener('visibilitychange', visibility); window.addEventListener('online', visibility); window.addEventListener('offline', state); window.addEventListener('focus', markRead);
+  if (options.embedded) document.addEventListener('fullscreenchange', markRead);
   const channel = db.channel(`web-chat:${context.profile.couple_id}`)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'messages', filter: `couple_id=eq.${context.profile.couple_id}` }, payload => {
       if (payload.eventType === 'DELETE') { rows = rows.filter(row => row.id !== payload.old.id); render(); }
@@ -157,7 +169,7 @@ export function chatScreen(context: Identity) {
     }).subscribe(value => { if (!disposed) { if (value === 'SUBSCRIBED') void refresh(); else if (value === 'CHANNEL_ERROR' || value === 'TIMED_OUT') show(status, 'Chat is reconnecting. Your draft is kept; refresh to retry.'); } });
   const timer = setInterval(() => { if (!document.hidden) { render(); void refresh(); } }, 30000);
   list.append(el('p', 'muted', 'Loading your conversation…')); state();
-  screen.classList.add('chat-screen'); screen.append(security, status, PressableScale('Refresh conversation', refresh), scroll, pending, composer);
+  screen.classList.add('chat-screen'); screen.append(privacyDetails || security, status, PressableScale('Refresh conversation', refresh), scroll, pending, composer);
   void refresh();
-  return { screen, cleanup() { disposed = true; secret?.fill(0); secret = null; recoverPass && (recoverPass.value = ''); draft.value = ''; rows = []; failed.clear(); mediaUrls.clear(); clearInterval(timer); document.removeEventListener('visibilitychange', visibility); window.removeEventListener('online', visibility); window.removeEventListener('offline', state); window.removeEventListener('focus', markRead); void db.removeChannel(channel); } };
+  return { screen, cleanup() { disposed = true; secret?.fill(0); secret = null; recoverPass && (recoverPass.value = ''); draft.value = ''; rows = []; failed.clear(); mediaUrls.clear(); clearInterval(timer); document.removeEventListener('visibilitychange', visibility); document.removeEventListener('fullscreenchange', markRead); window.removeEventListener('online', visibility); window.removeEventListener('offline', state); window.removeEventListener('focus', markRead); void db.removeChannel(channel); } };
 }

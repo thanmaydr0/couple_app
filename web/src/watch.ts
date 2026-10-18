@@ -5,6 +5,7 @@ import { card, el, notice, PressableScale, Screen, show, time } from './ui.js';
 import { MovieEngine, movieDuration } from './media-engine.js';
 import { mediaSettings } from './media-settings.js';
 import { fullscreenPlayer } from './fullscreen-player.js';
+import { chatScreen } from './chat.js';
 
 export async function pickVideo(): Promise<{ file: File; durationMs: number } | null> {
   const input = el('input'); input.type = 'file'; input.accept = 'video/*,.mkv,.avi,.mov,.m4v,.webm,.ts';
@@ -59,6 +60,7 @@ export function watchLobby(context: Identity, open: (room: WatchSessionRow, file
 
 export function watchRoom(context: Identity, room: WatchSessionRow, file: File, back: () => void, restart = back) {
   const screen = Screen(room.title || 'Our movie night', 'WATCH TOGETHER');
+  screen.classList.add('watch-screen');
   const surface = el('div', 'movie'); const video = new MovieEngine(surface);
   let disposed = false; let channel: ReturnType<typeof db.channel> | null = null;
   let generation = 0; let subscribed = false; let checking = false; let lastSaved = 0; let lastCheck = 0; let enabled = false;
@@ -162,8 +164,13 @@ export function watchRoom(context: Identity, room: WatchSessionRow, file: File, 
     catch (failure) { show(error, messageError(failure)); } finally { end.disabled = false; }
   });
   const connection=el('details','connection-details');connection.append(el('summary','pressable','Connection details'),telemetry);
-  screen.append(PressableScale('← Back to movie nights', back), playerCard, status, connection, reactions, reaction, PressableScale('Reconnect / retry playback', restart), end);
+  const chat = chatScreen(context, { embedded: true });
+  const layout = el('div', 'watch-layout');
+  const playerColumn = el('div', 'watch-player-column');
+  playerColumn.append(playerCard, status, connection, reactions, reaction, PressableScale('Reconnect / retry playback', restart), end);
+  layout.append(playerColumn, chat.screen);
+  screen.append(PressableScale('← Back to movie nights', back), layout);
   const loaded=video.load(file).then(()=>{if(!disposed)enable.disabled=false;}).catch(failure=>{if(!disposed)show(error,messageError(failure));throw failure;}); void loaded.catch(()=>undefined);
   void connect().catch(failure => show(error, messageError(failure)));
-  return { screen, cleanup() { save(); sync.leave(); disposed = true; generation++; clearInterval(timer); presentation.cleanup(); tracks.cleanup(); document.removeEventListener('visibilitychange', visibility); if (channel) void db.removeChannel(channel); video.pause(); void video.destroy().catch(()=>undefined); } };
+  return { screen, cleanup() { save(); sync.leave(); disposed = true; generation++; clearInterval(timer); presentation.cleanup(); tracks.cleanup(); chat.cleanup(); document.removeEventListener('visibilitychange', visibility); if (channel) void db.removeChannel(channel); video.pause(); void video.destroy().catch(()=>undefined); } };
 }
