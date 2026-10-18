@@ -6,7 +6,11 @@ export function chatScreen(context: Identity, options: { embedded?: boolean } = 
   const screen = options.embedded ? el('section', 'movie-chat-panel') : Screen(context.partner.display_name || 'Your partner', 'YOUR CONVERSATION');
   if (options.embedded) {
     screen.setAttribute('aria-label', 'Live movie chat');
-    screen.append(Header('Live chat', context.partner.display_name || 'Your partner'));
+    const header = Header('Live chat', context.partner.display_name || 'Your partner');
+    header.classList.add('movie-chat-header');
+    const initials = (context.partner.display_name || 'Your partner').trim().split(/\s+/).slice(0, 2).map(part => part.charAt(0)).join('').toUpperCase() || '♡';
+    header.prepend(el('span', 'movie-chat-avatar', initials));
+    screen.append(header);
   }
   const status = notice(); const security = card('Private, just for you two.', 'Loading your chat privacy settings…');
   const list = el('div', 'messages'); list.setAttribute('aria-label', 'Messages');
@@ -169,7 +173,13 @@ export function chatScreen(context: Identity, options: { embedded?: boolean } = 
     }).subscribe(value => { if (!disposed) { if (value === 'SUBSCRIBED') void refresh(); else if (value === 'CHANNEL_ERROR' || value === 'TIMED_OUT') show(status, 'Chat is reconnecting. Your draft is kept; refresh to retry.'); } });
   const timer = setInterval(() => { if (!document.hidden) { render(); void refresh(); } }, 30000);
   list.append(el('p', 'muted', 'Loading your conversation…')); state();
-  screen.classList.add('chat-screen'); screen.append(privacyDetails || security, status, PressableScale('Refresh conversation', refresh), scroll, pending, composer);
+  screen.classList.add('chat-screen');
+  if (options.embedded) {
+    const actions = el('div', 'movie-chat-actions');
+    if (privacyDetails) actions.append(privacyDetails);
+    actions.append(PressableScale('Refresh', refresh));
+    screen.append(actions, status, scroll, pending, composer);
+  } else screen.append(security, status, PressableScale('Refresh conversation', refresh), scroll, pending, composer);
   void refresh();
   return { screen, cleanup() { disposed = true; secret?.fill(0); secret = null; recoverPass && (recoverPass.value = ''); draft.value = ''; rows = []; failed.clear(); mediaUrls.clear(); clearInterval(timer); document.removeEventListener('visibilitychange', visibility); document.removeEventListener('fullscreenchange', markRead); window.removeEventListener('online', visibility); window.removeEventListener('offline', state); window.removeEventListener('focus', markRead); void db.removeChannel(channel); } };
 }
