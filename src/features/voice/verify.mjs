@@ -7,8 +7,13 @@ function load(relative, mocks = {}) {
   const exports = {}; new Function('exports', 'require', compiled)(exports, id => { if (!(id in mocks)) throw new Error(`Unexpected import ${id}`); return mocks[id]; }); return exports;
 }
 const types = load('./types.ts');
-const body = load('../chat/body.ts');
-const model = load('../chat/model.ts', { '../voice/types': types });
+const body = load('../chat/body.ts', {
+  '@/features/e2ee/runtime': { encryptionRequired: async () => false },
+  '@/features/e2ee/files': { rememberFile() {} },
+  '@/features/e2ee/crypto': { isEnvelope: () => false },
+  '@/features/voice/types': types,
+});
+const model = load('../chat/model.ts', { '../voice/types': types, './body': body });
 const meta = { duration_ms: 1000, peaks: Array(64).fill(0.5) };
 const row = { id:'v1', client_id:'v1', couple_id:'couple', sender_id:'sender', kind:'voice', body:null, media_path:'couple/chat/voice/v1.m4a', reply_to:null, read_at:null, created_at:'2026-10-13T01:00:00Z', status:'sent', meta };
 test('waveforms keep 64 bounded bins including silent and short recordings', () => {
@@ -44,6 +49,7 @@ test('one player, rates, sequential voice-only queue, focus loss and stale loads
   const app={currentState:'active',addEventListener:(_,cb)=>{appState=cb;return{remove(){}};}};
   let resolveUrl;
   const engine=load('./playback.ts', {
+    '@/features/e2ee/files': { decryptedFile: async () => { throw new Error('Encrypted files are covered by the E2EE suite'); } },
     'expo-audio':{setAudioModeAsync:async()=>{},createAudioPlayer:()=>{const p={position:0,rate:1,paused:false,removed:false,play(){this.paused=false;},pause(){this.paused=true;},remove(){this.removed=true;},seekTo:async n=>{p.position=n;},setPlaybackRate:n=>{p.rate=n;},addListener:(_,cb)=>{p.emit=cb;return{remove(){}};}};players.push(p);return p;}},
     'react-native':{AppState:app},
     '@/features/calls/engine':{useCalls:{getState:()=>({phase:callPhase}),subscribe:cb=>{callState=cb;return()=>{};}}},

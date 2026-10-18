@@ -31,7 +31,7 @@ function AppShell() {
   const { data: session } = useSession();
   const { colors } = useTheme();
   const transitions = useStackTransition();
-  return <PresenceProvider><CallProvider><PushProvider><AuthGate><PulseProvider><LocationProvider><AppLockGate><CryptoProvider><WidgetSync>
+  return <PresenceProvider><CallProvider><PushProvider><AuthGate><PulseProvider><LocationProvider><CryptoProvider><WidgetSync>
       <Stack screenOptions={{ ...transitions, headerStyle: { backgroundColor: colors.bg }, headerTintColor: colors.textPrimary, contentStyle: { backgroundColor: colors.bg } }}>
         <Stack.Protected guard={__DEV__}>
           <Stack.Screen name="ui-lab" options={{ headerShown: false }} />
@@ -50,7 +50,7 @@ function AppShell() {
           <Stack.Screen name="(auth)/login" options={{ headerShown: false }} />
         </Stack.Protected>
       </Stack>
-    </WidgetSync></CryptoProvider></AppLockGate></LocationProvider></PulseProvider></AuthGate></PushProvider></CallProvider></PresenceProvider>;
+    </WidgetSync></CryptoProvider></LocationProvider></PulseProvider></AuthGate></PushProvider></CallProvider></PresenceProvider>;
 }
 export default function RootLayout() {
   const [loaded, fontError] = useFonts(fonts);
@@ -61,7 +61,7 @@ export default function RootLayout() {
   if (!hydrated || (!loaded && !retried && !fontError)) return null;
   return <GestureHandlerRootView style={{ flex: 1 }}>
     <SafeAreaProvider><ThemeProvider><KeyboardProvider preload={false}><ToastProvider>
-      {fontError && !retried ? <Screen centered><ErrorState title="Fonts couldn’t load" description={retryError ? 'Please try loading the fonts again.' : 'Your space is ready. Try loading its fonts again.'} onRetry={() => { void loadAsync(fonts).then(() => setRetried(true)).catch(() => setRetryError(true)); }} /></Screen> : <QueryProvider><SessionProvider><AppShell /><DevLabEntry /></SessionProvider></QueryProvider>}
+      {fontError && !retried ? <Screen centered><ErrorState title="Fonts couldn’t load" description={retryError ? 'Please try loading the fonts again.' : 'Your space is ready. Try loading its fonts again.'} onRetry={() => { void loadAsync(fonts).then(() => setRetried(true)).catch(() => setRetryError(true)); }} /></Screen> : <QueryProvider><SessionProvider><AppLockGate><AppShell /><DevLabEntry /></AppLockGate></SessionProvider></QueryProvider>}
     </ToastProvider></KeyboardProvider></ThemeProvider></SafeAreaProvider>
   </GestureHandlerRootView>;
 }

@@ -1,7 +1,7 @@
 {
   "name": "us-app",
   "main": "index.js",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "dependencies": {
     "@config-plugins/react-native-webrtc": "^15.0.2",
     "@expo-google-fonts/fraunces": "^0.4.1",

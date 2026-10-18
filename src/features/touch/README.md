@@ -1,5 +1,7 @@
 # Touch Together
 
+Release update (18 October 2026): the former missing-policy blocker below is resolved. `touch_private_room` was deployed and verified with live paired clients and denial of an unrelated couple topic. Background release and reconnect cache recovery are fixed. See `../menu/RELEASE.md` for current release verification; the original implementation report below is retained as history.
+
 Implemented within `src/features/touch/**`; the existing `/us/touch` route already exports this screen. No dependencies, native folders, shared files, migrations, or Edge Functions were changed.
 
 ## Experience

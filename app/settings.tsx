@@ -15,6 +15,7 @@ import { FormField } from '@/ui/FormField';
 import { testNotification, unregisterPush } from '@/features/notifications/service';
 import { SettingsSections } from '@/features/shared/FeatureSlots';
 import { ProfileDetails } from '@/features/settings/ProfileDetails';
+import { stopSharing } from '@/features/location/runtime';
 
 export default function SettingsScreen() {
   const { spacing, geometry } = useTheme();
@@ -53,6 +54,7 @@ export default function SettingsScreen() {
     return 'Avatar updated.';
   } });
   const logout = useMutation({ mutationFn: async () => {
+    await stopSharing();
     if (profile.data) await unregisterPush(profile.data.id);
     const { error: signOutError } = await supabase.auth.signOut({ scope: 'local' });
     if (signOutError) throw signOutError;
@@ -90,7 +92,7 @@ export default function SettingsScreen() {
     </StaggerList>
     <ProfileDetails />
     <Card><ListItem title="Privacy · Encryption" subtitle="Recovery keys, safety numbers and encrypted chat" onPress={() => router.push('/us/e2ee')} /></Card>
-    <Card><ListItem title="Features" subtitle="Choose what appears on this phone" onPress={() => router.push('/settings/features')} /></Card>
+    <Card><ListItem title="All features" subtitle="Browse everything, organized by category" onPress={() => router.push('/us')} /><ListItem title="Home shortcuts" subtitle="Choose what appears on your home screen" onPress={() => router.push('/settings/features')} /></Card>
     <SettingsSections />
     {!!message && <Text accessibilityLiveRegion="polite" color="success">{message}</Text>}
     {!!error && <Text accessibilityRole="alert" color="danger">{error}</Text>}

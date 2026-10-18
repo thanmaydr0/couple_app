@@ -8,6 +8,7 @@ import { authenticate, authenticationInProgress } from './authenticate';
 import { setCaptureProtection } from './capture';
 import { useLockStore } from './store';
 import { requiresUnlock } from './types';
+import { AppLockVisibility } from './visibility';
 
 export function AppLockGate({ children }: PropsWithChildren) {
   const { ready, delay, error, hydrate } = useLockStore();
@@ -83,11 +84,11 @@ export function AppLockGate({ children }: PropsWithChildren) {
     </Animated.View>
   </Screen>;
   // Children are first mounted only after local policy and cold-start authentication resolve.
-  return <View style={{ flex: 1, backgroundColor: colors.bg }}>
+  return <AppLockVisibility.Provider value={covered}><View style={{ flex: 1, backgroundColor: colors.bg }}>
     {mountedContent.current && <View pointerEvents={covered ? 'none' : 'auto'} importantForAccessibility={covered ? 'no-hide-descendants' : 'auto'} style={{ flex: 1, display: covered ? 'none' : 'flex' }}>
       <FadeInView style={{ flex: 1 }}>{children}</FadeInView>
     </View>}
     {covered && lockScreen}
     <Modal visible={covered} animationType="none" statusBarTranslucent navigationBarTranslucent onRequestClose={() => {}}>{lockScreen}</Modal>
-  </View>;
+  </View></AppLockVisibility.Provider>;
 }

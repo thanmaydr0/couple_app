@@ -13,10 +13,11 @@ function harness({ valid = true, token = true, rejected = false } = {}) {
       neq(key, value) { filters[`not:${key}`] = value; return query; }, limit() { return query; },
       async maybeSingle() {
         queries.push({ table, filters });
-        if (table === 'profiles') return { data: { couple_id: 'couple' } };
+        if (table === 'profiles') return { data: { couple_id: 'couple', display_name: 'Partner', privacy: { hide_message_previews: false } } };
+        if (table === 'calls') return { data: { id: 'call-id', kind: 'audio', status: 'ringing', started_at: new Date().toISOString() } };
         return { data: token ? { token: 'ExpoPushToken[private-token]' } : null };
       },
-      then(resolve, reject) { queries.push({ table, filters }); return Promise.resolve({ data: [{ id: 'partner' }] }).then(resolve, reject); },
+      then(resolve, reject) { queries.push({ table, filters }); return Promise.resolve({ data: [{ id: 'partner', privacy: { hide_message_previews: false } }] }).then(resolve, reject); },
     };
     return query;
   } };
@@ -39,7 +40,7 @@ function harness({ valid = true, token = true, rejected = false } = {}) {
     method: 'POST', headers: auth ? { Authorization: 'Bearer caller-access-token' } : {},
     body: JSON.stringify(payload),
   }));
-  return { queries, pushes, request, run: (type = 'call', data = {}, auth = true) => request({ type, title: 'Notification', body: 'Hello', data }, auth) };
+  return { queries, pushes, request, run: (type = 'call', data = {}, auth = true) => request({ type, title: 'Notification', body: 'Hello', data: { ...(type === 'call' ? { callId: 'call-id' } : {}), ...data } }, auth) };
 }
 
 test('authentication gates privileged queries and pushes', async () => {
@@ -56,6 +57,7 @@ test('server fixes message/call routing, scopes partner and expires calls at 40 
     assert.equal(push.data.type, type); assert.equal(push.data.recipientId, 'partner');
     assert.equal(push.data.coupleId, 'couple'); assert.equal(push.channelId, type === 'call' ? 'calls' : 'messages');
     assert.equal(push.ttl, type === 'call' ? 40 : 86400);
+    if (type === 'call') assert.equal(push.data.callId, 'call-id');
     assert.equal(h.queries.find((q) => q.table === 'push_tokens').filters.user_id, 'partner');
     assert.equal(h.queries.find((q) => q.filters['not:id']).filters.couple_id, 'couple');
   }
@@ -89,7 +91,7 @@ test('feature channels support route, priority and data-only pushes with authori
 test('invalid routes, channels and optional field types never send a push', async () => {
   const h = harness();
   const payload = { channel: 'plans', title: 'Plan', body: 'Hello', data: { route: '/us/plans' } };
-  for (const change of [{ channel: 'arbitrary' }, { priority: 'urgent' }, { dataOnly: 'true' }, { data: { route: 'https://attacker.test' } }, { data: { route: '//attacker.test' } }, { data: { route: '/call' } }]) {
+  for (const change of [{ channel: 'arbitrary' }, { priority: 'urgent' }, { dataOnly: 'true' }, { data: { route: 'https://attacker.test' } }, { data: { route: '//attacker.test' } }, { data: { route: '/unknown-feature' } }]) {
     assert.equal((await h.request({ ...payload, ...change })).status, 400);
   }
   assert.equal(h.pushes.length, 0);

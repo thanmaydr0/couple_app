@@ -40,8 +40,9 @@ export default function HomeScreen() {
   const days = anniversary && !Number.isNaN(anniversary.getTime()) ? Math.max(0, differenceInCalendarDays(new Date(now), anniversary)) : null;
   return <Screen gradient><Animated.ScrollView onScroll={onScroll} contentContainerStyle={{ gap: spacing.lg, paddingBottom: spacing.xl }} showsVerticalScrollIndicator={false}
     refreshControl={<RefreshControl refreshing={partner.isRefetching || couple.isRefetching} onRefresh={() => { void partner.refetch(); void couple.refetch(); }} tintColor={colors.primary} colors={[colors.primary]} progressBackgroundColor={colors.surface} />}>
-    <ParallaxHeader scrollY={scrollY}><Text variant="caption" color="textSecondary">JUST THE TWO OF YOU</Text><Header title="Our space" right={<IconButton name="settings-outline" accessibilityLabel="Open settings" onPress={() => router.push('/settings')} />} /></ParallaxHeader>
+    <ParallaxHeader scrollY={scrollY}><Text variant="caption" color="textSecondary">JUST THE TWO OF YOU</Text><Header title="Our space" right={<View style={{ flexDirection: 'row', gap: spacing.sm }}><IconButton name="grid-outline" accessibilityLabel="Open all features" onPress={() => router.push('/us')} /><IconButton name="settings-outline" accessibilityLabel="Open settings" onPress={() => router.push('/settings')} /></View>} /></ParallaxHeader>
     <OfflineNotice />
+    <Button title="All features · explore your space" variant="secondary" onPress={() => router.push('/us')} />
     {(partner.isRefetching || couple.isRefetching) && <Skeleton height={geometry.track} />}
     <Card style={{ gap: spacing.s20 }}><View style={{ flexDirection: 'row', gap: spacing.md, alignItems: 'center' }}>
       {online && !offline ? <PulseRing size={spacing.s56}><Avatar name={name} uri={avatar.data} size={geometry.avatar} /></PulseRing> : <Avatar name={name} uri={avatar.data} size={spacing.s56} />}

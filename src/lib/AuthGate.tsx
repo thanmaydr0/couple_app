@@ -6,6 +6,7 @@ import { Screen, Text, Button, theme } from '@/ui';
 import { LoadingScreen } from '@/ui/LoadingScreen';
 import { friendlyError } from './errors';
 import { unregisterPush } from '@/features/notifications/service';
+import { stopSharing } from '@/features/location/runtime';
 
 export function AuthGate({ children }: PropsWithChildren) {
   const session = useSession();
@@ -22,6 +23,7 @@ export function AuthGate({ children }: PropsWithChildren) {
         <Text>{unpaired ? 'Ask the admin to run the seed script' : friendlyError(error)}</Text>
         <Button title="Try again" onPress={() => { void session.refetch(); void profile.refetch(); }} />
         <Button title="Sign out" onPress={() => { void (async () => {
+          await stopSharing();
           if (session.data) await unregisterPush(session.data.user.id);
           const { error: signOutError } = await supabase.auth.signOut({ scope: 'local' });
           if (signOutError) throw signOutError;

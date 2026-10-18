@@ -7,7 +7,15 @@ const require = createRequire(import.meta.url);
 function load(path) {
   const source = readFileSync(new URL(path, import.meta.url), 'utf8');
   const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
-  const exports = {}; new Function('exports','require',compiled)(exports,id => id === '../voice/types' ? load('../voice/types.ts') : require(id)); return exports;
+  const exports = {}; new Function('exports','require',compiled)(exports,id => {
+    if (id === '../voice/types' || id === '@/features/voice/types') return load('../voice/types.ts');
+    if (id === './body') return load('./body.ts');
+    // These tests exercise plaintext messages; encrypted boundaries have their own suite.
+    if (id === '@/features/e2ee/runtime') return { encryptionRequired: async () => false };
+    if (id === '@/features/e2ee/files') return { rememberFile() {} };
+    if (id === '@/features/e2ee/crypto') return { isEnvelope: () => false };
+    return require(id);
+  }); return exports;
 }
 const body=load('./body.ts'); const model=load('./model.ts'); const network=load('../../../supabase/functions/link-preview/safe-fetch.ts');
 const row=extra=>({id:'id',client_id:'id',couple_id:'couple',sender_id:'author',kind:'text',body:'hello',media_path:null,reply_to:null,read_at:null,created_at:new Date().toISOString(),status:'sent',...extra});

@@ -11,8 +11,7 @@ import { useSecureScreen } from '@/features/applock';
 import { decryptedFile } from '@/features/e2ee/files';
 import * as FS from 'expo-file-system/legacy';
 
-/** PRIVACY SESSION INTEGRATION HOOK: install Android screenshot prevention
- * here while the one-time viewer is visible. This currently blocks nothing. */
+/** Wait for Android screenshot protection before presenting private media. */
 export function useViewOnceScreenshotProtection(visible: boolean) { return useSecureScreen(visible); }
 
 export function ViewOncePhoto({ message, uid, onActions, onHeart }: { message: ChatMessage; uid: string; onActions: () => void; onHeart: () => void }) {
@@ -65,7 +64,7 @@ export function ViewOncePhoto({ message, uid, onActions, onHeart }: { message: C
       {busy && <ActivityIndicator color={colors.primary} />}
       {!!error && <Text style={{ ...typography['body/S'], color: colors.danger }}>{error}</Text>}
     </PressableScale>
-    <Modal visible={!!url} animationType={motion.level === 'off' ? 'none' : 'fade'} onRequestClose={close}>
+    <Modal visible={!!url && protection.ready} animationType={motion.level === 'off' ? 'none' : 'fade'} onRequestClose={close}>
       <Screen bottomInset><Header title="View once" subtitle="Closes after 60 seconds. Screen protection follows your privacy setting." onBack={close} />
         <View style={{ flex: 1, padding: spacing.md }}>{url && protection.ready && <Image source={{ uri: url }} contentFit="contain" cachePolicy="none" style={{ flex: 1 }} onError={() => setError('Photo unavailable')} />}
           {!!protection.error && <Text style={{ ...typography['body/S'], color: colors.danger }}>{protection.error}</Text>}

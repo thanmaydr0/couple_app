@@ -63,6 +63,11 @@ async function advance(ms) {
   await advance(100); const stationary = sent.filter(m => m.kind === 'touch').length;
   await advance(2000); assert.equal(sent.filter(m => m.kind === 'touch').length, stationary, 'Stationary hold sends no coordinates');
   a.room.up(); await advance(100); assert.equal(b.room.theirs.current.down, false, 'Release reaches peer');
+  a.room.move({ x: .5, y: .5 }); await advance(100);
+  channels[0].subscription('CHANNEL_ERROR');
+  channels[0].subscription('SUBSCRIBED'); sync();
+  a.room.move({ x: .5, y: .5 }); await advance(100);
+  assert.equal(b.room.theirs.current.down, true, 'Same-position touch is resent after channel reconnect');
   assert(a.values[6] > 0, 'Held duration accumulates');
   const beforeInvalid = b.room.theirs.current.seq;
   channels[1].handlers.broadcast({ payload: { user: 'intruder', instance: 'x', seq: 99999, at: now, kind: 'touch', down: true, point: { x: .1, y: .1 } } });
@@ -70,6 +75,7 @@ async function advance(ms) {
   a.room.tap({ x: .2, y: .3 }); await advance(100); a.room.tap({ x: .2, y: .3 });
   assert(sent.some(m => m.kind === 'heart' && m.point.x === .2 && m.point.y === .3), 'Double tap preserves normalized location');
   AppState.currentState = 'background'; appListeners.forEach(fn => fn('background'));
+  assert.equal(b.room.theirs.current.down, false, 'Background releases contact immediately before presence cleanup');
   const background = sent.length; a.room.move({ x: .8, y: .8 }); await advance(2000); assert.equal(sent.length, background, 'Background sends nothing');
   AppState.currentState = 'active';
   now += protocol.LIMITS.capMs; await advance(100); assert.equal(a.values[5], true, '30 minute cap pauses stream');

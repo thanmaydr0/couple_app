@@ -3,7 +3,7 @@ import * as Location from 'expo-location';
 import * as TaskManager from 'expo-task-manager';
 import * as Battery from 'expo-battery';
 import * as Crypto from 'expo-crypto';
-import notifee, { AndroidImportance, AndroidForegroundServiceType, AuthorizationStatus, EventType } from 'react-native-notify-kit';
+import notifee, { AndroidImportance, AndroidForegroundServiceType, AuthorizationStatus, EventType, type Event } from 'react-native-notify-kit';
 import { Platform } from 'react-native';
 import { supabase } from '@/lib/supabase';
 import { featureSupabase as db } from '@/lib/data/feature-client';
@@ -29,6 +29,18 @@ let startingSharing = false;
 let headlessEntryReady = false;
 export function markLocationHeadlessEntry() { headlessEntryReady = true; }
 export function isLocationHeadlessReady() { return headlessEntryReady; }
+export function runLocationService() { return new Promise<void>(resolve => { finishService = resolve; }); }
+export async function handleLocationEvent({ type, detail }: Event) {
+  if (type !== EventType.ACTION_PRESS || detail.pressAction?.id !== 'location-stop') return;
+  if (!lease) {
+    const raw = await AsyncStorage.getItem(LEASE_KEY);
+    if (raw) {
+      const value: unknown = JSON.parse(raw);
+      if (value && typeof value === 'object' && 'uid' in value && typeof value.uid === 'string') await AsyncStorage.setItem(STOP_KEY, JSON.stringify(value.uid));
+    }
+  }
+  await stopSharing().catch(fail);
+}
 const budget = new Map<string, number>();
 const lowBattery = new Set<number>();
 function serial<T>(action: () => Promise<T>): Promise<T> { const next = queue.then(action, action); queue = next.catch(() => {}); return next; }
@@ -302,14 +314,6 @@ if (Platform.OS === 'android') {
       await notify(`fence-${result.data.id}`, entering ? 'Arrived safely' : 'Heading out', `Your partner ${entering ? 'arrived at' : 'left'} ${result.data.name}.`, 300_000);
     } catch (problem) { fail(problem); }
   });
-  notifee.registerForegroundService(() => new Promise<void>(resolve => { finishService = resolve; }));
-  notifee.onBackgroundEvent(async ({ type, detail }) => {
-    if (type === EventType.ACTION_PRESS && detail.pressAction?.id === 'location-stop') {
-      if (!lease) {
-        const raw = await AsyncStorage.getItem(LEASE_KEY);
-        if (raw) { const value: unknown = JSON.parse(raw); if (value && typeof value === 'object' && 'uid' in value && typeof value.uid === 'string') await AsyncStorage.setItem(STOP_KEY, JSON.stringify(value.uid)); }
-      }
-      await stopSharing().catch(fail);
-    }
-  });
+  notifee.registerForegroundService(runLocationService);
+  notifee.onBackgroundEvent(handleLocationEvent);
 }

@@ -7,8 +7,10 @@ import { usePartner, useProfile, useSession } from '@/lib/hooks';
 import { CallEngine, attachEngine, detachEngine, useCalls } from './engine';
 import { ActiveCallScreen } from './CallScreen';
 import { useMotion } from '@/motion';
+import { useAppLockCovered } from '@/features/applock/visibility';
 
 export function CallProvider({ children }: PropsWithChildren) {
+  const covered = useAppLockCovered();
   const motion = useMotion();
   const { data: session } = useSession();
   const { data: profile } = useProfile();
@@ -42,7 +44,7 @@ export function CallProvider({ children }: PropsWithChildren) {
     });
     return () => { clearInterval(pending); resume.remove(); bindCallActions(undefined); received.remove(); detachEngine(engine); engine.dispose(); };
   }, [uid, coupleId, partnerId]);
-  return <>{children}<Modal visible={phase !== 'idle'} animationType={motion.level === 'off' ? 'none' : 'fade'} presentationStyle="fullScreen" statusBarTranslucent
+  return <>{children}<Modal visible={!covered && phase !== 'idle'} animationType={motion.level === 'off' ? 'none' : 'fade'} presentationStyle="fullScreen" statusBarTranslucent
     onRequestClose={() => { /* A back press must not accidentally end or hide an incoming call. */ }}>
     <ActiveCallScreen />
   </Modal></>;

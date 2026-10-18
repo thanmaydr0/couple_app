@@ -49,6 +49,7 @@ const gate = load('AppLockGate.tsx', {
   '@/theme': { useTheme: () => theme }, '@/motion': { FadeInView: 'FadeInView', PulseRing: 'PulseRing', useMotion: () => ({ duration: () => 0 }) },
   './authenticate': { authenticationInProgress: () => authBusy, authenticate: async () => { if (authFails) throw new Error('Denied'); } },
   './capture': { setCaptureProtection: async () => {} }, './store': { useLockStore: () => lockState }, './types': policy,
+  './visibility': { AppLockVisibility: { Provider: 'AppLockVisibility' } },
   '../../../assets/splash-mark.png': 'logo',
 });
 const content = { protected: true };

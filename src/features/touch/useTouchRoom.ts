@@ -49,10 +49,12 @@ export function useTouchRoom(couple: string | undefined, user: string | undefine
     const endContact = () => { if (contactAt.current) { total.current += Date.now() - contactAt.current; contactAt.current = 0; } setMerged(false); setHeld(total.current); };
     const canSend = () => alive && ready && peer && AppState.currentState === 'active';
     const transmit = (body: Body) => {
-      if (!canSend() || ((body.kind === 'touch' || body.kind === 'heart' || body.kind === 'pulse') && Date.now() - lastSeen > LIMITS.staleMs)) return;
+      // The lifecycle event fires after AppState changes. Still release our last
+      // touch before untracking, even though foreground traffic has stopped.
+      if (!(body.kind === 'up' ? alive && ready && peer : canSend()) || ((body.kind === 'touch' || body.kind === 'heart' || body.kind === 'pulse') && Date.now() - lastSeen > LIMITS.staleMs)) return;
       void room.send({ type: 'broadcast', event: 'signal', payload: { ...body, user, instance, seq: ++seq, at: Date.now() } }).then(result => {
-        if (alive && result !== 'ok') { theirs.current.down = false; endContact(); setStatus('Reconnecting…'); }
-      }).catch(() => { if (alive) setStatus('Reconnecting…'); });
+        if (alive && result !== 'ok') { mine.current.down = false; theirs.current.down = false; sentPoint.current = undefined; endContact(); setStatus('Reconnecting…'); }
+      }).catch(() => { if (alive) { mine.current.down = false; theirs.current.down = false; sentPoint.current = undefined; endContact(); setStatus('Reconnecting…'); } });
     };
     send.current = transmit;
     const schedulePulse = (when: number) => {
@@ -92,7 +94,7 @@ export function useTouchRoom(couple: string | undefined, user: string | undefine
       if (!alive) return;
       ready = state === 'SUBSCRIBED';
       if (ready) { setStatus('Waiting for them…'); void room.track({ user, instance, accent }).then(result => { if (alive && result !== 'ok') setStatus('Presence unavailable · retry room'); }); }
-      else { peer = false; setPresent(false); theirs.current.down = false; mine.current.down = false; endContact(); setStatus(state === 'CHANNEL_ERROR' ? 'Private room unavailable · check authorization or retry' : 'Reconnecting…'); }
+      else { peer = false; peerInstance = ''; incoming = -1; setPresent(false); theirs.current.down = false; mine.current.down = false; sentPoint.current = undefined; endContact(); setStatus(state === 'CHANNEL_ERROR' ? 'Private room unavailable · check authorization or retry' : 'Reconnecting…'); }
     });
     const tick = setInterval(() => {
       const now = Date.now();
