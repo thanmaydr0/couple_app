@@ -2,9 +2,10 @@ import { createContext, useContext, useEffect, useMemo, type PropsWithChildren }
 import { useColorScheme, type ViewStyle, type TextStyle } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { interpolateColor, useAnimatedStyle, useSharedValue, withTiming, type SharedValue } from 'react-native-reanimated';
-import { themes, spacing, radius, typography, geometry, elevations, type ThemeColors, type ColorToken } from './tokens';
+import { themes, spacing, radius, typography, geometry, elevations, type ThemeColors, type ColorToken, type ThemeId } from './tokens';
 import { useThemeStore } from './store';
 import { useMotion } from '../motion/useMotion';
+import { ThemeTransitionWave } from '../motion/effects';
 import { accessibleAccent } from './contrast';
 
 const initial = themes.Midnight;
@@ -14,9 +15,10 @@ export const getLegacyColors = () => legacyColors;
 type ThemeContextValue = {
   colors: ThemeColors; spacing: typeof spacing; radius: typeof radius; typography: typeof typography;
   geometry: typeof geometry; elevations: typeof elevations; dark: boolean;
+  themeId: ThemeId; resolvedTheme: ThemeId;
   previous?: SharedValue<ThemeColors>; target?: SharedValue<ThemeColors>; progress?: SharedValue<number>;
 };
-const ThemeContext = createContext<ThemeContextValue>({ colors: initial, spacing, radius, typography, geometry, elevations, dark: true });
+const ThemeContext = createContext<ThemeContextValue>({ colors: initial, spacing, radius, typography, geometry, elevations, dark: true, themeId: 'Midnight', resolvedTheme: 'Midnight' });
 export function ThemeProvider({ children }: PropsWithChildren) {
   const { themeId, accentOverride } = useThemeStore();
   const scheme = useColorScheme();
@@ -38,8 +40,10 @@ export function ThemeProvider({ children }: PropsWithChildren) {
     legacyColors = colors;
   }, [colors, motion.level, previous, target, progress]);
   const dark = resolved !== 'Rose' && resolved !== 'Lavender';
-  return <ThemeContext.Provider value={{ colors, spacing, radius, typography, geometry, elevations, dark, previous, target, progress }}>
-    <StatusBar style={dark ? 'light' : 'dark'} />{children}
+  return <ThemeContext.Provider value={{ colors, spacing, radius, typography, geometry, elevations, dark, themeId, resolvedTheme: resolved, previous, target, progress }}>
+    <StatusBar style={dark ? 'light' : 'dark'} />
+    <ThemeTransitionWave />
+    {children}
   </ThemeContext.Provider>;
 }
 export const useTheme = () => useContext(ThemeContext);

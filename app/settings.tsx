@@ -75,24 +75,24 @@ export default function SettingsScreen() {
   };
   if (profile.isPending || couple.isPending) return <><Stack.Screen options={{ headerShown: false }} /><PageSkeleton title="Settings" /></>;
   if (profile.isError || couple.isError || !profile.data || !couple.data) return <Screen><Stack.Screen options={{ headerShown: false }} /><Header title="Settings" onBack={() => router.back()} /><OfflineNotice /><FailureToast message="We couldn’t load settings." /><ErrorState title="Settings couldn’t load" onRetry={() => { void profile.refetch(); void couple.refetch(); }} /></Screen>;
-  return <Screen bottomInset><Stack.Screen options={{ headerShown: false }} /><KeyboardAvoidingView behavior="height" style={{ flex: 1 }}><ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ gap: spacing.lg, paddingBottom: spacing.xl }}>
+  return <Screen bottomInset gradient><Stack.Screen options={{ headerShown: false }} /><KeyboardAvoidingView behavior="height" style={{ flex: 1 }}><ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ gap: spacing.lg, paddingBottom: spacing.xl }}>
     <View><Text variant="caption" color="textSecondary">MAKE YOURSELF AT HOME</Text><Header title="Settings" onBack={() => router.back()} /></View>
     <OfflineNotice /><FailureToast message={error} />
     <StaggerList style={{ gap: spacing.lg }}>
-    <Card style={{ gap: spacing.s20 }}><Text variant="title/M" accessibilityRole="header">Profile</Text><View style={{ alignItems: 'center', gap: spacing.md }}><Avatar name={profile.data.display_name || 'You'} uri={avatar.data} size={geometry.avatar * 2} /><Button title={avatarMutation.isPending ? 'Uploading…' : 'Change avatar'} loading={avatarMutation.isPending} disabled={busy} onPress={() => { void perform(() => avatarMutation.mutateAsync()); }} /></View>
+    <Card variant="elevated" style={{ gap: spacing.s20 }}><Text variant="title/M" accessibilityRole="header">Profile</Text><View style={{ alignItems: 'center', gap: spacing.md }}><Avatar name={profile.data.display_name || 'You'} uri={avatar.data} size={geometry.avatar * 2} /><Button title={avatarMutation.isPending ? 'Uploading…' : 'Change avatar'} loading={avatarMutation.isPending} disabled={busy} onPress={() => { void perform(() => avatarMutation.mutateAsync()); }} /></View>
       <FormField label="Display name" value={name} onChangeText={setName} maxLength={80} editable={!busy} autoComplete="name" />
       <Button title={saveName.isPending ? 'Saving…' : 'Save name'} loading={saveName.isPending} disabled={busy} onPress={() => { void perform(() => saveName.mutateAsync()); }} />
     </Card>
-    <Card style={{ gap: spacing.md }}><Text accessibilityRole="header" variant="title/M">Your story began</Text><FormField label="Anniversary (YYYY-MM-DD)" value={anniversary} onChangeText={setAnniversary} maxLength={10} placeholder="2024-02-14" autoCapitalize="none" editable={!busy} /><Text variant="body/S" color="textSecondary">Leave blank to hide the days-together counter.</Text><Button title={saveAnniversary.isPending ? 'Saving…' : 'Save anniversary'} loading={saveAnniversary.isPending} disabled={busy} onPress={() => { void perform(() => saveAnniversary.mutateAsync()); }} /></Card>
-    <Card style={{ gap: spacing.md }}><Text accessibilityRole="header" variant="title/M">Stay connected</Text>
+    <Card variant="elevated" style={{ gap: spacing.md }}><Text accessibilityRole="header" variant="title/M">Your story began</Text><FormField label="Anniversary (YYYY-MM-DD)" value={anniversary} onChangeText={setAnniversary} maxLength={10} placeholder="2024-02-14" autoCapitalize="none" editable={!busy} /><Text variant="body/S" color="textSecondary">Leave blank to hide the days-together counter.</Text><Button title={saveAnniversary.isPending ? 'Saving…' : 'Save anniversary'} loading={saveAnniversary.isPending} disabled={busy} onPress={() => { void perform(() => saveAnniversary.mutateAsync()); }} /></Card>
+    <Card variant="elevated" style={{ gap: spacing.md }}><Text accessibilityRole="header" variant="title/M">Stay connected</Text>
       <Text variant="body/S" color="textSecondary">Check remote push delivery to this phone. For reliable messages and calls, allow notifications and unrestricted battery use for Us in Android settings.</Text>
       <Button title={pushTest.isPending ? 'Sending test…' : 'Test notification'} loading={pushTest.isPending} disabled={busy} onPress={() => { void perform(() => pushTest.mutateAsync()); }} />
     </Card>
-    <Card><ListItem title="Appearance" subtitle="Eight themes, your accent, your pace" onPress={() => router.push('/settings/appearance')} /></Card>
+    <Card variant="elevated"><ListItem title="Appearance" subtitle="Eight themes, your accent, your pace" onPress={() => router.push('/settings/appearance')} /></Card>
     </StaggerList>
     <ProfileDetails />
-    <Card><ListItem title="Privacy · Encryption" subtitle="Recovery keys, safety numbers and encrypted chat" onPress={() => router.push('/us/e2ee')} /></Card>
-    <Card><ListItem title="All features" subtitle="Browse everything, organized by category" onPress={() => router.push('/us')} /><ListItem title="Home shortcuts" subtitle="Choose what appears on your home screen" onPress={() => router.push('/settings/features')} /></Card>
+    <Card variant="elevated"><ListItem title="Privacy · Encryption" subtitle="Recovery keys, safety numbers and encrypted chat" onPress={() => router.push('/us/e2ee')} /></Card>
+    <Card variant="elevated"><ListItem title="All features" subtitle="Browse everything, organized by category" onPress={() => router.push('/us')} /><ListItem title="Home shortcuts" subtitle="Choose what appears on your home screen" onPress={() => router.push('/settings/features')} /></Card>
     <SettingsSections />
     {!!message && <Text accessibilityLiveRegion="polite" color="success">{message}</Text>}
     {!!error && <Text accessibilityRole="alert" color="danger">{error}</Text>}

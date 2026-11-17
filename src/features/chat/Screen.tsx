@@ -3,7 +3,7 @@ import { persistVoice } from '@/features/voice/storage';
 import { setVoiceQueue, pauseVoice } from '@/features/voice/playback';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, AppState, FlatList, ScrollView, StyleSheet, Text, TextInput, View, type ViewToken } from 'react-native';
-import { useIsFocused } from 'expo-router';
+import { router, useIsFocused } from 'expo-router';
 import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import Animated, { LinearTransition, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -15,7 +15,8 @@ import { MessageBubble } from './MessageBubble';
 import { ComposerSend } from './ComposerSend';
 import { ChatReveal } from './ChatReveal';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { usePartner, useProfile, useSession } from '@/lib/hooks';
+import { useAvatar, usePartner, useProfile, useSession } from '@/lib/hooks';
+import { usePresence } from '@/features/presence/PresenceProvider';
 import type { ChatMessage } from './model';
 import { dayLabel, grouped } from './model';
 import { pickChatImage } from './service';
@@ -27,7 +28,7 @@ import { chatDb, updateMessage } from './plusService';
 import { ChatSearch } from './ChatSearch';
 import { ScheduleSheet } from './ScheduleSheet';
 import { validReaction } from './ReactionChips';
-import { EncryptionStatus } from '@/features/e2ee/Status';
+import { EncryptionStatus, useEncryption } from '@/features/e2ee/Status';
 
 const EMOJI = ['❤️', '🥰', '😘', '😂', '🥺', '🫂', '✨', '💕', '🙈', '👍', '🌙', '☀️'];
 
@@ -59,6 +60,9 @@ function Conversation({ coupleId, uid }: { coupleId: string; uid: string }) {
   }, []);
   const active = focused && foreground;
   const partner = usePartner();
+  const avatar = useAvatar(partner.data?.avatar_path);
+  const online = usePresence(state => state.partnerOnline);
+  const enc = useEncryption();
   const partnerName = partner.data?.display_name || 'Your partner';
   const chat = useChat(coupleId, uid, active);
   const [visibleMessageIds, setVisibleMessageIds] = useState<string[]>([]);
@@ -86,7 +90,6 @@ function Conversation({ coupleId, uid }: { coupleId: string; uid: string }) {
   const [mutationBusy, setMutationBusy] = useState(false);
   const [highlightId, setHighlightId] = useState<string | null>(null);
   const [jumpTarget, setJumpTarget] = useState<string | null>(null);
-  const [pinWidth, setPinWidth] = useState(geometry.touch * 5);
   const openedAt = useRef(Date.now());
   const entered = useRef(new Set<string>());
   const closeActions = useCallback(() => { setSelectedId(null); setShowInfo(false); }, []);
@@ -99,9 +102,16 @@ function Conversation({ coupleId, uid }: { coupleId: string; uid: string }) {
   }, []);
   const onViewableItemsChanged = useCallback(({ viewableItems }: { viewableItems: ViewToken<ChatMessage>[] }) => {
     const top = viewableItems.filter(token => token.isViewable).at(-1);
-    if (top) setScrollDate(dayLabel(top.item.created_at));
-    const ids=viewableItems.filter(token=>token.isViewable).map(token=>token.item.id);
-    chat.setVisible(ids); setVisibleMessageIds(current=>current.join(',')===ids.join(',') ? current : ids);
+    if (top) {
+      const date = dayLabel(top.item.created_at);
+      setScrollDate(curr => curr !== date ? date : curr);
+    }
+    const ids = viewableItems.filter(token => token.isViewable).map(token => token.item.id);
+    chat.setVisible(ids);
+    setVisibleMessageIds(current => {
+      if (current.length === ids.length && current.every((id, i) => id === ids[i])) return current;
+      return ids;
+    });
   }, [chat.setVisible]);
   const list = useRef<FlatList<ChatMessage>>(null);
   const jumpAttempts = useRef(0);
@@ -193,67 +203,106 @@ function Conversation({ coupleId, uid }: { coupleId: string; uid: string }) {
   const reactTo = useCallback((message: ChatMessage, emoji: string, ensure = false) => {
     void plus.react(message, emoji, ensure).catch(() => Alert.alert('Reaction not saved', 'Reconnect and try again.'));
   }, [plus.react]);
+
+  const keyExtractor = useCallback((message: ChatMessage) => message.client_id, []);
+
+  const renderItem = useCallback(({ item, index }: { item: ChatMessage; index: number }) => {
+    const older = chat.messages[index + 1];
+    return <View>
+      <MessageBubble message={item} uid={uid} partnerName={partnerName}
+        animateArrival={index < geometry.firstScreenful}
+        sameOlder={grouped(item, older)} sameNewer={grouped(item, chat.messages[index - 1])}
+        showDate={!older || new Date(item.created_at).toDateString() !== new Date(older.created_at).toDateString()}
+        knownReply={item.reply_to ? known.get(item.reply_to) : undefined}
+        onReply={replyTo} onActions={selectMessage} onRetry={chat.retry} claimEntrance={claimEntrance} highlighted={selectedId === item.client_id || highlightId === item.client_id}
+        reactions={plus.reactions.get(item.id)} onReact={reactTo} onJump={jumpTo} />
+      {chat.gaps.some(gap=>gap.anchor.client_id===item.client_id) && <PressableScale accessibilityRole="button" disabled={chat.loadingGap!==null} onPress={()=>void chat.loadGap(item.client_id)} style={styles.earlier}><Text style={styles.subtitle}>{chat.loadingGap===item.client_id ? 'Loading the gap…' : 'Load messages between these dates'}</Text></PressableScale>}
+    </View>;
+  }, [chat.messages, chat.retry, chat.gaps, chat.loadingGap, chat.loadGap, uid, partnerName, geometry.firstScreenful, known, replyTo, selectMessage, claimEntrance, selectedId, highlightId, plus.reactions, reactTo, jumpTo, styles.earlier, styles.subtitle]);
+
   return <Screen style={styles.screen}>
     <KeyboardAvoidingView behavior="height" automaticOffset style={styles.flex}>
-      <View style={[styles.header, { flexDirection: 'row', alignItems: 'center', gap: spacing.s12 }]}><Avatar name={partnerName} /><View style={styles.flex}><Header title={partnerName} subtitle={typing ? 'typing…' : chat.live ? 'Just the two of you' : 'Reconnecting…'} /></View></View>
-      <EncryptionStatus />
-      <View style={{ flexDirection: 'row', justifyContent: 'space-around', backgroundColor: colors.bgElevated }}>
-        <PressableScale accessibilityRole="button" onPress={() => setSearchOpen(true)}><Text style={styles.body}>Search</Text></PressableScale>
-        <PressableScale accessibilityRole="button" onPress={() => setScheduleOpen(true)}><Text style={styles.body}>Scheduled</Text></PressableScale>
-        <PressableScale accessibilityRole="button" onPress={() => setSettingsOpen(true)}><Text style={styles.body}>Settings</Text></PressableScale>
+      <View style={styles.header}>
+        <View style={styles.headerRow}>
+          <View style={styles.headerAvatarWrap}>
+            <Avatar name={partnerName} uri={avatar.data} size={42} />
+            {online && <View style={styles.headerOnlineDot} />}
+          </View>
+          <View style={styles.headerContent}>
+            <Text style={styles.headerTitle} numberOfLines={1}>{partnerName}</Text>
+            <Text style={[styles.headerSubtitle, typing && { color: colors.primary, fontWeight: '600' }]} numberOfLines={1}>
+              {typing ? 'typing…' : chat.live ? 'Just the two of you · 🔒' : 'Reconnecting…'}
+            </Text>
+          </View>
+          <View style={styles.headerActions}>
+            <PressableScale accessibilityRole="button" accessibilityLabel="Voice call" onPress={() => router.push({ pathname: '/call', params: { kind: 'audio' } })} style={styles.headerActionBtn}>
+              <Ionicons name="call-outline" size={20} color={colors.textPrimary} />
+            </PressableScale>
+            <PressableScale accessibilityRole="button" accessibilityLabel="Search chat" onPress={() => setSearchOpen(true)} style={styles.headerActionBtn}>
+              <Ionicons name="search-outline" size={20} color={colors.textPrimary} />
+            </PressableScale>
+            <PressableScale accessibilityRole="button" accessibilityLabel="Scheduled messages" onPress={() => setScheduleOpen(true)} style={styles.headerActionBtn}>
+              <Ionicons name="time-outline" size={20} color={colors.textPrimary} />
+            </PressableScale>
+            <PressableScale accessibilityRole="button" accessibilityLabel="Chat options" onPress={() => setSettingsOpen(true)} style={styles.headerActionBtn}>
+              <Ionicons name="ellipsis-vertical" size={20} color={colors.textPrimary} />
+            </PressableScale>
+          </View>
+        </View>
       </View>
-      {!!plus.pins.data?.length && <View onLayout={event => setPinWidth(event.nativeEvent.layout.width)}>
-        <ScrollView horizontal pagingEnabled showsHorizontalScrollIndicator={false}>{plus.pins.data.filter(message => !expired(message)).map((pin, index, pins) => <PressableScale key={pin.id} accessibilityRole="button" onPress={() => jumpTo(pin.id)} style={{ width: pinWidth, paddingHorizontal: spacing.lg, paddingVertical: spacing.sm }}>
-          <Text style={styles.quoteName}>📌 Pinned {index + 1}/{pins.length} · tap to jump</Text><Text numberOfLines={1} style={styles.body}>{bodySummary(pin)}</Text>
-        </PressableScale>)}</ScrollView>
+      {(enc.changed || !!enc.error) && <EncryptionStatus />}
+      {!!plus.pins.data?.length && plus.pins.data[0] && <View style={styles.pinnedBanner}>
+        <Ionicons name="pin" size={16} color={colors.primary} />
+        <PressableScale accessibilityRole="button" onPress={() => plus.pins.data?.[0] && jumpTo(plus.pins.data[0].id)} style={styles.flex}>
+          <Text style={styles.quoteName} numberOfLines={1}>📌 Pinned · tap to jump</Text>
+          <Text numberOfLines={1} style={styles.subtitle}>{bodySummary(plus.pins.data[0])}</Text>
+        </PressableScale>
       </View>}
       {plus.error && <PressableScale onPress={() => void plus.refresh()} style={styles.error}><Text style={styles.errorText}>Chat extras unavailable · reconnect and retry</Text></PressableScale>}
       {chat.error && <PressableScale accessibilityRole="button" onPress={() => void chat.refresh()} style={styles.error}><Text style={styles.errorText}>{chat.error}</Text></PressableScale>}
       <View style={styles.flex}>
       <LinearGradient pointerEvents="none" colors={[colors.bg, colors.bgElevated]} style={StyleSheet.absoluteFill} />
-      <FlatList ref={list} data={chat.messages} inverted keyExtractor={(message) => message.client_id}
+      <FlatList ref={list} data={chat.messages} inverted keyExtractor={keyExtractor}
         onScrollToIndexFailed={({ index, averageItemLength }) => { if (++jumpAttempts.current > 4) { setJumpTarget(null); return; } list.current?.scrollToOffset({ offset: index * averageItemLength, animated: false }); clearTimeout(jumpTimer.current); jumpTimer.current = setTimeout(() => list.current?.scrollToIndex({ index, viewPosition: 0.5, animated: false }), motion.duration('slow')); }}
         style={styles.flex} contentContainerStyle={styles.history} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag"
         maintainVisibleContentPosition={{ minIndexForVisible: 0 }} onViewableItemsChanged={onViewableItemsChanged}
+        maxToRenderPerBatch={10} windowSize={7} initialNumToRender={15} removeClippedSubviews={true}
         onScrollBeginDrag={() => setScrolling(true)} onMomentumScrollBegin={() => setScrolling(true)} onMomentumScrollEnd={() => setScrolling(false)} onScrollEndDrag={() => setScrolling(false)}
         onScroll={(event) => { nearBottom.current = event.nativeEvent.contentOffset.y < geometry.touch * 2; if (nearBottom.current) { setNewMessages(false); setJumpCount(0); setScrollDate(null); } }} scrollEventThrottle={motionTokens.stagger}
         onEndReached={() => { if (chat.messages.length >= 50) void chat.loadOlder(); }} onEndReachedThreshold={0.25}
         ListFooterComponent={chat.messages.length > 0 && chat.hasOlder ? <PressableScale disabled={chat.loadingOlder} onPress={() => void chat.loadOlder()} style={styles.earlier} accessibilityRole="button">
           {chat.loadingOlder ? <ActivityIndicator color={colors.primary} /> : <Text style={styles.subtitle}>Load earlier messages</Text>}</PressableScale> : null}
         ListEmptyComponent={<View style={styles.empty}>{!chat.ready ? <View accessibilityLabel="Loading messages" style={{ gap: spacing.md, width: '100%' }}>{Array.from({ length: geometry.firstScreenful }, (_, index) => <Skeleton key={index} width={index % 2 ? '85%' : '65%'} height={geometry.touch} style={{ alignSelf: index % 2 ? 'flex-end' : 'flex-start' }} />)}</View> : <><Text style={styles.emptyTitle}>Your everyday, together.</Text><Text style={styles.emptyText}>Start with a little hello.</Text></>}</View>}
-        renderItem={({ item, index }) => {
-          const older = chat.messages[index + 1];
-          return <View><MessageBubble message={item} uid={uid} partnerName={partnerName}
-            animateArrival={index < geometry.firstScreenful}
-            sameOlder={grouped(item, older)} sameNewer={grouped(item, chat.messages[index - 1])}
-            showDate={!older || new Date(item.created_at).toDateString() !== new Date(older.created_at).toDateString()}
-            knownReply={item.reply_to ? known.get(item.reply_to) : undefined}
-            onReply={replyTo} onActions={selectMessage} onRetry={chat.retry} claimEntrance={claimEntrance} highlighted={selectedId === item.client_id || highlightId === item.client_id}
-            reactions={plus.reactions.get(item.id)} onReact={reactTo} onJump={jumpTo} />
-            {chat.gaps.some(gap=>gap.anchor.client_id===item.client_id) && <PressableScale accessibilityRole="button" disabled={chat.loadingGap!==null} onPress={()=>void chat.loadGap(item.client_id)} style={styles.earlier}><Text style={styles.subtitle}>{chat.loadingGap===item.client_id ? 'Loading the gap…' : 'Load messages between these dates'}</Text></PressableScale>}
-          </View>;
-        }} />
+        renderItem={renderItem} />
       {scrolling && scrollDate && <View pointerEvents="none" style={styles.floatingDate}><Text style={styles.dateText}>{scrollDate}</Text></View>}
       {newMessages && <ChatReveal style={styles.jump}><PressableScale accessibilityRole="button" accessibilityLabel={`${jumpCount} new messages. Scroll to bottom`} onPress={toBottom} style={styles.newMessages}><Text style={styles.pillText}>↓ {jumpCount} new</Text></PressableScale></ChatReveal>}
       </View>
 
       <Animated.View layout={motion.level === 'full' ? LinearTransition.duration(motion.duration('fast')) : undefined} style={styles.typing}>{typing && <View style={styles.typingBubble}><TypingDots /></View>}</Animated.View>
       {reply && <View style={styles.replyBar}><View style={styles.flex}><Text style={styles.quoteName}>Replying to {reply.sender_id === uid ? 'yourself' : partnerName}</Text><Text style={styles.subtitle} numberOfLines={1}>{bodySummary(known.get(reply.id) ?? reply)}</Text></View>
-        <PressableScale accessibilityRole="button" accessibilityLabel="Cancel reply" onPress={() => setReply(null)} style={styles.icon}><Ionicons name="close" size={geometry.icon} color={colors.textSecondary} /></PressableScale></View>}
+        <PressableScale accessibilityRole="button" accessibilityLabel="Cancel reply" onPress={() => setReply(null)} style={styles.iconBtn}><Ionicons name="close" size={geometry.icon} color={colors.textSecondary} /></PressableScale></View>}
       {emojiOpen && <ScrollView horizontal keyboardShouldPersistTaps="always" contentContainerStyle={styles.emojis} style={styles.emojiPanel}>{EMOJI.map((emoji) => <PressableScale key={emoji} accessibilityRole="button" accessibilityLabel={`Insert ${emoji}`} onPress={() => { if (draft.length < 3998) edit(`${draft}${emoji}`); }} style={styles.emoji}><Text style={styles.emojiText}>{emoji}</Text></PressableScale>)}</ScrollView>}
-      <PressableScale accessibilityRole="switch" accessibilityState={{ checked: viewOnce }} onPress={() => setViewOnce(!viewOnce)} style={{ paddingHorizontal: spacing.lg, justifyContent: 'center' }}><Text style={styles.subtitle}>① Next photo: {viewOnce ? 'view once · On' : 'view once · Off'}</Text></PressableScale>
-      <View style={styles.composer}>
-        <PressableScale accessibilityRole="button" accessibilityLabel="Choose photo" disabled={!chat.ready || picking || voiceBusy} onPress={() => void sendPhoto()} style={styles.icon}>{picking ? <ActivityIndicator color={colors.primary} /> : <Ionicons name="image-outline" size={geometry.icon} color={colors.primary} />}</PressableScale>
-        <PressableScale accessibilityRole="button" accessibilityLabel="Show emoji" disabled={voiceBusy} onPress={() => setEmojiOpen(!emojiOpen)} style={styles.icon}><Ionicons name="happy-outline" size={geometry.icon} color={colors.textSecondary} /></PressableScale>
-        <Animated.View style={[{ flex: 1, display: voiceBusy ? 'none' : 'flex' }, inputSize]}>
-          <TextInput accessibilityLabel="Message" placeholder="A message for your person…" placeholderTextColor={colors.textSecondary} value={draft} onChangeText={edit}
-            onContentSizeChange={event => {
-              const height = Math.max(geometry.touch, Math.min(geometry.touch * 3, event.nativeEvent.contentSize.height));
-              inputHeight.value = motion.level === 'full' ? withTiming(height, { duration: motion.duration('fast') }) : height;
-            }}
-            editable={chat.ready && !picking && !voiceBusy} multiline maxLength={4000} style={styles.input} textAlignVertical="center" />
-        </Animated.View>
-        {draft.trim() ? <ComposerSend visible disabled={!chat.ready || picking || voiceBusy} onPress={sendText} onLongPress={() => setScheduleOpen(true)} /> : <VoiceRecorder onBusyChange={busy => { setVoiceBusy(busy); if (busy) { setEmojiOpen(false); updateTyping(''); } }} disabled={!chat.ready || picking || !active} onRecorded={async recording => { const voice = await persistVoice(recording, coupleId, uid); chat.send('', replyRef.current?.id ?? null, voice); setReply(null); toBottom(); }} />}
+      <View style={styles.composerWrapper}>
+        <View style={styles.composerCapsule}>
+          <PressableScale accessibilityRole="button" accessibilityLabel="Choose photo" disabled={!chat.ready || picking || voiceBusy} onPress={() => void sendPhoto()} style={styles.iconBtn}>
+            {picking ? <ActivityIndicator size="small" color={colors.primary} /> : <Ionicons name="image-outline" size={22} color={colors.primary} />}
+          </PressableScale>
+          <PressableScale accessibilityRole="button" accessibilityLabel={viewOnce ? "View once active" : "View once off"} onPress={() => setViewOnce(!viewOnce)} style={[styles.viewOnceBtn, viewOnce && styles.viewOnceBtnActive]}>
+            <Text style={[styles.viewOnceText, viewOnce && styles.viewOnceTextActive]}>①</Text>
+          </PressableScale>
+          <PressableScale accessibilityRole="button" accessibilityLabel="Show emoji" disabled={voiceBusy} onPress={() => setEmojiOpen(!emojiOpen)} style={styles.iconBtn}>
+            <Ionicons name={emojiOpen ? "keypad-outline" : "happy-outline"} size={22} color={emojiOpen ? colors.primary : colors.textSecondary} />
+          </PressableScale>
+          <Animated.View style={[{ flex: 1, display: voiceBusy ? 'none' : 'flex' }, inputSize]}>
+            <TextInput accessibilityLabel="Message" placeholder="A message for your person…" placeholderTextColor={colors.textMuted} value={draft} onChangeText={edit}
+              onContentSizeChange={event => {
+                const height = Math.max(geometry.touch - 4, Math.min(geometry.touch * 3, event.nativeEvent.contentSize.height));
+                inputHeight.value = motion.level === 'full' ? withTiming(height, { duration: motion.duration('fast') }) : height;
+              }}
+              editable={chat.ready && !picking && !voiceBusy} multiline maxLength={4000} style={styles.input} textAlignVertical="center" />
+          </Animated.View>
+          {draft.trim() ? <ComposerSend visible disabled={!chat.ready || picking || voiceBusy} onPress={sendText} onLongPress={() => setScheduleOpen(true)} /> : <VoiceRecorder onBusyChange={busy => { setVoiceBusy(busy); if (busy) { setEmojiOpen(false); updateTyping(''); } }} disabled={!chat.ready || picking || !active} onRecorded={async recording => { const voice = await persistVoice(recording, coupleId, uid); chat.send('', replyRef.current?.id ?? null, voice); setReply(null); toBottom(); }} />}
+        </View>
       </View>
     </KeyboardAvoidingView>
     <BottomSheet visible={!!selected} onClose={closeActions} title={showInfo ? 'Message info' : 'Message actions'}>

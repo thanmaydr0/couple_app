@@ -36,27 +36,38 @@ export function CallBackdrop() {
   return <View pointerEvents="none" style={StyleSheet.absoluteFill}><LinearGradient colors={[colors.bg, colors.surface, colors.bg]} style={StyleSheet.absoluteFill} /><DriftingGradient /></View>;
 }
 export function useCallStyles() {
-  const { colors: c, spacing: s, radius: r, geometry: g, typography: t } = useTheme();
+  const { colors: c, spacing: s, radius: r, geometry: g, typography: t, elevations } = useTheme();
   return StyleSheet.create({
     root: { flex: 1, backgroundColor: c.bg }, safe: { flex: 1, justifyContent: 'space-between' },
-    callHeader: { paddingHorizontal: s.lg, paddingTop: s.md }, headerCard: { padding: s.md, borderRadius: r.lg, backgroundColor: c.bgElevated },
-    eyebrow: { ...t.caption, color: c.textSecondary, textAlign: 'center' }, status: { ...t['title/M'], color: c.textPrimary, textAlign: 'center', fontVariant: ['tabular-nums'] },
+    callHeader: { paddingHorizontal: s.lg, paddingTop: s.md },
+    headerCard: { padding: s.md, borderRadius: r.lg, backgroundColor: c.bgElevated, borderWidth: StyleSheet.hairlineWidth, borderColor: c.border },
+    eyebrow: { ...t.caption, color: c.textSecondary, textAlign: 'center' },
+    status: { ...t['title/M'], color: c.textPrimary, textAlign: 'center', fontVariant: ['tabular-nums'] },
     identity: { alignItems: 'center', gap: s.lg, padding: s.lg, flex: 1, justifyContent: 'center' },
-    avatar: { height: g.avatar * 3, width: g.avatar * 3, borderRadius: r.pill, alignItems: 'center', justifyContent: 'center', backgroundColor: c.surfaceAlt, overflow: 'hidden', borderWidth: g.hairline, borderColor: c.border },
+    avatar: { height: g.avatar * 3, width: g.avatar * 3, borderRadius: r.pill, alignItems: 'center', justifyContent: 'center', backgroundColor: c.surfaceAlt, overflow: 'hidden', borderWidth: 2, borderColor: c.primary },
     avatarImage: { height: '100%', width: '100%' }, initial: { ...t['display/XL'], color: c.primary },
-    name: { ...t['display/M'], color: c.textPrimary, textAlign: 'center' }, subtitle: { ...t['body/S'], color: c.textSecondary, textAlign: 'center' },
+    name: { ...t['display/M'], color: c.textPrimary, textAlign: 'center' },
+    subtitle: { ...t['body/S'], color: c.textSecondary, textAlign: 'center' },
     reconnecting: { alignSelf: 'center', padding: s.md, borderRadius: r.lg, backgroundColor: c.bgElevated, gap: s.sm, borderWidth: g.hairline, borderColor: c.border },
-    bottom: { padding: s.md, gap: s.md, backgroundColor: c.bgElevated, borderRadius: r.sheet, margin: s.lg },
-    controls: { flexDirection: 'row', justifyContent: 'space-evenly', gap: s.xs, flexWrap: 'wrap' },
+    bottom: { padding: s.lg, gap: s.md, backgroundColor: c.bgElevated, borderRadius: r.sheet, margin: s.lg, borderWidth: 1, borderColor: c.border, shadowColor: c.shadowColor, shadowOpacity: 0.15, shadowRadius: 10, elevation: 6 },
+    controls: { flexDirection: 'row', justifyContent: 'space-evenly', gap: s.sm, flexWrap: 'wrap' },
     controlWrap: { alignItems: 'center', gap: s.sm, minWidth: g.touch },
-    control: { width: s.s56, height: s.s56, borderRadius: r.pill, alignItems: 'center', justifyContent: 'center', backgroundColor: c.surfaceAlt, borderWidth: g.hairline, borderColor: c.border },
-    selected: { backgroundColor: c.primary, borderColor: c.primary }, danger: { backgroundColor: c.danger, borderColor: c.danger },
-    controlLabel: { ...t.caption, color: c.textPrimary }, routeLabel: { ...t.caption, color: c.textSecondary, textAlign: 'center' }, debug: { ...t.caption, color: c.textSecondary, textAlign: 'center' },
-    preview: { position: 'absolute', left: 0, top: 0, width: g.avatar * 2 + s.lg, height: g.avatar * 3 + s.lg, backgroundColor: c.surfaceAlt, borderWidth: g.stroke, borderColor: c.border, borderRadius: r.lg, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' },
-    previewLabel: { ...t.caption, position: 'absolute', bottom: s.sm, left: s.sm, color: c.textPrimary, backgroundColor: c.bgElevated, padding: s.xs, borderRadius: r.sm },
-    error: { ...t['body/S'], color: c.danger, textAlign: 'center' }, page: { paddingVertical: s.md, gap: s.lg }, pageTitle: { ...t['display/M'], color: c.textPrimary },
-    startButtons: { flexDirection: 'row', gap: s.s12 }, startButton: { flex: 1, backgroundColor: c.primary, padding: s.md, borderRadius: r.lg, gap: s.sm, alignItems: 'center', minHeight: g.touch },
-    startLabel: { ...t.label, color: c.primaryContrast }, disabled: { opacity: g.disabledOpacity }, link: { ...t.label, color: c.primary, textAlign: 'center', padding: s.s12 },
+    control: { width: 56, height: 56, borderRadius: r.pill, alignItems: 'center', justifyContent: 'center', backgroundColor: c.surfaceAlt, borderWidth: g.hairline, borderColor: c.border },
+    selected: { backgroundColor: c.primary, borderColor: c.primary },
+    danger: { backgroundColor: c.danger, borderColor: c.danger },
+    controlLabel: { ...t.caption, color: c.textPrimary },
+    routeLabel: { ...t.caption, color: c.textSecondary, textAlign: 'center' },
+    debug: { ...t.caption, color: c.textSecondary, textAlign: 'center' },
+    preview: { position: 'absolute', left: 0, top: 0, width: g.avatar * 2 + s.lg, height: g.avatar * 3 + s.lg, backgroundColor: c.surfaceAlt, borderWidth: 2, borderColor: c.primary, borderRadius: r.lg, overflow: 'hidden', alignItems: 'center', justifyContent: 'center', shadowColor: c.shadowColor, shadowOpacity: 0.25, shadowRadius: 8, elevation: 6 },
+    previewLabel: { ...t.caption, position: 'absolute', bottom: s.sm, left: s.sm, color: c.textPrimary, backgroundColor: c.bgElevated, paddingHorizontal: s.sm, paddingVertical: 2, borderRadius: r.sm },
+    error: { ...t['body/S'], color: c.danger, textAlign: 'center' },
+    page: { paddingHorizontal: s.lg, paddingVertical: s.md, gap: s.lg },
+    pageTitle: { ...t['display/M'], color: c.textPrimary },
+    startButtons: { flexDirection: 'row', gap: s.md },
+    startButton: { flex: 1, backgroundColor: c.primary, paddingVertical: s.lg, paddingHorizontal: s.md, borderRadius: r.lg, gap: s.sm, alignItems: 'center', justifyContent: 'center', minHeight: g.touch, shadowColor: c.primary, shadowOpacity: 0.25, shadowRadius: 8, elevation: 4 },
+    startLabel: { ...t.label, color: c.primaryContrast },
+    disabled: { opacity: g.disabledOpacity },
+    link: { ...t.label, color: c.primary, textAlign: 'center', padding: s.s12 },
   });
 }
 

@@ -1,4 +1,4 @@
-import { memo, useEffect, useRef } from 'react';
+import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -7,7 +7,7 @@ import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { scheduleOnRN } from 'react-native-worklets';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 import { useTheme } from '@/theme';
-import { PressableScale, useMotion, motionTokens } from '@/motion';
+import { PressableScale, useMotion, motionTokens, FloatingHeart } from '@/motion';
 import { MessageStatusTicks } from '@/ui';
 import { dayLabel, type ChatMessage } from './model';
 import { ReplyPreview } from './ReplyPreview';
@@ -51,6 +51,7 @@ function Bubble({ message, uid, partnerName, sameOlder, sameNewer, showDate, kno
   const motion = useMotion();
   const mine = message.sender_id === uid;
   const lastTap = useRef(0);
+  const [heartTrigger, setHeartTrigger] = useState(0);
   const text = bodyText(message, uid, message.sender_id);
   const link = !message.deleted_at ? firstLink(message.body) : null;
   const enter = useSharedValue(1);
@@ -74,12 +75,14 @@ function Bubble({ message, uid, partnerName, sameOlder, sameNewer, showDate, kno
   const arrow = useAnimatedStyle(() => ({ opacity: Math.min(1, translate.value / geometry.touch) }));
   const haptic = () => { if (motion.level === 'full') void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {}); };
   const reply = () => onReply(message);
-  const swipe = Gesture.Pan().enabled(message.kind !== 'voice' && message.status === 'sent' && !message.deleted_at && message.kind !== 'system').activeOffsetX(spacing.md).failOffsetY([-spacing.sm, spacing.sm])
-    .onUpdate(event => {
-      translate.value = Math.max(0, Math.min(geometry.touch + spacing.md, event.translationX));
-      if (translate.value >= geometry.touch && !crossed.value) { crossed.value = true; scheduleOnRN(haptic); }
-    }).onEnd(() => { if (translate.value >= geometry.touch) scheduleOnRN(reply); })
-    .onFinalize(() => { crossed.value = false; translate.value = motion.level === 'full' ? withSpring(0, motion.spring('snappy')) : 0; });
+  const swipe = useMemo(() => {
+    return Gesture.Pan().enabled(message.kind !== 'voice' && message.status === 'sent' && !message.deleted_at && message.kind !== 'system').activeOffsetX(spacing.md).failOffsetY([-spacing.sm, spacing.sm])
+      .onUpdate(event => {
+        translate.value = Math.max(0, Math.min(geometry.touch + spacing.md, event.translationX));
+        if (translate.value >= geometry.touch && !crossed.value) { crossed.value = true; scheduleOnRN(haptic); }
+      }).onEnd(() => { if (translate.value >= geometry.touch) scheduleOnRN(reply); })
+      .onFinalize(() => { crossed.value = false; translate.value = motion.level === 'full' ? withSpring(0, motion.spring('snappy')) : 0; });
+  }, [message.kind, message.status, message.deleted_at, spacing.md, spacing.sm, geometry.touch, translate, crossed, motion.level]);
   return <View>
     {showDate && <View style={styles.date}><Text style={styles.dateText}>{dayLabel(message.created_at)}</Text></View>}
     <View style={[styles.messageRow, { alignItems: mine ? 'flex-end' : 'flex-start', marginTop: sameOlder ? spacing.xs : spacing.s12 }]}>
@@ -88,13 +91,14 @@ function Bubble({ message, uid, partnerName, sameOlder, sameNewer, showDate, kno
         <PressableScale accessibilityRole="button" accessibilityLabel={message.status === 'failed' ? 'Message failed. Tap to retry' : `${mine ? 'You' : partnerName}: ${text || (message.kind === 'voice' ? 'Voice message' : 'Photo')}. Hold for message actions`}
           accessibilityActions={[{ name: 'longpress', label: 'Message actions' }]}
           onAccessibilityAction={() => onActions(message)} onLongPress={() => onActions(message)} delayLongPress={motionTokens.slow}
-          onPress={() => { if (message.status === 'failed') { onRetry(message); return; } const now = Date.now(); if (now - lastTap.current < motionTokens.slow && !message.deleted_at && message.kind !== 'system') { onReact(message, '❤️', true); lastTap.current = 0; } else lastTap.current = now; }} style={[styles.bubble, { maxWidth: '100%', borderWidth: geometry.stroke, borderColor: highlighted ? colors.primary : mine ? colors.bubbleMineStart : colors.bubbleTheirs }, mine ? styles.mine : styles.theirs, {
+          onPress={() => { if (message.status === 'failed') { onRetry(message); return; } const now = Date.now(); if (now - lastTap.current < motionTokens.slow && !message.deleted_at && message.kind !== 'system') { onReact(message, '❤️', true); setHeartTrigger(t => t + 1); lastTap.current = 0; } else lastTap.current = now; }} style={[styles.bubble, { maxWidth: '100%', borderWidth: highlighted ? geometry.stroke : geometry.hairline, borderColor: highlighted ? colors.primary : mine ? 'transparent' : colors.border }, mine ? styles.mine : styles.theirs, {
             borderTopRightRadius: mine && sameOlder ? radius.sm : radius.lg, borderBottomRightRadius: mine && sameNewer ? radius.sm : radius.lg,
             borderTopLeftRadius: !mine && sameOlder ? radius.sm : radius.lg, borderBottomLeftRadius: !mine && sameNewer ? radius.sm : radius.lg,
           }]}>
           {mine && <LinearGradient pointerEvents="none" colors={[colors.bubbleMineStart, colors.bubbleMineEnd]} style={StyleSheet.absoluteFill} />}
+          <FloatingHeart trigger={heartTrigger} />
           {!message.deleted_at && message.reply_to && <ReplyPreview message={message} uid={uid} known={knownReply} onJump={onJump} />}
-          {!message.deleted_at && message.kind === 'image' && <ChatImage message={message} uid={uid} onReply={() => onActions(message)} onHeart={()=>onReact(message,'❤️',true)} />}
+          {!message.deleted_at && message.kind === 'image' && <ChatImage message={message} uid={uid} onReply={() => onActions(message)} onHeart={() => { onReact(message, '❤️', true); setHeartTrigger(t => t + 1); }} />}
           {!message.deleted_at && !message.decryptionError && message.kind === 'voice' && <VoicePlayer id={message.id} path={message.media_path} encrypted={!!message.enc} uri={message.status !== 'sent' ? message.localUri : undefined} couple={message.couple_id} receiver={!mine} meta={message.meta} />}
           {!!text && <Text style={[styles.body, mine && styles.mineText]}>{text}</Text>}
           {link && <LinkCard url={link} couple={message.couple_id} uid={uid} animate={animateArrival} />}

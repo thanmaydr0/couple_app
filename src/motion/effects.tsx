@@ -1,10 +1,11 @@
-import { Children, useEffect, type PropsWithChildren } from 'react';
-import { TextInput, View, type ViewProps, type StyleProp, type ViewStyle } from 'react-native';
+import { Children, useEffect, useRef, useState, type PropsWithChildren } from 'react';
+import { StyleSheet, TextInput, View, type ViewProps, type StyleProp, type ViewStyle } from 'react-native';
 import Animated, { cancelAnimation, useAnimatedProps, useAnimatedStyle, useDerivedValue, useSharedValue, withDelay, withRepeat, withTiming, type SharedValue } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { Canvas, Circle } from '@shopify/react-native-skia';
 import { useTheme } from '../theme/ThemeProvider';
-import { geometry, radius, spacing, typography } from '../theme/tokens';
+import { geometry, radius, spacing, typography, type ThemeId } from '../theme/tokens';
 import { useMotion } from './useMotion';
 import { motionTokens } from './tokens';
 
@@ -76,4 +77,154 @@ export function DriftingGradient() {
   const animated = useAnimatedStyle(() => ({ transform: [{ translateY: value.value * motionTokens.travel }] }));
   if (level !== 'full') return null;
   return <Animated.View pointerEvents="none" style={[{ position: 'absolute', top: -spacing.md, bottom: -spacing.md, left: 0, right: 0 }, animated]}><LinearGradient colors={[colors.bg, colors.surface, colors.bg]} style={{ flex: 1 }} /></Animated.View>;
+}
+
+export function ThemeAtmosphere() {
+  const { colors, resolvedTheme } = useTheme();
+  const motion = useMotion();
+  const breath = useSharedValue(0);
+
+  useEffect(() => {
+    cancelAnimation(breath);
+    if (motion.level === 'full') {
+      breath.value = 0;
+      breath.value = withRepeat(withTiming(1, { duration: 4500 }), -1, true);
+    } else {
+      breath.value = 0.5;
+    }
+    return () => cancelAnimation(breath);
+  }, [motion.level, breath]);
+
+  const primaryGlowStyle = useAnimatedStyle(() => {
+    const scale = motion.level === 'full' ? 1 + breath.value * 0.15 : 1;
+    const opacity = motion.level === 'full' ? 0.14 + breath.value * 0.08 : 0.16;
+    return {
+      opacity,
+      transform: [{ scale }],
+    };
+  });
+
+  const accentGlowStyle = useAnimatedStyle(() => {
+    const scale = motion.level === 'full' ? 1 + (1 - breath.value) * 0.12 : 1;
+    const opacity = motion.level === 'full' ? 0.08 + (1 - breath.value) * 0.06 : 0.1;
+    return {
+      opacity,
+      transform: [{ scale }],
+    };
+  });
+
+  if (motion.level === 'off') return null;
+
+  return (
+    <View pointerEvents="none" style={StyleSheet.absoluteFill}>
+      <Animated.View
+        style={[
+          {
+            position: 'absolute',
+            top: -60,
+            right: -60,
+            width: 260,
+            height: 260,
+            borderRadius: 130,
+            backgroundColor: colors.primary,
+          },
+          primaryGlowStyle,
+        ]}
+      />
+      <Animated.View
+        style={[
+          {
+            position: 'absolute',
+            bottom: 80,
+            left: -80,
+            width: 240,
+            height: 240,
+            borderRadius: 120,
+            backgroundColor: colors.accent,
+          },
+          accentGlowStyle,
+        ]}
+      />
+    </View>
+  );
+}
+
+export function ThemeTransitionWave() {
+  const { colors } = useTheme();
+  const motion = useMotion();
+  const transition = useSharedValue(1);
+  const [waveColor, setWaveColor] = useState(colors.bg);
+  const prevColorRef = useRef(colors.bg);
+
+  useEffect(() => {
+    if (prevColorRef.current !== colors.bg) {
+      setWaveColor(prevColorRef.current);
+      prevColorRef.current = colors.bg;
+      if (motion.level === 'full') {
+        cancelAnimation(transition);
+        transition.value = 0;
+        transition.value = withTiming(1, { duration: motion.duration('theme') });
+      } else {
+        transition.value = 1;
+      }
+    }
+  }, [colors.bg, motion, transition]);
+
+  const animatedStyle = useAnimatedStyle(() => {
+    if (transition.value >= 1 || motion.level !== 'full') return { opacity: 0 };
+    return {
+      opacity: 1 - transition.value,
+      transform: [{ scale: 1 + transition.value * 0.04 }],
+    };
+  });
+
+  if (motion.level !== 'full') return null;
+
+  return (
+    <Animated.View
+      pointerEvents="none"
+      style={[
+        StyleSheet.absoluteFill,
+        {
+          backgroundColor: waveColor,
+          zIndex: 9999,
+        },
+        animatedStyle,
+      ]}
+    />
+  );
+}
+
+export function FloatingHeart({ trigger, x = 120, y = 120 }: { trigger: number; x?: number; y?: number }) {
+  const { colors } = useTheme();
+  const motion = useMotion();
+  const progress = useSharedValue(0);
+
+  useEffect(() => {
+    if (trigger > 0 && motion.level === 'full') {
+      cancelAnimation(progress);
+      progress.value = 0;
+      progress.value = withTiming(1, { duration: 650 });
+    }
+  }, [trigger, motion.level, progress]);
+
+  const animatedStyle = useAnimatedStyle(() => {
+    if (progress.value === 0 || progress.value >= 1) return { opacity: 0 };
+    const opacity = progress.value < 0.2 ? progress.value / 0.2 : 1 - (progress.value - 0.2) / 0.8;
+    return {
+      opacity,
+      transform: [
+        { scale: 0.5 + progress.value * 0.7 },
+        { translateY: -progress.value * 54 },
+      ],
+    };
+  });
+
+  if (trigger === 0 || motion.level !== 'full') return null;
+
+  return (
+    <Animated.View pointerEvents="none" style={[{ position: 'absolute', left: x - 18, top: y - 18, zIndex: 9999 }, animatedStyle]}>
+      <Ionicons name="heart" size={36} color={colors.primary} />
+    </Animated.View>
+  );
 }

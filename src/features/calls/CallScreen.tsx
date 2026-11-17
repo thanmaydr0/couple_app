@@ -135,33 +135,91 @@ export function ActiveCallScreen() {
 }
 
 export default function CallsScreen() {
-  const styles = useCallStyles(); const { colors, geometry } = useTheme();
+  const styles = useCallStyles();
+  const { colors, geometry, spacing, radius } = useTheme();
   const { data: session } = useSession();
+  const { data: partner } = usePartner();
   const ready = useCalls((s) => s.ready);
   const error = useCalls((s) => s.error);
   const params = useLocalSearchParams<{ health?: string }>();
   const [health, setHealth] = useState(params.health === '1');
   const [notice, setNotice] = useState<string | null>(null);
+
   if (health) return <RingingHealthScreen onBack={() => setHealth(false)} />;
-  return <Screen bottomInset><Stack.Screen options={{ title: 'Calls', headerShown: false }} /><Header title="Calls" subtitle="A little closer" />
-    <ScrollView contentContainerStyle={styles.page}>
-      <Text style={styles.eyebrow}>A LITTLE CLOSER</Text><Text style={styles.pageTitle}>Make time for{`\n`}each other.</Text>
-      <Text style={styles.subtitle}>A familiar voice. A face you love.</Text>
-      {error && <Text accessibilityLiveRegion="polite" style={styles.error}>{error}</Text>}
-      <View style={styles.startButtons}>
-        <PressableScale accessibilityRole="button" disabled={!ready} style={[styles.startButton, !ready && styles.disabled]} onPress={() => { void startCall('audio'); }}><Ionicons name="call-outline" size={geometry.icon} color={colors.primaryContrast} /><Text style={styles.startLabel}>Voice call</Text></PressableScale>
-        <PressableScale accessibilityRole="button" disabled={!ready} style={[styles.startButton, !ready && styles.disabled]} onPress={() => { void startCall('video'); }}><Ionicons name="videocam-outline" size={geometry.icon} color={colors.primaryContrast} /><Text style={styles.startLabel}>Video call</Text></PressableScale>
-      </View>
-      {!ready && <Text style={styles.subtitle}>Connecting to your couple’s calling service…</Text>}
-      <PressableScale accessibilityRole="button" onPress={() => {
-        if (!session) return;
-        setNotice('Setting up call notifications…');
-        void registerCallNotifications(session.user.id, true).then(() => setNotice('Notification setup checked. Allow notifications in Settings to receive calls when the app is closed.')).catch(() => setNotice('Notifications could not register. Try again on your Android development build.'));
-      }}><Text style={styles.link}>Enable call notifications</Text></PressableScale>
-      {notice && <Text style={styles.subtitle}>{notice}</Text>}
-      <Control icon="notifications-outline" label="Ringing health check" action={() => setHealth(true)} />
-      <BedtimeReminder />
-      <RecentCalls />
-    </ScrollView>
-  </Screen>;
+
+  return (
+    <Screen atmosphere gradient bottomInset>
+      <Stack.Screen options={{ title: 'Calls', headerShown: false }} />
+      <Header title="Calls" subtitle="A little closer" />
+      <ScrollView contentContainerStyle={styles.page} showsVerticalScrollIndicator={false}>
+        {/* Partner Calling Hero Card */}
+        <View style={{ alignItems: 'center', gap: spacing.md, paddingVertical: spacing.md }}>
+          <PulseRing size={120}>
+            <PartnerAvatar />
+          </PulseRing>
+          <View style={{ alignItems: 'center', gap: 4 }}>
+            <Text style={styles.name}>{partner?.display_name ?? 'Your partner'}</Text>
+            <Text style={styles.subtitle}>
+              {ready ? 'Ready to connect · End-to-end encrypted' : 'Connecting to couple service…'}
+            </Text>
+          </View>
+        </View>
+
+        {error && <Text accessibilityLiveRegion="polite" style={styles.error}>{error}</Text>}
+
+        {/* Big Start Call Action Pills */}
+        <View style={styles.startButtons}>
+          <PressableScale
+            accessibilityRole="button"
+            disabled={!ready}
+            style={[styles.startButton, !ready && styles.disabled]}
+            onPress={() => { void startCall('audio'); }}
+          >
+            <Ionicons name="call" size={24} color={colors.primaryContrast} />
+            <Text style={styles.startLabel}>Voice Call</Text>
+          </PressableScale>
+
+          <PressableScale
+            accessibilityRole="button"
+            disabled={!ready}
+            style={[styles.startButton, !ready && styles.disabled]}
+            onPress={() => { void startCall('video'); }}
+          >
+            <Ionicons name="videocam" size={24} color={colors.primaryContrast} />
+            <Text style={styles.startLabel}>Video Call</Text>
+          </PressableScale>
+        </View>
+
+        {/* Call Utilities Card */}
+        <View style={{ flexDirection: 'row', gap: spacing.sm, alignItems: 'center', justifyContent: 'center' }}>
+          <PressableScale
+            accessibilityRole="button"
+            onPress={() => {
+              if (!session) return;
+              setNotice('Setting up call notifications…');
+              void registerCallNotifications(session.user.id, true)
+                .then(() => setNotice('Call notifications are active.'))
+                .catch(() => setNotice('Notifications could not register on this build.'));
+            }}
+            style={{ paddingHorizontal: spacing.md, paddingVertical: spacing.sm, backgroundColor: colors.surfaceAlt, borderRadius: radius.pill }}
+          >
+            <Text style={styles.link}>Notifications Setup</Text>
+          </PressableScale>
+
+          <PressableScale
+            accessibilityRole="button"
+            onPress={() => setHealth(true)}
+            style={{ paddingHorizontal: spacing.md, paddingVertical: spacing.sm, backgroundColor: colors.surfaceAlt, borderRadius: radius.pill }}
+          >
+            <Text style={styles.link}>Ringing Health</Text>
+          </PressableScale>
+        </View>
+
+        {notice && <Text style={styles.subtitle}>{notice}</Text>}
+
+        <BedtimeReminder />
+        <RecentCalls />
+      </ScrollView>
+    </Screen>
+  );
 }

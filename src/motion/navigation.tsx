@@ -21,9 +21,37 @@ function Tab({ item, active, onPress, onLongPress }: { item: TabItem; active: bo
 }
 /** Standalone integration API: Home owns the router tab-bar adapter. */
 export function AnimatedBottomTabBar({ tabs, activeKey, onTabPress, onTabLongPress }: { tabs: readonly TabItem[]; activeKey: string; onTabPress: (key: string) => void; onTabLongPress?: (key: string) => void }) {
-  const { colors, spacing, radius } = useTheme(); const motion = useMotion(); const insets = useSafeAreaInsets(); const [width, setWidth] = useState(0); const x = useSharedValue(0); const fade = useSharedValue(1);
-  const count = Math.max(1, tabs.length); const cell = width / count; const index = Math.max(0, tabs.findIndex(t => t.key === activeKey));
-  useEffect(() => { if (motion.level === 'full') x.value = withSpring(index * cell, motion.spring('snappy')); else { x.value = index * cell; fade.value = 0; fade.value = withTiming(1, { duration: motion.duration('fast') }); } }, [index, cell, motion.level, x, fade]);
-  const animated = useAnimatedStyle(() => ({ transform: [{ translateX: x.value }], opacity: fade.value }));
-  return <View style={{ marginHorizontal: spacing.md, marginBottom: Math.max(insets.bottom, spacing.sm), padding: spacing.xs, borderRadius: radius.pill, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.bgElevated }}><View onLayout={e => setWidth(e.nativeEvent.layout.width)} style={{ flexDirection: 'row' }}><Animated.View pointerEvents="none" style={[{ position: 'absolute', top: 0, bottom: 0, width: cell, borderRadius: radius.pill, backgroundColor: colors.primary }, animated]} />{tabs.map(item => <Tab key={item.key} item={item} active={activeKey === item.key} onPress={() => onTabPress(item.key)} onLongPress={() => onTabLongPress?.(item.key)} />)}</View></View>;
+  const { colors, spacing, radius, dark } = useTheme(); const motion = useMotion(); const insets = useSafeAreaInsets(); const [width, setWidth] = useState(0); const x = useSharedValue(0); const fade = useSharedValue(0);
+  const count = Math.max(1, tabs.length); const cell = width > 0 ? width / count : 0; const index = Math.max(0, tabs.findIndex(t => t.key === activeKey));
+  useEffect(() => {
+    if (width > 0) {
+      fade.value = withTiming(1, { duration: motion.duration('fast') });
+      if (motion.level === 'full') x.value = withSpring(index * cell, motion.spring('snappy'));
+      else x.value = index * cell;
+    }
+  }, [index, cell, width, motion.level, x, fade, motion]);
+  const animated = useAnimatedStyle(() => ({
+    transform: [{ translateX: x.value }],
+    opacity: width > 0 ? fade.value : 0,
+    width: cell,
+  }));
+  return <View style={{
+    marginHorizontal: spacing.md,
+    marginBottom: Math.max(insets.bottom, spacing.sm),
+    padding: spacing.xs,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.bgElevated,
+    shadowColor: colors.shadowColor,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: dark ? 0.35 : 0.08,
+    shadowRadius: 12,
+    elevation: 6,
+  }}>
+    <View onLayout={e => setWidth(e.nativeEvent.layout.width)} style={{ flexDirection: 'row' }}>
+      <Animated.View pointerEvents="none" style={[{ position: 'absolute', top: 0, bottom: 0, borderRadius: radius.pill, backgroundColor: colors.primary }, animated]} />
+      {tabs.map(item => <Tab key={item.key} item={item} active={activeKey === item.key} onPress={() => onTabPress(item.key)} onLongPress={() => onTabLongPress?.(item.key)} />)}
+    </View>
+  </View>;
 }

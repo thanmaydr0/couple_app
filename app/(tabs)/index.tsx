@@ -20,7 +20,7 @@ const destinations: { title: string; detail: string; href: Href; icon: Component
   { title: 'Games', detail: 'A little friendly competition', href: '/(tabs)/games', icon: 'game-controller-outline' },
 ];
 export default function HomeScreen() {
-  const { colors, spacing, geometry } = useTheme();
+  const { colors, spacing, geometry, radius } = useTheme();
   const network = useNetInfo();
   const offline = network.isConnected === false || network.isInternetReachable === false;
   const scrollY = useSharedValue(0);
@@ -42,19 +42,61 @@ export default function HomeScreen() {
     refreshControl={<RefreshControl refreshing={partner.isRefetching || couple.isRefetching} onRefresh={() => { void partner.refetch(); void couple.refetch(); }} tintColor={colors.primary} colors={[colors.primary]} progressBackgroundColor={colors.surface} />}>
     <ParallaxHeader scrollY={scrollY}><Text variant="caption" color="textSecondary">JUST THE TWO OF YOU</Text><Header title="Our space" right={<View style={{ flexDirection: 'row', gap: spacing.sm }}><IconButton name="grid-outline" accessibilityLabel="Open all features" onPress={() => router.push('/us')} /><IconButton name="settings-outline" accessibilityLabel="Open settings" onPress={() => router.push('/settings')} /></View>} /></ParallaxHeader>
     <OfflineNotice />
-    <Button title="All features · explore your space" variant="secondary" onPress={() => router.push('/us')} />
     {(partner.isRefetching || couple.isRefetching) && <Skeleton height={geometry.track} />}
-    <Card style={{ gap: spacing.s20 }}><View style={{ flexDirection: 'row', gap: spacing.md, alignItems: 'center' }}>
-      {online && !offline ? <PulseRing size={spacing.s56}><Avatar name={name} uri={avatar.data} size={geometry.avatar} /></PulseRing> : <Avatar name={name} uri={avatar.data} size={spacing.s56} />}
-      <View style={{ flex: 1, gap: spacing.xs }}><Text variant="title/M">{name}</Text><Text variant="body/S" color={online && !offline ? 'success' : 'textSecondary'}>{status}</Text></View>
-    </View><View style={{ flexDirection: 'row', gap: spacing.s12, flexWrap: 'wrap' }}>
-      <Button title="Voice call" style={{ flex: 1 }} onPress={() => router.push({ pathname: '/call', params: { kind: 'audio' } })} />
-      <Button title="Video call" variant="secondary" style={{ flex: 1 }} onPress={() => router.push({ pathname: '/call', params: { kind: 'video' } })} />
-    </View></Card>
-    {days !== null && <Card style={{ alignItems: 'center', gap: spacing.sm }}><DaysCounter value={days} /><Text>days together ♥</Text></Card>}
-    <StaggerList style={{ gap: spacing.s12 }}>{destinations.map(({ title, detail, href, icon }) => <PressableScale key={title} accessibilityRole="button" accessibilityLabel={`Open ${title}`} onPress={() => router.push(href)}>
-      <Card style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md, minHeight: geometry.touch * 2 }}><Ionicons name={icon} size={geometry.icon} color={colors.primary} /><View style={{ flex: 1, gap: spacing.xs }}><Text variant="title/S">{title}</Text><Text variant="body/S" color="textSecondary">{detail}</Text></View><Ionicons name="chevron-forward" size={geometry.icon} color={colors.textSecondary} /></Card>
-    </PressableScale>)}</StaggerList>
+    <Card variant="elevated" style={{ gap: spacing.md, padding: spacing.lg }}>
+      <View style={{ flexDirection: 'row', gap: spacing.md, alignItems: 'center' }}>
+        {online && !offline ? <PulseRing size={spacing.s56}><Avatar name={name} uri={avatar.data} size={geometry.avatar} /></PulseRing> : <Avatar name={name} uri={avatar.data} size={spacing.s56} />}
+        <View style={{ flex: 1, gap: spacing.xs }}>
+          <Text variant="title/L">{name}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.xs }}>
+            {online && !offline && <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: colors.success }} />}
+            <Text variant="body/S" color={online && !offline ? 'success' : 'textSecondary'}>{status}</Text>
+          </View>
+        </View>
+      </View>
+      <View style={{ flexDirection: 'row', gap: spacing.sm, paddingTop: spacing.xs }}>
+        <PressableScale accessibilityRole="button" accessibilityLabel="Voice call" onPress={() => router.push({ pathname: '/call', params: { kind: 'audio' } })} style={{ flex: 1, minHeight: geometry.touch, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, backgroundColor: colors.primary, borderRadius: radius.pill, paddingHorizontal: spacing.md }}>
+          <Ionicons name="call" size={18} color={colors.primaryContrast} />
+          <Text variant="label" color="primaryContrast">Voice call</Text>
+        </PressableScale>
+        <PressableScale accessibilityRole="button" accessibilityLabel="Video call" onPress={() => router.push({ pathname: '/call', params: { kind: 'video' } })} style={{ flex: 1, minHeight: geometry.touch, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, backgroundColor: colors.surfaceAlt, borderWidth: geometry.hairline, borderColor: colors.border, borderRadius: radius.pill, paddingHorizontal: spacing.md }}>
+          <Ionicons name="videocam" size={18} color={colors.textPrimary} />
+          <Text variant="label" color="textPrimary">Video call</Text>
+        </PressableScale>
+      </View>
+    </Card>
+    {days !== null && <Card variant="elevated" style={{ alignItems: 'center', gap: spacing.xs, paddingVertical: spacing.lg }}>
+      <DaysCounter value={days} />
+      <Text variant="label" color="primary">days together ♥</Text>
+      <Text variant="caption" color="textSecondary">Every day with you is my favorite</Text>
+    </Card>}
+    <View style={{ gap: spacing.sm }}>
+      <Text variant="title/M" accessibilityRole="header">Moments for two</Text>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.s12 }}>
+        {destinations.map(({ title, detail, href, icon }) => (
+          <PressableScale key={title} accessibilityRole="button" accessibilityLabel={`Open ${title}`} onPress={() => router.push(href)} style={{ flexBasis: '47%', flexGrow: 1 }}>
+            <Card variant="elevated" style={{ minHeight: geometry.touch * 2.2, padding: spacing.md, justifyContent: 'space-between', gap: spacing.sm }}>
+              <View style={{ width: 40, height: 40, borderRadius: radius.md, backgroundColor: colors.surfaceAlt, alignItems: 'center', justifyContent: 'center' }}>
+                <Ionicons name={icon} size={22} color={colors.primary} />
+              </View>
+              <View style={{ gap: 2 }}>
+                <Text variant="title/S">{title}</Text>
+                <Text variant="caption" color="textSecondary" numberOfLines={2}>{detail}</Text>
+              </View>
+            </Card>
+          </PressableScale>
+        ))}
+      </View>
+      <PressableScale accessibilityRole="button" accessibilityLabel="Explore all features" onPress={() => router.push('/us')}>
+        <Card variant="flat" style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: spacing.md, marginTop: spacing.xs }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+            <Ionicons name="grid-outline" size={geometry.icon} color={colors.primary} />
+            <Text variant="label">All features · Explore your space</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
+        </Card>
+      </PressableScale>
+    </View>
     <MoreOfUs /><HomeCards />
     <RecentCalls />
   </Animated.ScrollView></Screen>;

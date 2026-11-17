@@ -48,20 +48,28 @@ export default function ChessScreen() {
   const result = game && chess ? game.status === 'active' ? 'Game in progress' : game.status === 'draw' || game.status === 'stalemate' ? drawReason(chess)
     : `${game.winner_id === state.uid ? 'You won' : `${partnerName} won`} · ${game.status === 'resigned' ? 'resignation' : 'checkmate'}` : '';
   const completed = state.games.filter(row => row.status !== 'active');
-  return <Screen bottomInset><ScrollView contentContainerStyle={styles.content}>
+  return <Screen atmosphere gradient bottomInset><ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
     <Header title="Chess" subtitle="One board. Just the two of you." onBack={() => playing ? setPlaying(false) : router.replace('/(tabs)/games')} />
-    <Text>{partnerName} · {online ? 'Online' : 'Offline'} · {state.connected ? 'Live sync' : 'Connecting / retrying'}</Text>
-    {(state.error || restored.failure) && <Card><Text style={{ color: theme.colors.danger }}>{state.error || restored.failure}</Text><Button title="Refresh" onPress={state.refresh} /></Card>}
+
+    {/* Live Partner Presence Capsule */}
+    <View style={[styles.presenceCapsule, { backgroundColor: theme.colors.surfaceAlt, borderRadius: theme.radius.pill }]}>
+      <View style={[styles.statusDot, { backgroundColor: online ? theme.colors.success : theme.colors.textSecondary }]} />
+      <Text variant="caption" color="textPrimary">
+        {partnerName} · {online ? 'Online' : 'Offline'} · {state.connected ? 'Live sync' : 'Connecting'}
+      </Text>
+    </View>
+
+    {(state.error || restored.failure) && <Card variant="elevated"><Text style={{ color: theme.colors.danger }}>{state.error || restored.failure}</Text><Button title="Refresh" onPress={state.refresh} /></Card>}
     {state.nudge && <Text accessibilityLiveRegion="polite">{state.nudge}</Text>}
-    {state.loading ? <Text>Loading your games…</Text> : !state.profile.data?.couple_id ? <Card><Text>Link your couple in Settings to play together.</Text></Card> : !playing || !game ? <>
-      <Card style={styles.content}><Text style={styles.heading}>A little friendly rivalry</Text><Text>Take your time. Your board will be here when you return.</Text>
+    {state.loading ? <Text>Loading your games…</Text> : !state.profile.data?.couple_id ? <Card variant="elevated"><Text>Link your couple in Settings to play together.</Text></Card> : !playing || !game ? <>
+      <Card variant="elevated" style={styles.content}><Text style={styles.heading}>A little friendly rivalry</Text><Text color="textSecondary">Take your time. Your board will be here when you return.</Text>
         {state.active ? <><Text>You play {color === 'w' ? 'white' : 'black'} · {state.active.turn === color ? 'Your turn' : 'Partner’s turn'}</Text><Button title="Resume game" onPress={() => setPlaying(true)} /></>
-          : <><Text>Choose your color</Text><View style={styles.wrap}>{(['w', 'b', 'random'] as const).map(value => <Button key={value} title={`${choice === value ? '✓ ' : ''}${value === 'w' ? 'White' : value === 'b' ? 'Black' : 'Random'}`} onPress={() => setChoice(value)} disabled={state.busy} />)}</View>
+          : <><Text variant="label">Choose your color</Text><View style={styles.wrap}>{(['w', 'b', 'random'] as const).map(value => <Button key={value} variant={choice === value ? 'primary' : 'secondary'} title={`${choice === value ? '✓ ' : ''}${value === 'w' ? 'White' : value === 'b' ? 'Black' : 'Random'}`} onPress={() => setChoice(value)} disabled={state.busy} />)}</View>
             <Button title={state.busy ? 'Starting…' : 'New game'} disabled={state.busy || !state.partner.data || state.loading} onPress={() => { void state.start(choice).then(() => setPlaying(true)); }} /></>}
       </Card>
-      {!state.partner.data && <Text>Waiting for your linked partner’s profile.</Text>}
-      {game && game.status !== 'active' && <Card style={styles.content}><Text style={styles.heading}>{result}</Text><Button title="Rematch · swap colors" disabled={state.busy || !state.partner.data} onPress={() => { void state.start('random', game).then(() => setPlaying(true)); }} /><Button title="View final board" onPress={() => setPlaying(true)} /></Card>}
-      <Card style={styles.wrap}>{[{ label: 'Games', value: completed.length }, { label: 'Wins', value: completed.filter(row => row.winner_id === state.uid).length }, { label: 'Losses', value: completed.filter(row => row.winner_id && row.winner_id !== state.uid).length }, { label: 'Draws', value: completed.filter(row => !row.winner_id).length }].map(item => <View key={item.label} style={{ flex: 1 }}><AnimatedNumber value={item.value} /><Text variant="caption" color="textSecondary">{item.label}</Text></View>)}</Card>
+      {!state.partner.data && <Text color="textSecondary">Waiting for your linked partner’s profile.</Text>}
+      {game && game.status !== 'active' && <Card variant="elevated" style={styles.content}><Text style={styles.heading}>{result}</Text><Button title="Rematch · swap colors" disabled={state.busy || !state.partner.data} onPress={() => { void state.start('random', game).then(() => setPlaying(true)); }} /><Button title="View final board" variant="secondary" onPress={() => setPlaying(true)} /></Card>}
+      <Card variant="elevated" style={styles.statsCard}>{[{ label: 'Games', value: completed.length }, { label: 'Wins', value: completed.filter(row => row.winner_id === state.uid).length }, { label: 'Losses', value: completed.filter(row => row.winner_id && row.winner_id !== state.uid).length }, { label: 'Draws', value: completed.filter(row => !row.winner_id).length }].map(item => <View key={item.label} style={{ flex: 1, alignItems: 'center', gap: 4 }}><AnimatedNumber value={item.value} style={styles.statsNumber} /><Text variant="caption" color="textSecondary">{item.label}</Text></View>)}</Card>
     </> : chess && <>
       <Text style={styles.heading} accessibilityLiveRegion="polite">{game.status !== 'active' ? result : `${myTurn ? 'Your turn' : game.turn === color ? 'Saving…' : `${partnerName}’s turn`}${chess.isCheck() ? ' · Check!' : ''}`}</Text>
       <View style={styles.row}><PulseRing><Avatar name={myTurn ? 'You' : partnerName} /></PulseRing><Text style={{ flex: 1 }}>You play {color === 'w' ? 'white' : 'black'}{state.busy ? ' · Saving…' : ''}</Text>{!myTurn && game.status === 'active' && online && <View accessible accessibilityLabel="Waiting for partner’s move"><TypingDots /></View>}</View>
@@ -85,4 +93,8 @@ const makeStyles = ({ spacing, typography }: ReturnType<typeof useTheme>) => Sty
   content: { gap: spacing.md, paddingBottom: spacing.lg }, title: typography['title/L'], heading: typography['title/M'],
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm },
   wrap: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  presenceCapsule: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: spacing.xs, paddingHorizontal: spacing.md, paddingVertical: spacing.xs },
+  statusDot: { width: 8, height: 8, borderRadius: 4 },
+  statsCard: { flexDirection: 'row', justifyContent: 'space-between', padding: spacing.md },
+  statsNumber: { ...typography['display/M'], textAlign: 'center' },
 });

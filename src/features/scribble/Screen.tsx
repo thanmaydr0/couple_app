@@ -22,7 +22,7 @@ export default function ScribbleScreen() {
   const name = (id: string) => id === game.uid ? 'You' : partnerName;
   const blocked = game.busy || game.paused;
   const exit = () => { if (current?.phase === 'draw') Alert.alert('Pause this match?', 'Your drawing and scores will be kept. Your partner will wait until you return.', [{ text: 'Keep playing', style: 'cancel' }, { text: 'Return to lobby', onPress: game.leave }]); else game.leave(); };
-  return <GestureHandlerRootView style={s.root}><Screen bottomInset style={s.screen}><KeyboardAvoidingView style={s.root} behavior="height">
+  return <GestureHandlerRootView style={s.root}><Screen atmosphere gradient bottomInset style={s.screen}><KeyboardAvoidingView style={s.root} behavior="height">
     <Header title="Scribble" subtitle="Just the two of you" onBack={current ? exit : () => router.back()} right={<Text variant="caption" color="textSecondary">{game.connected ? 'LIVE' : 'CONNECTING'}</Text>} />
     {game.error && <View accessibilityRole="alert" style={s.error}><Text style={s.text}>{game.error}</Text><Action title="Refresh matches" onPress={() => { void game.refresh(); }} subtle /></View>}
     {!current ? <ScrollView contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
@@ -51,10 +51,10 @@ const makeStyles = ({ colors, spacing, radius, geometry, typography, elevations 
   hero: { paddingVertical: spacing.lg, gap: spacing.md }, art: { ...typography['display/L'], color: colors.primary, textAlign: 'center' },
   heading: { ...typography['title/L'], color: colors.textPrimary, textAlign: 'center' },
   muted: { ...typography['body/S'], color: colors.textSecondary }, centerMuted: { ...typography['body/S'], color: colors.textSecondary, textAlign: 'center' },
-  card: { backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.md, gap: spacing.md, borderWidth: geometry.hairline, borderColor: colors.border },
+  card: { backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.md, gap: spacing.md, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.border, shadowColor: colors.shadowColor, shadowOpacity: 0.1, shadowRadius: 6, elevation: 3 },
   label: { ...typography.label, color: colors.textSecondary }, stepper: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: spacing.lg },
   number: { ...typography['display/M'], color: colors.textPrimary }, text: { ...typography['body/M'], color: colors.textPrimary },
-  match: { flexDirection: 'row', alignItems: 'center', padding: spacing.md, borderRadius: radius.md, backgroundColor: colors.surface, gap: spacing.sm },
+  match: { flexDirection: 'row', alignItems: 'center', padding: spacing.md, borderRadius: radius.md, backgroundColor: colors.surface, gap: spacing.sm, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.border, shadowColor: colors.shadowColor, shadowOpacity: 0.08, shadowRadius: 4, elevation: 2 },
   code: { ...typography.caption, color: colors.textSecondary, marginTop: spacing.xs }, arrow: { ...typography['title/L'], color: colors.primary },
   scoreRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm }, score: { ...typography['title/L'], color: colors.textPrimary }, right: { textAlign: 'right' }, round: { alignItems: 'center', flexShrink: 1 },
   banner: { padding: spacing.md, gap: spacing.xs, backgroundColor: colors.surfaceAlt, borderRadius: radius.md, borderColor: colors.warning, borderWidth: geometry.stroke },

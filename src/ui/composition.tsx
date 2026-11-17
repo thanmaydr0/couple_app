@@ -12,7 +12,8 @@ export function Header({ title, subtitle, onBack, right }: { title: string; subt
 }
 export function ListItem({ title, subtitle, leading, trailing, onPress, disabled, style }: { title: string; subtitle?: string; leading?: ReactNode; trailing?: ReactNode; onPress?: () => void; disabled?: boolean; style?: ViewProps['style'] }) {
   const { spacing, colors, geometry } = useTheme();
-  const content = <>{leading}<View style={{ flex: 1, gap: spacing.xs }}><Text>{title}</Text>{subtitle && <Text variant="body/S" color="textSecondary">{subtitle}</Text>}</View>{trailing}</>;
+  const defaultTrailing = onPress && trailing === undefined ? <Ionicons name="chevron-forward" size={geometry.icon * 0.75} color={colors.textMuted} /> : trailing;
+  const content = <>{leading}<View style={{ flex: 1, gap: spacing.xs }}><Text variant="title/S">{title}</Text>{subtitle && <Text variant="body/S" color="textSecondary">{subtitle}</Text>}</View>{defaultTrailing}</>;
   const layout = { minHeight: geometry.touch, paddingVertical: spacing.s12, flexDirection: 'row' as const, alignItems: 'center' as const, gap: spacing.md, borderBottomColor: colors.border, borderBottomWidth: geometry.hairline };
   return onPress ? <PressableScale accessibilityRole="button" disabled={disabled} onPress={onPress} style={[layout, style]}>{content}</PressableScale> : <View style={[layout, style]}>{content}</View>;
 }
