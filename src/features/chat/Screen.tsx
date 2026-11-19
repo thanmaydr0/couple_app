@@ -8,7 +8,7 @@ import { KeyboardAvoidingView } from 'react-native-keyboard-controller';
 import Animated, { LinearTransition, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '@/theme';
-import { useMotion, PressableScale, motionTokens } from '@/motion';
+import { useMotion, PressableScale, motionTokens, LiquidTypingWave, FadeInView } from '@/motion';
 import { Screen, Header, TypingDots, Skeleton, BottomSheet, ListItem, MessageStatusTicks, Avatar } from '@/ui';
 import { useChatStyles } from './styles';
 import { MessageBubble } from './MessageBubble';
@@ -274,11 +274,21 @@ function Conversation({ coupleId, uid }: { coupleId: string; uid: string }) {
           {chat.loadingOlder ? <ActivityIndicator color={colors.primary} /> : <Text style={styles.subtitle}>Load earlier messages</Text>}</PressableScale> : null}
         ListEmptyComponent={<View style={styles.empty}>{!chat.ready ? <View accessibilityLabel="Loading messages" style={{ gap: spacing.md, width: '100%' }}>{Array.from({ length: geometry.firstScreenful }, (_, index) => <Skeleton key={index} width={index % 2 ? '85%' : '65%'} height={geometry.touch} style={{ alignSelf: index % 2 ? 'flex-end' : 'flex-start' }} />)}</View> : <><Text style={styles.emptyTitle}>Your everyday, together.</Text><Text style={styles.emptyText}>Start with a little hello.</Text></>}</View>}
         renderItem={renderItem} />
-      {scrolling && scrollDate && <View pointerEvents="none" style={styles.floatingDate}><Text style={styles.dateText}>{scrollDate}</Text></View>}
+      {scrolling && scrollDate && (
+        <FadeInView pointerEvents="none" style={styles.floatingDate}>
+          <Text style={styles.dateText}>{scrollDate}</Text>
+        </FadeInView>
+      )}
       {newMessages && <ChatReveal style={styles.jump}><PressableScale accessibilityRole="button" accessibilityLabel={`${jumpCount} new messages. Scroll to bottom`} onPress={toBottom} style={styles.newMessages}><Text style={styles.pillText}>↓ {jumpCount} new</Text></PressableScale></ChatReveal>}
       </View>
 
-      <Animated.View layout={motion.level === 'full' ? LinearTransition.duration(motion.duration('fast')) : undefined} style={styles.typing}>{typing && <View style={styles.typingBubble}><TypingDots /></View>}</Animated.View>
+      <Animated.View layout={motion.level === 'full' ? LinearTransition.duration(motion.duration('fast')) : undefined} style={styles.typing}>
+        {typing && (
+          <View style={styles.typingBubble}>
+            <LiquidTypingWave />
+          </View>
+        )}
+      </Animated.View>
       {reply && <View style={styles.replyBar}><View style={styles.flex}><Text style={styles.quoteName}>Replying to {reply.sender_id === uid ? 'yourself' : partnerName}</Text><Text style={styles.subtitle} numberOfLines={1}>{bodySummary(known.get(reply.id) ?? reply)}</Text></View>
         <PressableScale accessibilityRole="button" accessibilityLabel="Cancel reply" onPress={() => setReply(null)} style={styles.iconBtn}><Ionicons name="close" size={geometry.icon} color={colors.textSecondary} /></PressableScale></View>}
       {emojiOpen && <ScrollView horizontal keyboardShouldPersistTaps="always" contentContainerStyle={styles.emojis} style={styles.emojiPanel}>{EMOJI.map((emoji) => <PressableScale key={emoji} accessibilityRole="button" accessibilityLabel={`Insert ${emoji}`} onPress={() => { if (draft.length < 3998) edit(`${draft}${emoji}`); }} style={styles.emoji}><Text style={styles.emojiText}>{emoji}</Text></PressableScale>)}</ScrollView>}

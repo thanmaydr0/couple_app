@@ -38,7 +38,7 @@ export default function HomeScreen() {
   const status = offline ? 'Live status unavailable offline' : online ? 'Online' : lastSeen && !Number.isNaN(lastSeen.getTime()) ? `Last seen ${formatDistanceToNow(new Date(Math.min(lastSeen.getTime(), now)), { addSuffix: true })}` : 'Last seen unavailable';
   const anniversary = couple.data?.anniversary ? parseISO(couple.data.anniversary) : null;
   const days = anniversary && !Number.isNaN(anniversary.getTime()) ? Math.max(0, differenceInCalendarDays(new Date(now), anniversary)) : null;
-  return <Screen gradient><Animated.ScrollView onScroll={onScroll} contentContainerStyle={{ gap: spacing.lg, paddingBottom: spacing.xl }} showsVerticalScrollIndicator={false}
+  return <Screen atmosphere gradient><Animated.ScrollView onScroll={onScroll} contentContainerStyle={{ gap: spacing.lg, paddingBottom: spacing.xl }} showsVerticalScrollIndicator={false}
     refreshControl={<RefreshControl refreshing={partner.isRefetching || couple.isRefetching} onRefresh={() => { void partner.refetch(); void couple.refetch(); }} tintColor={colors.primary} colors={[colors.primary]} progressBackgroundColor={colors.surface} />}>
     <ParallaxHeader scrollY={scrollY}><Text variant="caption" color="textSecondary">JUST THE TWO OF YOU</Text><Header title="Our space" right={<View style={{ flexDirection: 'row', gap: spacing.sm }}><IconButton name="grid-outline" accessibilityLabel="Open all features" onPress={() => router.push('/us')} /><IconButton name="settings-outline" accessibilityLabel="Open settings" onPress={() => router.push('/settings')} /></View>} /></ParallaxHeader>
     <OfflineNotice />

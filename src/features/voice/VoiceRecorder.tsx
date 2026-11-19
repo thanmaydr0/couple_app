@@ -97,7 +97,7 @@ export function VoiceRecorder({ onRecorded, disabled = false, onBusyChange }: { 
       if (event.translationX < -geometry.touch * 1.5) { held.current = false; void finish(true); }
       else if (event.translationY < -geometry.touch * 1.5) { change('locked'); haptic(); }
     })
-    .onFinalize((_event, success) => { held.current = false; if (mode.current === 'recording') void finish(!success); });
+    .onFinalize(() => { held.current = false; if (mode.current === 'recording') void finish(); });
   const text = { ...typography['body/S'], color: colors.textPrimary };
   return <View style={{ gap: spacing.xs, flexShrink: 1 }}>
     {phase !== 'idle' && <View style={{ gap: spacing.xs }}><Text style={text}>{phase === 'preparing' ? 'Opening microphone…' : phase === 'saving' ? 'Saving voice…' : `${phase === 'locked' ? '🔒' : '●'} ${voiceTime(status.durationMillis)} · ${phase === 'locked' ? `Hands-free · ${inputName}` : '← cancel · ↑ lock'}`}</Text><Waveform peaks={voicePeaks(samples.current.slice(-voiceLimits.bars))} /></View>}

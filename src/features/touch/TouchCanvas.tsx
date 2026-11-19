@@ -238,6 +238,35 @@ export function TouchCanvas({ room }: { room: Room }) {
                 </>
               )}
 
+              {/* Organic magnetic liquid bridge between approaching fingers */}
+              {local.down && remote.down && (
+                <Group>
+                  {Array.from({ length: 5 }, (_, idx) => {
+                    const t = (idx + 1) / 6;
+                    const bx = local.x * size.width * (1 - t) + smooth.current.x * size.width * t;
+                    const by = local.y * size.height * (1 - t) + smooth.current.y * size.height * t;
+                    const dist = Math.hypot(
+                      local.x * size.width - smooth.current.x * size.width,
+                      local.y * size.height - smooth.current.y * size.height
+                    );
+                    if (dist > 140) return null;
+                    const bridgeRadius = Math.max(3, (orb * 0.7) * (1 - dist / 140));
+                    return (
+                      <Circle
+                        key={`bridge-${idx}`}
+                        cx={bx}
+                        cy={by}
+                        r={bridgeRadius}
+                        color={colors.primary}
+                        opacity={0.65 * (1 - dist / 140)}
+                      >
+                        {full && <BlurMask blur={spacing.xs} style="normal" />}
+                      </Circle>
+                    );
+                  })}
+                </Group>
+              )}
+
               {/* Gentle breathing rings around fingers */}
               {full &&
                 [local.down ? local : null, remote.down ? smooth.current : null].map(
