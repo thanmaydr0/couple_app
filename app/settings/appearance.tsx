@@ -23,7 +23,7 @@ const THEME_DESCRIPTIONS: Record<ThemeId, string> = {
 };
 
 function ThemePreview({ id }: { id: ThemeId }) {
-  const { colors, spacing, radius, geometry, dark } = useTheme();
+  const { colors, surfaces, spacing, radius, geometry, dark } = useTheme();
   const { themeId, accentOverride, setThemeId } = useThemeStore();
   const scheme = useColorScheme();
   const motion = useMotion();
@@ -59,13 +59,13 @@ function ThemePreview({ id }: { id: ThemeId }) {
         gap: spacing.sm,
         borderRadius: radius.lg,
         borderWidth: selected ? 2 : geometry.hairline,
-        borderColor: selected ? colors.primary : colors.border,
+        borderColor: selected ? colors.primary : surfaces.rimStrong,
         backgroundColor: preview.bg,
         shadowColor: selected ? colors.primary : colors.shadowColor,
-        shadowOffset: { width: 0, height: selected ? 4 : 2 },
-        shadowOpacity: selected ? (dark ? 0.45 : 0.2) : (dark ? 0.25 : 0.05),
-        shadowRadius: selected ? 10 : 6,
-        elevation: selected ? 5 : 2,
+        shadowOffset: { width: 0, height: selected ? 6 : 2 },
+        shadowOpacity: selected ? (dark ? 0.45 : 0.22) : (dark ? 0.25 : 0.06),
+        shadowRadius: selected ? 14 : 8,
+        elevation: selected ? 6 : 2,
       }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
         <Text variant="title/S" style={{ color: preview.textPrimary }}>{id}</Text>
@@ -74,7 +74,7 @@ function ThemePreview({ id }: { id: ThemeId }) {
             <Ionicons name="checkmark" size={14} color={preview.primaryContrast} />
           </View>
         ) : (
-          <View style={{ width: 14, height: 14, borderRadius: 7, backgroundColor: preview.surfaceAlt, borderWidth: 1, borderColor: preview.border }} />
+          <View style={{ width: 14, height: 14, borderRadius: 7, backgroundColor: preview.surfaceAlt, borderWidth: 1, borderColor: `${preview.textSecondary}33` }} />
         )}
       </View>
       <Text variant="caption" style={{ color: preview.textSecondary }}>{THEME_DESCRIPTIONS[id]}</Text>
@@ -92,20 +92,20 @@ function ThemePreview({ id }: { id: ThemeId }) {
 }
 
 export default function AppearanceScreen() {
-  const { colors, spacing, radius, geometry } = useTheme();
+  const { colors, surfaces, spacing, radius, geometry } = useTheme();
   const { themeId, accentOverride, animationLevel, setAccentOverride, setAnimationLevel } = useThemeStore();
   const persistenceError = useAppearanceStatus(state => state.persistenceError);
   const motion = useMotion();
   const [heartCount, setHeartCount] = useState(0);
 
-  return <Screen bottomInset gradient><Stack.Screen options={{ headerShown: false }} /><ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ gap: spacing.lg, paddingBottom: spacing.xl }}>
+  return <Screen atmosphere bottomInset gradient><Stack.Screen options={{ headerShown: false }} /><ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ gap: spacing.lg, paddingBottom: spacing.xl }}>
     <View><Text variant="caption" color="textSecondary">OUR SPACE, YOUR WAY</Text><Header title="Appearance" onBack={() => router.back()} subtitle="A little more you. Changes apply right away." /></View>
     <OfflineNotice message="You’re offline. Appearance changes still apply and save on this phone." /><FailureToast message={persistenceError ?? ''} />
     {!!persistenceError && <Text accessibilityRole="alert" color="danger">{persistenceError}</Text>}
 
     <View style={{ gap: spacing.xs }}>
       <Text variant="title/M" accessibilityRole="header">Themes for Us</Text>
-      <Text variant="body/S" color="textSecondary">Silky smooth animations designed for each theme. {themeId} active.</Text>
+      <Text variant="body/S" color="textSecondary">Ambient atmosphere & silky animations designed for {themeId}.</Text>
     </View>
 
     <View accessibilityRole="radiogroup" style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.s12 }}>
@@ -121,7 +121,7 @@ export default function AppearanceScreen() {
         {accentSwatches.map(swatch => {
           const isSelected = accentOverride === swatch.id;
           return <PressableScale key={swatch.id} accessibilityRole="radio" accessibilityLabel={`${swatch.id} accent`} accessibilityState={{ checked: isSelected }} onPress={() => setAccentOverride(swatch.id)}
-            style={{ width: geometry.touch, height: geometry.touch, borderRadius: radius.pill, borderWidth: isSelected ? 3 : geometry.hairline, borderColor: isSelected ? colors.textPrimary : colors.border, alignItems: 'center', justifyContent: 'center', backgroundColor: swatch.color }}>
+            style={{ width: geometry.touch, height: geometry.touch, borderRadius: radius.pill, borderWidth: isSelected ? 3 : geometry.hairline, borderColor: isSelected ? colors.textPrimary : surfaces.rimStrong, alignItems: 'center', justifyContent: 'center', backgroundColor: swatch.color }}>
             {isSelected && <Ionicons name="checkmark" size={geometry.icon * 0.75} color={themes[swatch.id].primaryContrast} />}
           </PressableScale>;
         })}
@@ -140,7 +140,7 @@ export default function AppearanceScreen() {
       <SegmentedControl<AnimationLevel> options={[{ value: 'full', label: 'Full · 60fps' }, { value: 'reduced', label: 'Reduced' }, { value: 'off', label: 'Off' }]} value={animationLevel} onChange={setAnimationLevel} />
       <Text variant="body/S" color="textSecondary">{motion.systemReduced && animationLevel === 'full' ? 'Phone Reduce Motion is active in system settings.' : animationLevel === 'full' ? 'Organic springs, smooth theme transitions and live reactions.' : animationLevel === 'reduced' ? 'Gentle fades without spatial movement.' : 'Animations settle instantly.'}</Text>
 
-      <PressableScale accessibilityRole="button" accessibilityLabel="Tap for heart pulse" onPress={() => setHeartCount(c => c + 1)} style={{ alignItems: 'center', padding: spacing.md, gap: spacing.sm, backgroundColor: colors.surfaceAlt, borderRadius: radius.md }}>
+      <PressableScale accessibilityRole="button" accessibilityLabel="Tap for heart pulse" onPress={() => setHeartCount(c => c + 1)} style={{ alignItems: 'center', padding: spacing.md, gap: spacing.sm, backgroundColor: surfaces.softPrimary, borderWidth: geometry.hairline, borderColor: surfaces.rim, borderRadius: radius.lg }}>
         <FloatingHeart trigger={heartCount} />
         <HeartbeatView>
           <PulseRing size={spacing.s56}>

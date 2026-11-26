@@ -11,7 +11,7 @@ import { claimPrefix, moods, type ListItem, type Mood } from './types';
 import { makeMemory } from './service';
 
 export default function ListsScreen() {
- const {spacing,geometry}=useTheme(); const state=useLists(); const {lists,items,user,partner}=state;
+ const {colors,surfaces,spacing,geometry}=useTheme(); const state=useLists(); const {lists,items,user,partner}=state;
  const [selection,setSelection]=useState(''); const [composer,setComposer]=useState(false); const [custom,setCustom]=useState(false);
  const [title,setTitle]=useState(''); const [notes,setNotes]=useState(''); const [url,setUrl]=useState(''); const [mood,setMood]=useState<Mood>('all');
  const [celebration,setCelebration]=useState<{item:ListItem;reveal:boolean;trigger:number}>(); const sequence=useRef(0);
@@ -59,14 +59,14 @@ export default function ListsScreen() {
  const reveal=(item:ListItem)=>{void state.run(async()=>{await items.update(item.id,{revealed_at:new Date().toISOString()});setCelebration({item,reveal:true,trigger:++sequence.current});});};
  const claim=(item:ListItem)=>{if(!selected)return;const existing=state.rows.find(i=>i.url===claimPrefix+item.id);void state.run(async()=>{if(existing)await state.remove(existing);else await state.claim(selected,item);});};
  const memory=(item:ListItem)=>{void state.run(async()=>{const saved=await makeMemory(item,user!);if(saved){await items.update(item.id,{media_id:saved.id,photo_path:saved.storage_path});show('Saved to Memories. A little piece of your story.');setCelebration(undefined);}});};
- return <Screen bottomInset><Header title="Our Lists" subtitle="Little dreams. Lovely plans. More us." onBack={()=>router.back()}/>
-  <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{gap:spacing.md,paddingBottom:spacing.s56}}>
+ return <Screen atmosphere gradient bottomInset><Header title="Our Lists" subtitle="Little dreams. Lovely plans. More us." onBack={()=>router.back()}/>
+  <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{gap:spacing.md,paddingBottom:spacing.s56}}>
    <OfflineBanner offline={items.offline} message="Offline · saved ideas are here. Reconnect to make changes."/>
    {(lists.isLoading||items.isLoading||state.seed.isLoading)&&<><Skeleton/><Skeleton/></>}
    {(lists.isError||items.isError||state.seed.isError||state.profile.isError||partner.isError)&&<ErrorState title="Our ideas need a moment" description="We couldn’t refresh everything. Your saved ideas are still here." onRetry={()=>{void lists.refetch();void items.refetch();void state.seed.refetch();void state.profile.refetch();void partner.refetch();}}/>}
    {!!state.error&&<Text color="danger" accessibilityRole="alert">{state.error}</Text>}
    {!state.couple&&!state.profile.isLoading&&<EmptyState title="A list for two" description="Link your couple to start dreaming together."/>}
-   <StaggerList style={{gap:spacing.sm}}>{(lists.data??[]).map(list=>{const data=all.filter(i=>i.list_id===list.id);return <PressableScale key={list.id} accessibilityRole="button" accessibilityState={{selected:selection!=='revealed'&&selected?.id===list.id}} style={{minHeight:geometry.touch}} onPress={()=>{setSelection(list.id);setMood('all');}}><Card style={{gap:spacing.sm}}><Text variant="title/S">{list.emoji} {list.title}{list.kind==='surprise'?' · Private':''}</Text><Progress done={data.filter(i=>!!i.done_at).length} total={data.length}/></Card></PressableScale>;})}</StaggerList>
+   <StaggerList style={{gap:spacing.sm}}>{(lists.data??[]).map(list=>{const data=all.filter(i=>i.list_id===list.id);const active=selection!=='revealed'&&selected?.id===list.id;return <PressableScale key={list.id} accessibilityRole="button" accessibilityState={{selected:active}} style={{minHeight:geometry.touch}} onPress={()=>{setSelection(list.id);setMood('all');}}><Card variant="elevated" style={{gap:spacing.sm,borderColor:active?colors.primary:surfaces.rimStrong,backgroundColor:active?surfaces.softPrimary:colors.surface}}><Text variant="title/S">{list.emoji} {list.title}{list.kind==='surprise'?' · Private':''}</Text><Progress done={data.filter(i=>!!i.done_at).length} total={data.length}/></Card></PressableScale>;})}</StaggerList>
    {!!revealed.length&&<Button title={`Revealed for you · ${revealed.length}`} variant="secondary" onPress={()=>setSelection('revealed')}/>}
    <Button title="Create a list" variant="secondary" disabled={disabled} onPress={()=>{setCustom(true);setTitle('');setComposer(true);}}/>
    {selected&&<>
@@ -78,7 +78,7 @@ export default function ListsScreen() {
     {selection!=='revealed'&&<Button title="Add a little idea" disabled={disabled} onPress={()=>{setCustom(false);setTitle('');setNotes('');setUrl('');setComposer(true);}}/>}
     <Text variant="caption" color="textSecondary">Hold and drag to reorder. Swipe right to complete, left to remove. Buttons work too.</Text>
     {!rows.length&&<EmptyState title="Every adventure starts with a little idea" description="A sunset picnic? A film you keep meaning to see? Save the first spark."/>}
-    <StaggerList style={{gap:spacing.md}}>{rows.map(item=><ItemGesture key={item.id} disabled={disabled} onMove={offset=>move(item,offset)} onComplete={()=>{if(!item.done_at)complete(item);}} onDelete={()=>remove(item)}><Card style={{gap:spacing.sm}}>
+    <StaggerList style={{gap:spacing.md}}>{rows.map(item=><ItemGesture key={item.id} disabled={disabled} onMove={offset=>move(item,offset)} onComplete={()=>{if(!item.done_at)complete(item);}} onDelete={()=>remove(item)}><Card variant="elevated" style={{gap:spacing.sm}}>
      <Text variant="title/S">{item.done_at?'✓ ':''}{item.title}</Text>
      {!!item.notes&&<Text color="textSecondary">{item.notes}</Text>}
      <Text variant="caption" color="textSecondary">{item.added_by===user?'Added by you':'Added by your partner'}{item.hidden_from&&!item.revealed_at?' · 🔒 Private':''}{item.revealed_at?' · Revealed':''}</Text>

@@ -39,7 +39,7 @@ function ZoomPhoto({ uri, width, height, zoomed }: { uri: string; width: number;
 function Movie({ uri, width, height, active }: { uri: string; width: number; height: number; active: boolean }) {
   const player = useVideoPlayer(uri, p => { p.loop = false; });
   useEffect(() => { if (!active) player.pause(); }, [active, player]);
-  const { colors, spacing, radius, geometry } = useTheme();
+  const { colors, surfaces, spacing, radius, geometry } = useTheme();
   const motion = useMotion();
   const [controls, setControls] = useState(true);
   const [fullscreen, setFullscreen] = useState(false);
@@ -62,7 +62,7 @@ function Movie({ uri, width, height, active }: { uri: string; width: number; hei
   return <View style={{ width, height }}>
     <VideoView ref={video} player={player} style={{ width, height }} nativeControls={fullscreen} onFullscreenEnter={() => setFullscreen(true)} onFullscreenExit={() => setFullscreen(false)} contentFit="contain" />
     <PressableScale haptic={false} accessibilityRole="button" accessibilityLabel={controls ? 'Hide video controls' : 'Show video controls'} onPress={() => setControls(value => !value)} style={{ position: 'absolute', inset: 0 }} />
-    <Animated.View pointerEvents={controls ? 'auto' : 'none'} accessibilityElementsHidden={!controls} importantForAccessibility={controls ? 'auto' : 'no-hide-descendants'} style={[{ position: 'absolute', bottom: spacing.md, left: spacing.lg, right: spacing.lg, padding: spacing.sm, borderRadius: radius.md, backgroundColor: colors.bgElevated, gap: spacing.xs }, animated]}>
+    <Animated.View pointerEvents={controls ? 'auto' : 'none'} accessibilityElementsHidden={!controls} importantForAccessibility={controls ? 'auto' : 'no-hide-descendants'} style={[{ position: 'absolute', bottom: spacing.md, left: spacing.lg, right: spacing.lg, padding: spacing.md, borderRadius: radius.lg, backgroundColor: surfaces.glassBg, borderWidth: geometry.hairline, borderColor: surfaces.rimStrong, gap: spacing.xs }, animated]}>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
         <PressableScale accessibilityRole="button" accessibilityLabel="Back ten seconds" onPress={() => { player.seekBy(-10); setControls(true); }} style={{ justifyContent: 'center', alignItems: 'center' }}><Ionicons name="play-back" size={geometry.icon} color={colors.primary} /></PressableScale>
         <PressableScale accessibilityRole="button" accessibilityLabel={isPlaying ? 'Pause video' : 'Play video'} onPress={() => { if (isPlaying) player.pause(); else player.play(); }} style={{ justifyContent: 'center', alignItems: 'center' }}><Ionicons name={isPlaying ? 'pause' : 'play'} size={geometry.icon} color={colors.primary} /></PressableScale>

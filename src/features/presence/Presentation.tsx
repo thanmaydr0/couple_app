@@ -15,21 +15,41 @@ export function DaysCounter({ value }: { value: number }) {
   const { colors, typography } = useTheme();
   const motion = useMotion();
   const [displayValue, setDisplayValue] = useState(motion.level === 'full' ? 0 : value);
-  useEffect(() => { setDisplayValue(value); }, [value]);
-  return <HeartbeatView><AnimatedNumber value={motion.level === 'full' ? displayValue : value} accessibilityLabel={`${value.toLocaleString()} days together`} style={{ ...typography['display/L'], color: colors.primary }} /></HeartbeatView>;
+
+  useEffect(() => {
+    setDisplayValue(value);
+  }, [value]);
+
+  return (
+    <HeartbeatView>
+      <AnimatedNumber
+        value={motion.level === 'full' ? displayValue : value}
+        accessibilityLabel={`${value.toLocaleString()} days together`}
+        style={{ ...typography['display/XL'], color: colors.primary }}
+      />
+    </HeartbeatView>
+  );
 }
 
 export function FailureToast({ message }: { message: string }) {
   const { show } = useToast();
-  useEffect(() => { if (message) show({ message, kind: 'error' }); }, [message]);
+  useEffect(() => {
+    if (message) show({ message, kind: 'error' });
+  }, [message]);
   return null;
 }
 
 export function PageSkeleton({ title }: { title: string }) {
   const { spacing, geometry } = useTheme();
-  return <Screen><Header title={title} /><OfflineNotice /><View style={{ gap: spacing.md, paddingTop: spacing.md }}>
-    <Skeleton height={geometry.touch * 3} />
-    <Skeleton height={geometry.touch * 2} />
-    <Skeleton height={geometry.touch * 2} />
-  </View></Screen>;
+  return (
+    <Screen atmosphere>
+      <Header title={title} />
+      <OfflineNotice />
+      <View style={{ gap: spacing.md, paddingTop: spacing.md }}>
+        <Skeleton height={geometry.touch * 3} />
+        <Skeleton height={geometry.touch * 2} />
+        <Skeleton height={geometry.touch * 2} />
+      </View>
+    </Screen>
+  );
 }

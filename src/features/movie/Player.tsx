@@ -25,14 +25,14 @@ function FloatingReaction({ emoji }: { emoji: string }) {
     transform: [{ translateY: progress.interpolate({ inputRange: [0, 1], outputRange: [0, motion.level === 'full' ? -geometry.particleTravel : 0] }) }] }}>{emoji}</Animated.Text>;
 }
 export default function MoviePlayer({ session, file, user, partner, onChangeFile }: { session: WatchSessionRow; file: MovieFile; user: string; partner: string; onChangeFile: () => void }) {
-  const s = useMovieStyles(); const { colors, spacing, radius, typography, geometry } = useTheme(); const motion = useMotion();
+  const s = useMovieStyles(); const { colors, surfaces, spacing, radius, typography, geometry } = useTheme(); const motion = useMotion();
   const styles = StyleSheet.create({
-    video: { aspectRatio: 16 / 9, minHeight: geometry.touch * 8, backgroundColor: colors.shadowColor, borderRadius: radius.lg, overflow: 'hidden' },
+    video: { aspectRatio: 16 / 9, minHeight: geometry.touch * 8, backgroundColor: colors.shadowColor, borderRadius: radius.lg, overflow: 'hidden', borderWidth: geometry.hairline, borderColor: surfaces.rimStrong },
     fullVideo: { flex: 1, backgroundColor: colors.shadowColor, justifyContent: 'center' },
     overlay: { position: 'absolute', top: 0, bottom: 0, left: 0, right: 0, justifyContent: 'flex-end', padding: spacing.sm, gap: spacing.xs },
-    controls: { backgroundColor: colors.bgElevated, borderRadius: radius.md, padding: spacing.sm, gap: spacing.xs },
+    controls: { backgroundColor: surfaces.glassBg, borderWidth: geometry.hairline, borderColor: surfaces.rimStrong, borderRadius: radius.lg, padding: spacing.md, gap: spacing.xs },
     caption: { ...typography.caption, color: colors.textPrimary },
-    toast: { position: 'absolute', alignSelf: 'center', top: spacing.md, backgroundColor: colors.surface, padding: spacing.s12, borderRadius: radius.pill, color: colors.textPrimary, ...typography['body/S'] },
+    toast: { position: 'absolute', alignSelf: 'center', top: spacing.md, backgroundColor: surfaces.glassBg, borderWidth: geometry.hairline, borderColor: surfaces.rimStrong, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: radius.pill, color: colors.textPrimary, ...typography['body/S'] },
   });
   const watch = useWatch(session, file, user, partner);
   const router = useRouter();
@@ -77,11 +77,11 @@ export default function MoviePlayer({ session, file, user, partner, onChangeFile
       </View>
       <SeekTrack fraction={duration > 0 ? (drag ?? watch.position) / duration : 0} dragging={drag !== null}>
         <Slider accessibilityLabel="Movie position" minimumValue={0} maximumValue={duration} value={drag ?? watch.position}
-          disabled={!watch.state.bothReady || watch.state.ended} style={{ minHeight: geometry.touch }} minimumTrackTintColor={colors.primary} maximumTrackTintColor={colors.border} thumbTintColor="transparent"
+          disabled={!watch.state.bothReady || watch.state.ended} style={{ minHeight: geometry.touch }} minimumTrackTintColor={colors.primary} maximumTrackTintColor={surfaces.divider} thumbTintColor="transparent"
           onSlidingStart={value => setDrag(value)} onValueChange={value => setDrag(value)} onSlidingComplete={value => { watch.control('seek', value); setDrag(null); }} />
       </SeekTrack>
       <View style={s.row}><Text style={styles.caption}>{time(drag ?? watch.position)} / {time(duration)}</Text>
-        <PressableScale accessibilityRole="button" accessibilityLabel={fullscreen ? 'Exit fullscreen' : 'Fullscreen landscape'} onPress={() => { void toggleFullscreen(!fullscreen); }} style={{ padding: spacing.sm, justifyContent: 'center' }}><Text style={styles.caption}>{fullscreen ? '↙ Exit' : '⛶ Fullscreen'}</Text></PressableScale></View>
+        <PressableScale accessibilityRole="button" accessibilityLabel={fullscreen ? 'Exit fullscreen' : 'Fullscreen landscape'} onPress={() => { void toggleFullscreen(!fullscreen); }} style={{ padding: spacing.sm, justifyContent: 'center' }}><Text style={styles.caption}>{fullscreen ? 'Exit fullscreen' : 'Fullscreen'}</Text></PressableScale></View>
       {!fullscreen && reactionButtons()}
       <StatusChip label={watch.state.ended ? 'Session ended' : watch.state.notice.startsWith('Partner is') ? watch.state.notice : watch.state.bothReady ? 'Both ready' : watch.state.notice} />
       </View>

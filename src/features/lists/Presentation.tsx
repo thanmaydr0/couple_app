@@ -3,13 +3,14 @@ import { AppState, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, { cancelAnimation, useAnimatedStyle, useDerivedValue, useSharedValue, withTiming } from 'react-native-reanimated';
 import { Canvas, Circle, Group, Path, RoundedRect, Skia } from '@shopify/react-native-skia';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { useTheme } from '@/theme';
 import { Burst, motionTokens, useMotion } from '@/motion';
 import { Button, Text } from '@/ui';
 import { candidates, type ListItem, type Mood } from './types';
 export function Progress({done,total}:{done:number;total:number}) {
- const {colors,geometry,spacing}=useTheme(); const size=geometry.touch; const r=(size-geometry.stroke*2)/2; const ring=Skia.Path.Make(); ring.addCircle(size/2,size/2,r);
- return <View style={{flexDirection:'row',gap:spacing.sm,alignItems:'center'}}><Canvas style={{width:size,height:size}}><Circle cx={size/2} cy={size/2} r={r} style="stroke" strokeWidth={geometry.stroke} color={colors.border}/><Path path={ring} style="stroke" strokeWidth={geometry.stroke} color={colors.primary} start={0} end={total?done/total:0}/></Canvas><Text variant="caption">{done} / {total} done</Text></View>;
+ const {colors,surfaces,geometry,spacing}=useTheme(); const size=geometry.touch; const r=(size-geometry.stroke*2)/2; const ring=Skia.Path.Make(); ring.addCircle(size/2,size/2,r);
+ return <View style={{flexDirection:'row',gap:spacing.sm,alignItems:'center'}}><Canvas style={{width:size,height:size}}><Circle cx={size/2} cy={size/2} r={r} style="stroke" strokeWidth={geometry.stroke} color={surfaces.divider}/><Path path={ring} style="stroke" strokeWidth={geometry.stroke} color={colors.primary} start={0} end={total?done/total:0} strokeCap="round"/></Canvas><Text variant="caption" color="textSecondary">{done} / {total} done</Text></View>;
 }
 export function ItemGesture({children,onComplete,onDelete,onMove,disabled}:{onComplete:()=>void;onDelete:()=>void;onMove:(offset:number)=>void;disabled:boolean}&PropsWithChildren) {
  const {geometry,spacing}=useTheme(); const motion=useMotion(); const x=useSharedValue(0); const y=useSharedValue(0); const height=useRef(geometry.touch*3);
@@ -19,10 +20,10 @@ export function ItemGesture({children,onComplete,onDelete,onMove,disabled}:{onCo
  return <GestureDetector gesture={Gesture.Race(vertical,horizontal)}><Animated.View onLayout={e=>{height.current=e.nativeEvent.layout.height+spacing.md;}} style={style}>{children}</Animated.View></GestureDetector>;
 }
 export function Ceremony({title,trigger}:{title:string;trigger:number}) {
- const {geometry,spacing,colors}=useTheme(); const motion=useMotion(); const progress=useSharedValue(0);
+ const {geometry,spacing,colors,surfaces}=useTheme(); const motion=useMotion(); const progress=useSharedValue(0);
  useEffect(()=>{progress.value=0;progress.value=withTiming(1,{duration:motion.duration('base')});},[trigger,motion.level,progress]);
  const style=useAnimatedStyle(()=>({opacity:motion.level==='off'?1:progress.value,transform:[{scale:motion.level==='full'?0.8+0.2*progress.value:1}]}));
- return <View style={{alignItems:'center',gap:spacing.md}}><Animated.View style={[{minHeight:geometry.touch,justifyContent:'center',backgroundColor:colors.surfaceAlt,padding:spacing.md,borderRadius:geometry.touch},style]}><Text variant="display/M">✓</Text></Animated.View><Text variant="title/M" accessibilityLiveRegion="polite">{title}</Text><View style={{position:'absolute',top:0}}><Burst trigger={trigger}/></View></View>;
+ return <View style={{alignItems:'center',gap:spacing.md}}><Animated.View style={[{minHeight:geometry.touch*1.5,minWidth:geometry.touch*1.5,alignItems:'center',justifyContent:'center',backgroundColor:surfaces.softPrimary,borderWidth:geometry.hairline,borderColor:surfaces.rimStrong,padding:spacing.md,borderRadius:geometry.touch},style]}><Ionicons name="checkmark" size={32} color={colors.primary}/></Animated.View><Text variant="title/M" accessibilityLiveRegion="polite">{title}</Text><View style={{position:'absolute',top:0}}><Burst trigger={trigger}/></View></View>;
 }
 export function Picker({items,mood,disabled}:{items:ListItem[];mood:Mood;disabled:boolean}) {
  const {spacing,colors,geometry,radius}=useTheme(); const motion=useMotion(); const pool=candidates(items,mood); const [picked,setPicked]=useState('Let fate choose a little joy.');const [spinning,setSpinning]=useState(false);const angle=useSharedValue(0); const timer=useRef<ReturnType<typeof setTimeout>|null>(null);

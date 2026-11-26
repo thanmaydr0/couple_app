@@ -40,7 +40,7 @@ function SquareContent({ chess, square, size, selected, check, from, animate }: 
 export function Board({ chess, game, color, selected, disabled, onTap }: {
   chess: Chess; game: ChessGameRow; color: Color; selected: Square | null; disabled: boolean; onTap: (square: Square) => void;
 }) {
-  const { width } = useWindowDimensions(); const { colors, spacing, radius, geometry, typography } = useTheme();
+  const { width } = useWindowDimensions(); const { colors, surfaces, spacing, radius, geometry, typography } = useTheme();
   const previous = useRef(game.fen); const moved = previous.current !== game.fen;
   useEffect(() => { previous.current = game.fen; }, [game.fen]);
   const size = Math.max(geometry.touch, Math.floor((width - spacing.lg * 2) / 8));
@@ -48,7 +48,7 @@ export function Board({ chess, game, color, selected, disabled, onTap }: {
   const ranks = color === 'w' ? '87654321' : '12345678';
   const lastMove = chess.history({ verbose: true }).slice(-1)[0];
   const legal = selected ? chess.moves({ square: selected, verbose: true }).map(move => move.to) : [];
-  return <ScrollView horizontal accessibilityLabel="Chess board; scroll horizontally on narrow screens" contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }}><View style={{ width: size * 8, borderRadius: radius.sm, overflow: 'hidden' }}>{[...ranks].map((rank, row) => <View key={rank} style={{ flexDirection: 'row', zIndex: game.last_move_to?.[1] === rank ? 1 : 0 }}>{[...files].map((file, col) => {
+  return <ScrollView horizontal accessibilityLabel="Chess board; scroll horizontally on narrow screens" contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }}><View style={{ width: size * 8, borderRadius: radius.md, overflow: 'hidden', borderWidth: geometry.hairline, borderColor: surfaces.rimStrong }}>{[...ranks].map((rank, row) => <View key={rank} style={{ flexDirection: 'row', zIndex: game.last_move_to?.[1] === rank ? 1 : 0 }}>{[...files].map((file, col) => {
     const square = `${file}${rank}` as Square; const piece = chess.get(square);
     const check = piece?.type === 'k' && piece.color === chess.turn() && chess.isCheck();
     const last = game.last_move_from === square || game.last_move_to === square;

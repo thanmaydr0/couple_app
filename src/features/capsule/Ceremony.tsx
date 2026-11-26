@@ -28,11 +28,11 @@ export function WaxSeal({ cracked = false, ready = false }: { cracked?: boolean;
   </Svg></Animated.View></PulseRing>;
 }
 function Envelope({ opening }: { opening: boolean }) {
-  const { colors, geometry, spacing } = useTheme(); const motion = useMotion(); const flap = useSharedValue(0);
+  const { colors, surfaces, geometry, spacing } = useTheme(); const motion = useMotion(); const flap = useSharedValue(0);
   useEffect(() => { flap.value = withTiming(opening ? 1 : 0, { duration: motion.duration('hero') }); }, [opening, flap, motion.level]);
   const style = useAnimatedStyle(() => ({ opacity: 1 - flap.value, transform: [{ translateY: motion.level === 'full' ? -flap.value * spacing.xl : 0 }, { rotateX: `${motion.level === 'full' ? flap.value * 90 : 0}deg` }] }));
   const width = geometry.touch * 4; const height = geometry.touch * 2;
-  return <Animated.View importantForAccessibility="no-hide-descendants" style={[{ alignSelf: 'center', height: opening ? spacing.s56 : height }, style]}><Svg width={width} height={height} viewBox={`0 0 ${width} ${height}`}><Path d={`M 0 0 H ${width} V ${height} H 0 Z`} fill={colors.surfaceAlt} stroke={colors.border} strokeWidth={geometry.stroke} /><Path d={`M 0 0 L ${width / 2} ${height / 2} L ${width} 0`} fill="none" stroke={colors.primary} strokeWidth={geometry.stroke} /></Svg></Animated.View>;
+  return <Animated.View importantForAccessibility="no-hide-descendants" style={[{ alignSelf: 'center', height: opening ? spacing.s56 : height }, style]}><Svg width={width} height={height} viewBox={`0 0 ${width} ${height}`}><Path d={`M 0 0 H ${width} V ${height} H 0 Z`} fill={colors.surfaceAlt} stroke={surfaces.rimStrong} strokeWidth={geometry.stroke} /><Path d={`M 0 0 L ${width / 2} ${height / 2} L ${width} 0`} fill="none" stroke={colors.primary} strokeWidth={geometry.stroke} /></Svg></Animated.View>;
 }
 function CapsulePhoto({ path, encrypted }: { path: string; encrypted?: boolean }) {
   const { spacing, geometry, radius } = useTheme(); const { data: session } = useSession();
@@ -53,7 +53,7 @@ function Paper({ capsule }: { capsule: Capsule }) {
   return <Animated.View style={style}><Card style={{ gap: spacing.md }}><Text variant="title/L">{capsule.title || 'A letter for you'}</Text><Text accessibilityLabel={capsule.body}>{capsule.body.slice(0, letters)}</Text>{capsule.media_paths.map(path => <CapsulePhoto key={path} path={path} encrypted={capsule.encrypted} />)}{capsule.voice_path && <VoicePlayer id={capsule.id} path={capsule.voice_path} bucket="capsules" encrypted={capsule.encrypted} meta={capsule.voiceMeta} />}</Card></Animated.View>;
 }
 export function Ceremony({ id, together, onClose }: { id: string; together: boolean; onClose: () => void }) {
-  const { spacing, colors, radius } = useTheme(); const motion = useMotion(); const { data: session } = useSession();
+  const { spacing, surfaces, geometry, radius } = useTheme(); const motion = useMotion(); const { data: session } = useSession();
   const [peer, setPeer] = useState(false); const [holding, setHolding] = useState(false); const [opened, setOpened] = useState<Capsule | null>(null); const [error, setError] = useState(''); const [cracked, setCracked] = useState(false);
   const hold = useRef(false); const peerRef = useRef(false); const openedRef = useRef(false);
   const motionLevel = useRef(motion.level); motionLevel.current = motion.level;
@@ -95,14 +95,14 @@ export function Ceremony({ id, together, onClose }: { id: string; together: bool
     return () => { alive = false; hold.current = false; clearInterval(timer); app.remove(); if (channel) void supabase.removeChannel(channel); void holdCapsule(id, false).catch(() => {}); };
   }, [id, together, session?.user.id]);
   const release = () => { hold.current = false; setHolding(false); setCracked(false); void holdCapsule(id, false).catch(() => {}); };
-  return <Screen bottomInset><Header title={opened ? 'A moment, kept for you' : 'Break the seal'} onBack={onClose} />
-    <ScrollView contentContainerStyle={{ gap: spacing.lg, paddingBottom: spacing.xl }}>
+  return <Screen atmosphere gradient bottomInset><Header title={opened ? 'A moment, kept for you' : 'Break the seal'} onBack={onClose} />
+    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ gap: spacing.lg, paddingBottom: spacing.xl }}>
       {opened ? <><Envelope opening /><Paper capsule={opened} /><View style={{ alignItems: 'center' }}><Burst trigger={1} /></View></> : <>
-        <Card style={{ alignItems: 'center', gap: spacing.lg, padding: spacing.xl, borderRadius: radius.sheet }}>
+        <Card variant="elevated" style={{ alignItems: 'center', gap: spacing.lg, padding: spacing.xl, borderRadius: radius.sheet }}>
           <Envelope opening={false} /><Text variant="title/M">Something worth the wait</Text>
           <PressableScale accessibilityRole="button" accessibilityLabel={together ? 'Press and hold the wax seal together' : 'Press and hold the wax seal'} accessibilityHint="Hold until the seal opens" haptic={false}
             onPressIn={() => { hold.current = true; setHolding(true); setError(''); }} onPressOut={release}
-            style={{ padding: spacing.lg, backgroundColor: colors.surfaceAlt, borderRadius: radius.pill }}><WaxSeal cracked={cracked} ready /></PressableScale>
+            style={{ padding: spacing.lg, backgroundColor: surfaces.softPrimary, borderWidth: geometry.hairline, borderColor: surfaces.rimStrong, borderRadius: radius.pill }}><WaxSeal cracked={cracked} ready /></PressableScale>
           <Text style={{ textAlign: 'center' }}>{together ? peer ? holding ? 'Keep holding · waiting for both seals' : 'You’re both here. Hold the seal together.' : 'Waiting for your partner to join this capsule…' : holding ? 'Keep holding…' : 'Press and hold to unfold your letter.'}</Text>
         </Card>
         <Text variant="body/S" color="textSecondary">The server checks the unlock time and both holds. Leaving this screen releases your seal.</Text>

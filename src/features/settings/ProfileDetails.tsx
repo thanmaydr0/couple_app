@@ -15,7 +15,7 @@ const geocodingSchema = z.object({ results: z.array(locationSchema).optional() }
 type City = z.infer<typeof locationSchema>;
 const detailsSchema = z.object({ birthday: z.string().nullable(), city: z.string().nullable(), lat: z.number().nullable(), lon: z.number().nullable(), timezone: z.string().nullable() });
 export function ProfileDetails() {
-  const { spacing } = useTheme(); const { data: profile } = useProfile(); const client = useQueryClient();
+  const { spacing, surfaces, radius, geometry } = useTheme(); const { data: profile } = useProfile(); const client = useQueryClient();
   const [birthday, setBirthday] = useState(''); const [city, setCity] = useState('');
   const [timezone, setTimezone] = useState(deviceTimezone); const [selected, setSelected] = useState<City | null>(null);
   const [results, setResults] = useState<City[]>([]); const [notice, setNotice] = useState('');
@@ -56,11 +56,13 @@ export function ProfileDetails() {
   } });
   const busy = save.isPending || clearCity.isPending;
   const error = clearCity.error ?? save.error ?? search.error;
-  return <Card style={{ gap: spacing.md }}><Text variant="title/M">About you</Text><Text variant="body/S" color="textSecondary">Birthday and time zone are visible to your partner when saved. City sharing is optional and off until you choose a city. It never tracks your device.</Text>
+  return <Card variant="elevated" style={{ gap: spacing.md }}><Text variant="title/M">About you</Text><Text variant="body/S" color="textSecondary">Birthday and time zone are visible to your partner when saved. City sharing is optional and off until you choose a city. It never tracks your device.</Text>
     {details.isPending ? <Text>Loading profile details…</Text> : details.isError ? <ErrorState description="Profile details could not load." onRetry={() => { void details.refetch(); }} /> : <>
     <FormField label="Birthday (YYYY-MM-DD)" value={birthday} onChangeText={setBirthday} maxLength={10} editable={!busy} />
     <FormField label="Time zone" value={timezone} onChangeText={setTimezone} autoCapitalize="none" editable={!busy} /><Button title="Use device time zone" variant="ghost" onPress={() => setTimezone(deviceTimezone())} disabled={busy} />
-    <Text color={shareCity ? 'primary' : 'textSecondary'}>{details.data?.city ? shareCity ? 'City sharing is on' : 'City removal ready to save' : shareCity ? 'City selected — save to share' : 'City sharing is off'}</Text>
+    <View style={{ alignSelf: 'flex-start', paddingHorizontal: spacing.s12, paddingVertical: spacing.xs, borderRadius: radius.pill, backgroundColor: shareCity ? surfaces.softPrimary : surfaces.divider, borderWidth: geometry.hairline, borderColor: surfaces.rim }}>
+      <Text variant="caption" color={shareCity ? 'primary' : 'textSecondary'}>{details.data?.city ? shareCity ? 'City sharing is on' : 'City removal ready to save' : shareCity ? 'City selected — save to share' : 'City sharing is off'}</Text>
+    </View>
     <FormField label="City (optional)" value={city} onChangeText={value => { revision.current += 1; setCity(value); setSelected(null); setResults([]); }} editable={!busy} />
     <Button title="Search cities" loading={search.isPending} disabled={search.isPending || busy} onPress={() => { setNotice(''); search.mutate(); }} />
     <View>{results.map(result => <ListItem key={result.id} title={result.name} subtitle={[result.admin1, result.country, result.timezone].filter(Boolean).join(' · ')} disabled={busy} onPress={() => { revision.current += 1; setSelected(result); setCity(result.name); setTimezone(result.timezone); setShareCity(true); setResults([]); setNotice('City selected. Save to share with your partner.'); }} />)}</View>

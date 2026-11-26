@@ -1,6 +1,7 @@
 import { Children, useEffect, useRef, useState, type PropsWithChildren } from 'react';
-import { StyleSheet, TextInput, View, type ViewProps, type StyleProp, type ViewStyle } from 'react-native';
+import { StyleSheet, TextInput, View, useWindowDimensions, type ViewProps, type StyleProp, type ViewStyle } from 'react-native';
 import Animated, {
+  Easing,
   cancelAnimation,
   useAnimatedProps,
   useAnimatedStyle,
@@ -8,14 +9,13 @@ import Animated, {
   useSharedValue,
   withDelay,
   withRepeat,
-  withSequence,
   withSpring,
   withTiming,
   type SharedValue,
 } from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { Canvas, Circle, BlurMask } from '@shopify/react-native-skia';
+import { Blur, Canvas, Circle, Group } from '@shopify/react-native-skia';
 import { useTheme } from '../theme/ThemeProvider';
 import { geometry, radius, spacing, typography, type ThemeId } from '../theme/tokens';
 import { useMotion } from './useMotion';
@@ -26,22 +26,24 @@ export function FadeInView({ delay = 0, style, ...props }: ViewProps & { delay?:
   const value = useSharedValue(motion.level === 'off' ? 1 : 0);
 
   useEffect(() => {
+    cancelAnimation(value);
     if (motion.level === 'off') {
       value.value = 1;
+    } else if (motion.level === 'full') {
+      value.value = 0;
+      value.value = withDelay(delay, withSpring(1, motion.spring('gentle')));
     } else {
       value.value = 0;
-      value.value = withDelay(
-        motion.level === 'full' ? delay : 0,
-        withTiming(1, { duration: motion.duration('base') })
-      );
+      value.value = withTiming(1, { duration: motion.duration('fast') });
     }
     return () => cancelAnimation(value);
-  }, [motion.level, delay, value]);
+  }, [motion, delay, value]);
 
   const animated = useAnimatedStyle(() => ({
-    opacity: value.value,
+    opacity: Math.min(1, Math.max(0, value.value)),
     transform: [
       { translateY: motion.level === 'full' ? (1 - value.value) * motionTokens.travel : 0 },
+      { scale: motion.level === 'full' ? 0.97 + 0.03 * value.value : 1 },
     ],
   }));
 
@@ -75,13 +77,13 @@ function useLoop(duration: 'shimmer' | 'pulse' | 'heartbeat' | 'drift') {
     value.value = 0;
     if (motion.level === 'full') {
       value.value = withRepeat(
-        withTiming(1, { duration: motion.duration(duration) }),
+        withTiming(1, { duration: motion.duration(duration), easing: Easing.inOut(Easing.sin) }),
         -1,
         true
       );
     }
     return () => cancelAnimation(value);
-  }, [motion.level, duration, value]);
+  }, [motion, duration, value]);
 
   return { value, level: motion.level };
 }
@@ -95,7 +97,7 @@ export function Skeleton({
   height?: number;
   style?: StyleProp<ViewStyle>;
 }) {
-  const { colors } = useTheme();
+  const { colors, surfaces } = useTheme();
   const { value, level } = useLoop('shimmer');
 
   const animated = useAnimatedStyle(() => ({
@@ -114,6 +116,8 @@ export function Skeleton({
           overflow: 'hidden',
           borderRadius: radius.md,
           backgroundColor: colors.surfaceAlt,
+          borderWidth: StyleSheet.hairlineWidth,
+          borderColor: surfaces.rim,
         },
         style,
       ]}
@@ -124,7 +128,9 @@ export function Skeleton({
           style={[{ width: '100%', height: '100%' }, animated]}
         >
           <LinearGradient
-            colors={[colors.surfaceAlt, colors.surface, colors.surfaceAlt]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            colors={['transparent', surfaces.rimStrong, 'transparent']}
             style={{ flex: 1 }}
           />
         </Animated.View>
@@ -141,9 +147,14 @@ export function PulseRing({
   const { colors } = useTheme();
   const { value, level } = useLoop('pulse');
 
-  const animated = useAnimatedStyle(() => ({
-    opacity: level === 'full' ? 1 - value.value * 0.7 : 1,
-    transform: [{ scale: level === 'full' ? 1 + value.value * 0.18 : 1 }],
+  const outerStyle = useAnimatedStyle(() => ({
+    opacity: level === 'full' ? 0.65 - value.value * 0.6 : 0.4,
+    transform: [{ scale: level === 'full' ? 1 + value.value * 0.24 : 1 }],
+  }));
+
+  const innerStyle = useAnimatedStyle(() => ({
+    opacity: level === 'full' ? 0.9 - value.value * 0.45 : 0.7,
+    transform: [{ scale: level === 'full' ? 1 + value.value * 0.11 : 1 }],
   }));
 
   return (
@@ -161,10 +172,24 @@ export function PulseRing({
             width: size,
             height: size,
             borderRadius: radius.pill,
-            borderWidth: geometry.stroke,
+            borderWidth: 1.5,
             borderColor: colors.primary,
           },
-          animated,
+          outerStyle,
+        ]}
+      />
+      <Animated.View
+        pointerEvents="none"
+        style={[
+          {
+            position: 'absolute',
+            width: size,
+            height: size,
+            borderRadius: radius.pill,
+            borderWidth: 1,
+            borderColor: colors.accent,
+          },
+          innerStyle,
         ]}
       />
       {children}
@@ -177,7 +202,7 @@ export function HeartbeatView({ style, ...props }: ViewProps) {
 
   const animated = useAnimatedStyle(() => ({
     transform: [
-      { scale: level === 'full' ? 1 + Math.sin(value.value * Math.PI) * 0.06 : 1 },
+      { scale: level === 'full' ? 1 + Math.sin(value.value * Math.PI) * 0.055 : 1 },
     ],
   }));
 
@@ -217,9 +242,9 @@ export function AnimatedNumber({
   useEffect(() => {
     count.value =
       motion.level === 'full'
-        ? withTiming(value, { duration: motion.duration('count') })
+        ? withTiming(value, { duration: motion.duration('count'), easing: Easing.out(Easing.cubic) })
         : value;
-  }, [value, motion.level, count]);
+  }, [value, motion, count]);
 
   const props = useAnimatedProps(() => ({
     text: String(Math.round(count.value)),
@@ -254,12 +279,12 @@ function Particle({
   color: string;
 }) {
   const angle = index * 2.39996;
-  const distance = geometry.particleTravel * (0.5 + (index % 7) / 8);
+  const distance = geometry.particleTravel * (0.45 + (index % 7) / 8);
   const x = useDerivedParticle(progress, Math.cos(angle) * distance, false);
   const y = useDerivedParticle(progress, Math.sin(angle) * distance, true);
   const opacity = useParticleOpacity(progress);
 
-  return <Circle cx={x} cy={y} r={geometry.particle * 1.3} color={color} opacity={opacity} />;
+  return <Circle cx={x} cy={y} r={geometry.particle * 1.25} color={color} opacity={opacity} />;
 }
 
 function useDerivedParticle(progress: SharedValue<number>, distance: number, gravity: boolean) {
@@ -293,7 +318,7 @@ export function Burst({
       progress.value = 0;
       progress.value = withTiming(1, { duration: motion.duration('particles') });
     }
-  }, [trigger, motion.level, progress]);
+  }, [trigger, motion, progress]);
 
   if (motion.level !== 'full') return null;
 
@@ -301,7 +326,7 @@ export function Burst({
     <View
       pointerEvents="none"
       importantForAccessibility="no-hide-descendants"
-      style={{ width: geometry.particleTravel * 2.5, height: geometry.particleTravel * 2.5 }}
+      style={{ width: geometry.particleTravel * 2.2, height: geometry.particleTravel * 2.2 }}
     >
       <Canvas style={{ flex: 1 }}>
         {Array.from(
@@ -334,7 +359,7 @@ export function DriftingGradient() {
     <Animated.View
       pointerEvents="none"
       style={[
-        { position: 'absolute', top: -spacing.md, bottom: -spacing.md, left: 0, right: 0 },
+        { position: 'absolute', top: -spacing.md, bottom: -spacing.md, left: 0, right: 0, opacity: 0.45 },
         animated,
       ]}
     >
@@ -343,84 +368,62 @@ export function DriftingGradient() {
   );
 }
 
+const ATMOSPHERE_PALETTES: Record<ThemeId, { glow1: string; glow2: string; glow3: string }> = {
+  Auto: { glow1: '#8A294B', glow2: '#744A77', glow3: '#EBA5B5' },
+  Midnight: { glow1: '#4F46E5', glow2: '#C026D3', glow3: '#3B82F6' },
+  Noir: { glow1: '#F43F5E', glow2: '#52525B', glow3: '#E11D48' },
+  Rose: { glow1: '#FB7185', glow2: '#F472B6', glow3: '#FDBA74' },
+  Sunset: { glow1: '#F97316', glow2: '#EC4899', glow3: '#EAB308' },
+  Ocean: { glow1: '#06B6D4', glow2: '#3B82F6', glow3: '#14B8A6' },
+  Lavender: { glow1: '#A855F7', glow2: '#EC4899', glow3: '#818CF8' },
+  Forest: { glow1: '#10B981', glow2: '#06B6D4', glow3: '#84CC16' },
+};
+
+/** GPU-blurred Skia ambient mesh backdrop that breathes silently on UI thread. */
 export function ThemeAtmosphere() {
-  const { colors, resolvedTheme } = useTheme();
+  const { resolvedTheme, dark } = useTheme();
   const motion = useMotion();
+  const { width, height } = useWindowDimensions();
   const breath = useSharedValue(0);
 
   useEffect(() => {
     cancelAnimation(breath);
     if (motion.level === 'full') {
       breath.value = 0;
-      breath.value = withRepeat(withTiming(1, { duration: 4500 }), -1, true);
+      breath.value = withRepeat(
+        withTiming(1, { duration: 9000, easing: Easing.inOut(Easing.sin) }),
+        -1,
+        true
+      );
     } else {
-      breath.value = 0.5;
+      breath.value = 0.35;
     }
     return () => cancelAnimation(breath);
   }, [motion.level, breath]);
 
-  const primaryGlowStyle = useAnimatedStyle(() => {
-    const scale = motion.level === 'full' ? 1 + breath.value * 0.15 : 1;
-    const opacity = motion.level === 'full' ? 0.14 + breath.value * 0.08 : 0.16;
-    return {
-      opacity,
-      transform: [{ scale }],
-    };
-  });
+  const c1x = useDerivedValue(() => width * 0.85 - Math.sin(breath.value * Math.PI) * 55);
+  const c1y = useDerivedValue(() => height * 0.14 + Math.cos(breath.value * Math.PI) * 35);
+  const c2x = useDerivedValue(() => width * 0.16 + Math.sin(breath.value * Math.PI) * 45);
+  const c2y = useDerivedValue(() => height * 0.72 - Math.cos(breath.value * Math.PI) * 45);
+  const c3x = useDerivedValue(() => width * 0.55 + Math.cos(breath.value * Math.PI) * 40);
+  const c3y = useDerivedValue(() => height * 0.44 + Math.sin(breath.value * Math.PI) * 30);
 
-  const secondaryGlowStyle = useAnimatedStyle(() => {
-    const scale = motion.level === 'full' ? 1 + (1 - breath.value) * 0.2 : 1;
-    const opacity = motion.level === 'full' ? 0.08 + (1 - breath.value) * 0.06 : 0.1;
-    return {
-      opacity,
-      transform: [{ scale }],
-    };
-  });
+  if (motion.level === 'off') return null;
 
-  const themeAtmosphereColors: Record<ThemeId, { glow1: string; glow2: string }> = {
-    Auto: { glow1: colors.primary, glow2: colors.accent },
-    Midnight: { glow1: '#3b82f6', glow2: '#8b5cf6' },
-    Noir: { glow1: '#52525b', glow2: '#3f3f46' },
-    Rose: { glow1: '#f43f5e', glow2: '#fb7185' },
-    Sunset: { glow1: '#f97316', glow2: '#ec4899' },
-    Ocean: { glow1: '#06b6d4', glow2: '#3b82f6' },
-    Lavender: { glow1: '#a855f7', glow2: '#ec4899' },
-    Forest: { glow1: '#10b981', glow2: '#06b6d4' },
-  };
-
-  const selectedTheme = resolvedTheme in themeAtmosphereColors ? resolvedTheme : 'Auto';
-  const { glow1, glow2 } = themeAtmosphereColors[selectedTheme];
+  const selectedTheme = resolvedTheme in ATMOSPHERE_PALETTES ? resolvedTheme : 'Auto';
+  const { glow1, glow2, glow3 } = ATMOSPHERE_PALETTES[selectedTheme];
+  const opacityScale = dark ? 0.18 : 0.12;
 
   return (
-    <View pointerEvents="none" style={StyleSheet.absoluteFill}>
-      <Animated.View
-        style={[
-          styles.glowOrb,
-          {
-            top: -100,
-            right: -60,
-            width: 380,
-            height: 380,
-            borderRadius: 190,
-            backgroundColor: glow1,
-          },
-          primaryGlowStyle,
-        ]}
-      />
-      <Animated.View
-        style={[
-          styles.glowOrb,
-          {
-            bottom: 40,
-            left: -80,
-            width: 320,
-            height: 320,
-            borderRadius: 160,
-            backgroundColor: glow2,
-          },
-          secondaryGlowStyle,
-        ]}
-      />
+    <View pointerEvents="none" importantForAccessibility="no-hide-descendants" style={StyleSheet.absoluteFill}>
+      <Canvas style={StyleSheet.absoluteFill}>
+        <Group opacity={opacityScale}>
+          <Blur blur={76} />
+          <Circle cx={c1x} cy={c1y} r={width * 0.42} color={glow1} />
+          <Circle cx={c2x} cy={c2y} r={width * 0.38} color={glow2} />
+          <Circle cx={c3x} cy={c3y} r={width * 0.3} color={glow3} />
+        </Group>
+      </Canvas>
     </View>
   );
 }
@@ -445,8 +448,8 @@ export function ThemeTransitionWave() {
   const animatedStyle = useAnimatedStyle(() => {
     if (transition.value >= 1 || motion.level !== 'full') return { opacity: 0 };
     return {
-      opacity: 1 - transition.value,
-      transform: [{ scale: 1 + transition.value * 0.04 }],
+      opacity: (1 - transition.value) * 0.85,
+      transform: [{ scale: 1 + transition.value * 0.03 }],
     };
   });
 
@@ -467,7 +470,7 @@ export function ThemeTransitionWave() {
   );
 }
 
-/** Rich, expressive kinetic floating heart bloom with multi-heart orbit */
+/** Expressive kinetic floating heart bloom with orbiting sparkle */
 export function FloatingHeart({
   trigger,
   x = 120,
@@ -485,22 +488,22 @@ export function FloatingHeart({
     if (trigger > 0 && motion.level === 'full') {
       cancelAnimation(progress);
       progress.value = 0;
-      progress.value = withTiming(1, { duration: 750 });
+      progress.value = withTiming(1, { duration: 760, easing: Easing.out(Easing.cubic) });
     }
   }, [trigger, motion.level, progress]);
 
   const mainHeartStyle = useAnimatedStyle(() => {
     if (progress.value === 0 || progress.value >= 1) return { opacity: 0 };
     const opacity =
-      progress.value < 0.15 ? progress.value / 0.15 : 1 - (progress.value - 0.15) / 0.85;
+      progress.value < 0.16 ? progress.value / 0.16 : 1 - (progress.value - 0.16) / 0.84;
     const sway = Math.sin(progress.value * Math.PI * 2) * 14;
     return {
       opacity,
       transform: [
-        { scale: 0.6 + progress.value * 0.8 },
-        { translateY: -progress.value * 64 },
+        { scale: 0.65 + progress.value * 0.75 },
+        { translateY: -progress.value * 68 },
         { translateX: sway },
-        { rotate: `${sway * 1.5}deg` },
+        { rotate: `${sway * 1.4}deg` },
       ],
     };
   });
@@ -512,7 +515,7 @@ export function FloatingHeart({
       opacity,
       transform: [
         { scale: 0.4 + progress.value * 0.5 },
-        { translateY: -progress.value * 50 - 10 },
+        { translateY: -progress.value * 52 - 10 },
         { translateX: -16 - progress.value * 18 },
       ],
     };
@@ -525,7 +528,7 @@ export function FloatingHeart({
       opacity,
       transform: [
         { scale: 0.4 + progress.value * 0.5 },
-        { translateY: -progress.value * 56 - 6 },
+        { translateY: -progress.value * 58 - 6 },
         { translateX: 16 + progress.value * 18 },
       ],
     };
@@ -550,7 +553,7 @@ export function FloatingHeart({
 
 /** Liquid bouncing wave typing animation for chat */
 export function LiquidTypingWave() {
-  const { colors, spacing } = useTheme();
+  const { colors } = useTheme();
   const motion = useMotion();
   const wave = useSharedValue(0);
 
@@ -558,40 +561,37 @@ export function LiquidTypingWave() {
     cancelAnimation(wave);
     if (motion.level === 'full') {
       wave.value = 0;
-      wave.value = withRepeat(withTiming(1, { duration: 1100 }), -1, false);
+      wave.value = withRepeat(withTiming(1, { duration: 1050, easing: Easing.linear }), -1, false);
     }
     return () => cancelAnimation(wave);
   }, [motion.level, wave]);
 
   const dot1Style = useAnimatedStyle(() => {
     const p = (wave.value + 0) % 1;
-    const y = Math.sin(p * Math.PI) * -6;
-    return { transform: [{ translateY: y }] };
+    const y = Math.sin(p * Math.PI) * -5;
+    const s = 0.85 + Math.sin(p * Math.PI) * 0.25;
+    return { transform: [{ translateY: y }, { scale: s }] };
   });
 
   const dot2Style = useAnimatedStyle(() => {
-    const p = (wave.value + 0.2) % 1;
-    const y = Math.sin(p * Math.PI) * -6;
-    return { transform: [{ translateY: y }] };
+    const p = (wave.value + 0.22) % 1;
+    const y = Math.sin(p * Math.PI) * -5;
+    const s = 0.85 + Math.sin(p * Math.PI) * 0.25;
+    return { transform: [{ translateY: y }, { scale: s }] };
   });
 
   const dot3Style = useAnimatedStyle(() => {
-    const p = (wave.value + 0.4) % 1;
-    const y = Math.sin(p * Math.PI) * -6;
-    return { transform: [{ translateY: y }] };
+    const p = (wave.value + 0.44) % 1;
+    const y = Math.sin(p * Math.PI) * -5;
+    const s = 0.85 + Math.sin(p * Math.PI) * 0.25;
+    return { transform: [{ translateY: y }, { scale: s }] };
   });
 
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 4, height: 16 }}>
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 4, height: 18 }}>
       <Animated.View style={[{ width: 7, height: 7, borderRadius: 3.5, backgroundColor: colors.primary }, dot1Style]} />
       <Animated.View style={[{ width: 7, height: 7, borderRadius: 3.5, backgroundColor: colors.primary }, dot2Style]} />
       <Animated.View style={[{ width: 7, height: 7, borderRadius: 3.5, backgroundColor: colors.primary }, dot3Style]} />
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  glowOrb: {
-    position: 'absolute',
-  },
-});

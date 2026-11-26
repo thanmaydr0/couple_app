@@ -7,7 +7,7 @@ import { Text, Button } from '@/ui';
 import { useTheme } from '@/theme';
 
 export function Countdown({ remaining }: { remaining: number }) {
-  const { colors, geometry, spacing, typography } = useTheme();
+  const { colors, surfaces, geometry, spacing, typography } = useTheme();
   const diameter = spacing.s56; const radius = (diameter - geometry.stroke * 2) / 2; const circumference = Math.PI * radius * 2;
   const motion = useMotion(); const pulse = useSharedValue(1);
   const urgent = remaining <= 10 && remaining > 0;
@@ -16,7 +16,7 @@ export function Countdown({ remaining }: { remaining: number }) {
   const ink = remaining <= 5 ? colors.danger : remaining <= 10 ? colors.warning : colors.primary;
   // The countdown stays outside the drawing surface and never subscribes to strokes.
   return <View accessible accessibilityRole="timer" accessibilityLabel={`${Math.ceil(remaining)} seconds remaining${remaining <= 10 ? ', time running out' : ''}`} style={{ width: diameter, height: diameter, justifyContent: 'center', alignItems: 'center' }}>
-    <Animated.View pointerEvents="none" style={[{ position: 'absolute' }, pulseStyle]}><Svg width={diameter} height={diameter}><Circle cx={diameter / 2} cy={diameter / 2} r={radius} stroke={colors.border} strokeWidth={geometry.stroke} fill="none" /><Circle cx={diameter / 2} cy={diameter / 2} r={radius} stroke={ink} strokeWidth={geometry.stroke} fill="none" strokeDasharray={`${circumference} ${circumference}`} strokeDashoffset={circumference * (1 - Math.max(0, Math.min(1, remaining / 80)))} rotation={-90} origin={`${diameter / 2}, ${diameter / 2}`} strokeLinecap="round" /></Svg></Animated.View>
+    <Animated.View pointerEvents="none" style={[{ position: 'absolute' }, pulseStyle]}><Svg width={diameter} height={diameter}><Circle cx={diameter / 2} cy={diameter / 2} r={radius} stroke={surfaces.divider} strokeWidth={geometry.stroke} fill="none" /><Circle cx={diameter / 2} cy={diameter / 2} r={radius} stroke={ink} strokeWidth={geometry.stroke} fill="none" strokeDasharray={`${circumference} ${circumference}`} strokeDashoffset={circumference * (1 - Math.max(0, Math.min(1, remaining / 80)))} rotation={-90} origin={`${diameter / 2}, ${diameter / 2}`} strokeLinecap="round" /></Svg></Animated.View>
     <Text style={{ ...typography.label, color: ink }}>{Math.ceil(remaining)}</Text><Text variant="caption" color="textSecondary">sec</Text>
   </View>;
 }
@@ -37,10 +37,10 @@ export function FeedbackShake({ feedback, children }: { feedback: string; childr
   return <Animated.View style={style}>{children}</Animated.View>;
 }
 export function SelectionRing({ selected, children }: { selected: boolean; children: ReactNode }) {
-  const { colors, geometry, radius } = useTheme(); const motion = useMotion(); const scale = useSharedValue(1);
+  const { colors, surfaces, geometry, radius } = useTheme(); const motion = useMotion(); const scale = useSharedValue(1);
   useEffect(() => { scale.value = motion.level === 'full' ? withSpring(selected ? 1 : 0.85, motion.spring('snappy')) : 1; }, [selected, motion.level, scale]);
   const style = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
-  return <Animated.View style={[{ width: geometry.touch, height: geometry.touch, borderRadius: radius.pill, borderWidth: geometry.stroke, borderColor: selected ? colors.primary : colors.border, justifyContent: 'center', alignItems: 'center' }, style]}>{children}</Animated.View>;
+  return <Animated.View style={[{ width: geometry.touch, height: geometry.touch, borderRadius: radius.pill, borderWidth: selected ? geometry.stroke : geometry.hairline, borderColor: selected ? colors.primary : surfaces.rimStrong, justifyContent: 'center', alignItems: 'center' }, style]}>{children}</Animated.View>;
 }
 
 export function WordChoices({ words, disabled, onChoose }: { words: string[]; disabled: boolean; onChoose: (word: string) => void }) {

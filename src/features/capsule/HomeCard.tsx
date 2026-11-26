@@ -7,5 +7,5 @@ export function CapsuleHomeCard() {
   const { data, offline } = useCapsules();
   const next = data?.received.find(item => !item.opened_at);
   if (!next || !data) return null;
-  return <PressableScale accessibilityRole="button" accessibilityLabel="Open Time Capsule" onPress={() => router.push('/us/capsule')}><Card><Text variant="title/S">Time Capsule</Text><Text>{offline ? 'Reconnect to check your next capsule' : `Next capsule · ${countdown(next.unlock_at, data.serverNow).toLowerCase()}`}</Text></Card></PressableScale>;
+  return <PressableScale accessibilityRole="button" accessibilityLabel="Open Time Capsule" onPress={() => router.push('/us/capsule')}><Card variant="elevated"><Text variant="caption" color="primary">TIME CAPSULE</Text><Text variant="title/S">{offline ? 'Reconnect to check your next capsule' : `Next capsule · ${countdown(next.unlock_at, data.serverNow).toLowerCase()}`}</Text></Card></PressableScale>;
 }

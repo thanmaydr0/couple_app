@@ -11,7 +11,7 @@ type Room = ReturnType<typeof useTouchRoom>;
 type Trail = Point & { at: number; mine: boolean };
 
 export function TouchCanvas({ room }: { room: Room }) {
-  const { colors, geometry, spacing, radius } = useTheme();
+  const { colors, surfaces, geometry, spacing, radius } = useTheme();
   const motion = useMotion();
   const [size, setSize] = useState({ width: 1, height: 1 });
   const [now, setNow] = useState(Date.now());
@@ -122,7 +122,7 @@ export function TouchCanvas({ room }: { room: Room }) {
         borderRadius: 24,
         backgroundColor: colors.bgElevated,
         borderWidth: geometry.hairline,
-        borderColor: colors.border,
+        borderColor: surfaces.rimStrong,
       }}
       onLayout={e => {
         room.up();

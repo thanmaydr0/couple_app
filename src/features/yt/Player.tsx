@@ -13,7 +13,7 @@ import { reactions, timing, type Command, type YtSession } from './types';
 import { YtButton } from './presentation';
 
 export function Player({ session, user, partner, onEnded, onPresence, compact, autoStart }: { session: YtSession; user: string; partner: string; onEnded(): void; onPresence(value: boolean): void; compact: boolean; autoStart: boolean }) {
-  const web = useRef<WebView>(null); const { colors, geometry, spacing } = useTheme(); const motion = useMotion();
+  const web = useRef<WebView>(null); const { colors, surfaces, radius, geometry, spacing } = useTheme(); const motion = useMotion();
   const [error, setError] = useState<string | null>(null); const [version, setVersion] = useState(0);
   const [position, setPosition] = useState(0); const [duration, setDuration] = useState(0); const [rates, setRates] = useState([1]); const [speed, setSpeed] = useState(1);
   const [visibleReaction, setVisibleReaction] = useState<{ emoji: string; id: number } | null>(null);
@@ -58,12 +58,12 @@ export function Player({ session, user, partner, onEnded, onPresence, compact, a
   }
   const format = (n: number) => `${Math.floor(n / 60)}:${String(Math.floor(n % 60)).padStart(2, '0')}`;
   return <View style={{ flex: compact ? 1 : undefined, gap: spacing.sm }}>
-    <View style={{ flex: compact ? 1 : undefined, aspectRatio: compact ? undefined : 16 / 9, minHeight: geometry.touch * 4.2, backgroundColor: colors.surface }}>
+    <View style={{ flex: compact ? 1 : undefined, aspectRatio: compact ? undefined : 16 / 9, minHeight: geometry.touch * 4.2, backgroundColor: colors.surface, borderRadius: radius.lg, overflow: 'hidden', borderWidth: geometry.hairline, borderColor: surfaces.rim }}>
       <WebView key={`${session.current_video_id}:${version}`} ref={web} source={source} originWhitelist={['https://*']} javaScriptEnabled domStorageEnabled allowsInlineMediaPlayback mediaPlaybackRequiresUserAction={false} allowsFullscreenVideo={false} setSupportMultipleWindows={false} mixedContentMode="never" onMessage={message} onError={() => fail('YouTube is offline or failed to load. Retry when connected.')} onHttpError={() => fail('YouTube returned a loading error. Retry or skip this video.')} onContentProcessDidTerminate={() => fail('The player stopped. Retry playback.')} onShouldStartLoadWithRequest={request => {
         try { const url = new URL(request.url); return url.protocol === 'https:' && ['youtube.com', 'www.youtube.com', 'www.youtube-nocookie.com'].includes(url.hostname); } catch { return request.url === 'about:blank'; }
       }} style={{ flex: 1, backgroundColor: colors.surface }} />
     </View>
-    {visibleReaction && <Animated.View key={visibleReaction.id} pointerEvents="none" entering={motion.level === 'full' ? SlideInDown.duration(motion.duration('base')) : FadeIn.duration(motion.duration('fast'))} exiting={motion.level === 'full' ? SlideOutUp.duration(motion.duration('slow')) : FadeOut.duration(motion.duration('fast'))} style={{ position: 'absolute', right: spacing.lg, bottom: geometry.touch * 2, backgroundColor: colors.surface, padding: spacing.sm, borderRadius: geometry.touch }}><Text variant="display/M" accessibilityLiveRegion="polite">{visibleReaction.emoji}</Text></Animated.View>}
+    {visibleReaction && <Animated.View key={visibleReaction.id} pointerEvents="none" entering={motion.level === 'full' ? SlideInDown.duration(motion.duration('base')) : FadeIn.duration(motion.duration('fast'))} exiting={motion.level === 'full' ? SlideOutUp.duration(motion.duration('slow')) : FadeOut.duration(motion.duration('fast'))} style={{ position: 'absolute', right: spacing.lg, bottom: geometry.touch * 2, backgroundColor: surfaces.glassBg, borderWidth: geometry.hairline, borderColor: surfaces.rimStrong, padding: spacing.sm, borderRadius: geometry.touch }}><Text variant="display/M" accessibilityLiveRegion="polite">{visibleReaction.emoji}</Text></Animated.View>}
     <Text variant="body/S" accessibilityLiveRegion="polite">{sync.view.notice} · {format(position)} / {format(duration)}</Text>
     {error && <Text color="danger" accessibilityRole="alert">{error}</Text>}
     <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>
@@ -73,7 +73,7 @@ export function Player({ session, user, partner, onEnded, onPresence, compact, a
       <YtButton title={`${speed}×`} disabled={!sync.view.bothReady} onPress={() => { const next = rates[(rates.indexOf(speed) + 1) % rates.length] ?? 1; setSpeed(next); sync.engine.current?.control('rate', next); }} />
       <YtButton title="Skip" onPress={onEnded} />
       <YtButton title="Reconnect" onPress={() => { setError(null); setVersion(v => v + 1); sync.reconnect(); }} />
-      {reactions.map(emoji => <PressableScale key={emoji} accessibilityRole="button" accessibilityLabel={`React ${emoji}`} disabled={!sync.view.partnerHere} onPress={() => sync.engine.current?.reaction(emoji)} style={{ minWidth: geometry.touch, minHeight: geometry.touch, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.surface, borderRadius: geometry.touch }}><Text>{emoji}</Text></PressableScale>)}
+      {reactions.map(emoji => <PressableScale key={emoji} accessibilityRole="button" accessibilityLabel={`React ${emoji}`} disabled={!sync.view.partnerHere} onPress={() => sync.engine.current?.reaction(emoji)} style={{ minWidth: geometry.touch, minHeight: geometry.touch, justifyContent: 'center', alignItems: 'center', backgroundColor: surfaces.softPrimary, borderWidth: geometry.hairline, borderColor: surfaces.rim, borderRadius: geometry.touch }}><Text>{emoji}</Text></PressableScale>)}
     </View>
   </View>;
 }

@@ -11,7 +11,7 @@ export function Ring({ progress, seconds, phase, phaseKey }: {
     phase: string;
     phaseKey: string;
 }) {
-    const { colors, spacing, geometry } = useTheme();
+    const { colors, surfaces, spacing, geometry } = useTheme();
     const motion = useMotion();
     const size = geometry.touch * 5;
     const stroke = spacing.sm;
@@ -24,7 +24,7 @@ export function Ring({ progress, seconds, phase, phaseKey }: {
     const whole = Math.ceil(seconds);
     const time = `${Math.floor(whole / 60).toString().padStart(2, '0')}:${(whole % 60).toString().padStart(2, '0')}`;
     return <View style={{ width: size, height: size, alignSelf: 'center', justifyContent: 'center', alignItems: 'center' }}>
-  <Canvas accessible={false} style={{ position: 'absolute', width: size, height: size }}><Circle cx={size / 2} cy={size / 2} r={r} color={colors.surfaceAlt} style="stroke" strokeWidth={stroke}/><Path path={path} start={0} end={end} color={colors.primary} style="stroke" strokeWidth={stroke} strokeCap="round" opacity={opacity}/></Canvas>
+  <Canvas accessible={false} style={{ position: 'absolute', width: size, height: size }}><Circle cx={size / 2} cy={size / 2} r={r} color={surfaces.divider} style="stroke" strokeWidth={stroke}/><Path path={path} start={0} end={end} color={colors.primary} style="stroke" strokeWidth={stroke} strokeCap="round" opacity={opacity}/></Canvas>
   <Text variant="display/XL" accessibilityLabel={`${Math.floor(whole / 60)} minutes ${whole % 60} seconds remaining`}>{time}</Text><Text color="textSecondary">{phase}</Text>
  </View>;
 }

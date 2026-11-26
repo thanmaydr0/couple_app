@@ -20,8 +20,8 @@ const features: Record<string, { title: string; description: string; icon: Compo
 
 export function TodoScreen({ feature }: { feature: string }) {
   const content = features[feature] ?? { title: 'Your shared space', description: 'This part of your space is coming in a future update.', icon: 'heart-outline' as const };
-  return <Screen centered bottomInset><View style={{ width: '100%', gap: 24 }}>
-    <Card style={{ alignItems: 'center', gap: 20, paddingVertical: 32 }}>
+  return <Screen atmosphere gradient centered bottomInset><View style={{ width: '100%', gap: 24 }}>
+    <Card variant="elevated" style={{ alignItems: 'center', gap: 20, paddingVertical: 32 }}>
       <Ionicons name={content.icon} size={56} color={theme.colors.primary} />
       <Text accessibilityRole="header" style={{ fontSize: 28, lineHeight: 36, fontWeight: '700', textAlign: 'center' }}>{content.title}</Text>
       <Text style={{ color: theme.colors.muted, textAlign: 'center' }}>{content.description}</Text>

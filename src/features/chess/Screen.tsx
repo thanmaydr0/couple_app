@@ -52,7 +52,7 @@ export default function ChessScreen() {
     <Header title="Chess" subtitle="One board. Just the two of you." onBack={() => playing ? setPlaying(false) : router.replace('/(tabs)/games')} />
 
     {/* Live Partner Presence Capsule */}
-    <View style={[styles.presenceCapsule, { backgroundColor: theme.colors.surfaceAlt, borderRadius: theme.radius.pill }]}>
+    <View style={[styles.presenceCapsule, { backgroundColor: theme.surfaces.softPrimary, borderWidth: theme.geometry.hairline, borderColor: theme.surfaces.rim, borderRadius: theme.radius.pill }]}>
       <View style={[styles.statusDot, { backgroundColor: online ? theme.colors.success : theme.colors.textSecondary }]} />
       <Text variant="caption" color="textPrimary">
         {partnerName} · {online ? 'Online' : 'Offline'} · {state.connected ? 'Live sync' : 'Connecting'}

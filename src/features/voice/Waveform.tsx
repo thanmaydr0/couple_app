@@ -7,27 +7,31 @@ export function Waveform({
   peaks,
   progress = 0,
   onSeek,
+  inverted = false,
 }: {
   peaks: readonly number[];
   progress?: number;
   onSeek?: (fraction: number) => void;
+  inverted?: boolean;
 }) {
-  const { colors, radius } = useTheme();
+  const { colors, surfaces, radius } = useTheme();
   const width = useRef(1);
 
-  // Take a well-proportioned sample of peaks (up to 36 bars)
-  const sampleCount = Math.min(36, Math.max(16, peaks.length));
+  const sampleCount = Math.min(34, Math.max(18, peaks.length));
   const step = peaks.length / sampleCount;
   const sampled = Array.from({ length: sampleCount }, (_, i) => {
     const idx = Math.floor(i * step);
-    return Math.max(0.12, Math.min(1, peaks[idx] ?? 0.25));
+    return Math.max(0.14, Math.min(1, peaks[idx] ?? 0.25));
   });
+
+  const activeColor = inverted ? colors.bubbleMineText : colors.primary;
+  const inactiveColor = inverted ? 'rgba(255,255,255,0.34)' : surfaces.rimStrong;
 
   const bars = (
     <View pointerEvents="none" style={styles.barsContainer}>
       {sampled.map((peak, index) => {
-        const isPlayed = index / sampleCount <= progress;
-        const height = Math.max(4, peak * 26);
+        const isPlayed = progress > 0 && index / sampleCount <= progress;
+        const height = Math.max(4, peak * 24);
         return (
           <View
             key={index}
@@ -36,7 +40,7 @@ export function Waveform({
               {
                 height,
                 borderRadius: radius.pill,
-                backgroundColor: isPlayed ? colors.primary : colors.border,
+                backgroundColor: isPlayed ? activeColor : inactiveColor,
               },
             ]}
           />
@@ -47,6 +51,7 @@ export function Waveform({
 
   return onSeek ? (
     <PressableScale
+      sheen={false}
       haptic={false}
       accessibilityRole="adjustable"
       accessibilityLabel="Voice waveform. Drag to seek"
@@ -56,10 +61,7 @@ export function Waveform({
         onSeek(
           Math.min(
             1,
-            Math.max(
-              0,
-              progress + (event.nativeEvent.actionName === 'increment' ? 0.1 : -0.1)
-            )
+            Math.max(0, progress + (event.nativeEvent.actionName === 'increment' ? 0.1 : -0.1))
           )
         )
       }
@@ -67,11 +69,11 @@ export function Waveform({
         width.current = event.nativeEvent.layout.width;
       }}
       onPress={event =>
-        onSeek(Math.min(1, Math.max(0, event.nativeEvent.locationX / width.current)))
+        onSeek(Math.min(1, Math.max(0, event.nativeEvent.locationX / Math.max(1, width.current))))
       }
       onTouchMove={event => {
         event.stopPropagation();
-        onSeek(Math.min(1, Math.max(0, event.nativeEvent.locationX / width.current)));
+        onSeek(Math.min(1, Math.max(0, event.nativeEvent.locationX / Math.max(1, width.current))));
       }}
       style={styles.pressable}
     >
@@ -85,12 +87,13 @@ export function Waveform({
 const styles = StyleSheet.create({
   pressable: {
     flex: 1,
-    height: 34,
+    minHeight: 34,
+    minWidth: 0,
     justifyContent: 'center',
   },
   barsContainer: {
     flex: 1,
-    height: 30,
+    height: 28,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -98,6 +101,6 @@ const styles = StyleSheet.create({
   },
   bar: {
     flex: 1,
-    maxWidth: 4,
+    maxWidth: 3.5,
   },
 });

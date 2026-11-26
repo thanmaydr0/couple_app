@@ -64,7 +64,7 @@ export default function WatchSessionScreen() {
       void accept(candidate).catch(failure => setError(failure instanceof Error ? failure.message : 'Could not join.'));
     } }]);
   }
-  return <Screen>
+  return <Screen atmosphere gradient bottomInset>
     <Stack.Screen options={{ title: session?.title ?? 'Watch together', headerShown: false }} />
     {session && file && user && partner.data && session.status !== 'ended' ? <MoviePlayer session={session} file={file} user={user} partner={partner.data.id} onChangeFile={() => { setFile(null); setCandidate(null); }} /> : <ScrollView contentContainerStyle={s.content}>
       <Header title="Watch together" subtitle="STEP 2 OF 2 / YOUR LOCAL COPY" onBack={() => router.replace('/(tabs)/watch')} />

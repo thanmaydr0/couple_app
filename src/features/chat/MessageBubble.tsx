@@ -31,7 +31,7 @@ function Receipt({ message }: { message: ChatMessage }) {
       scale.value = withSpring(1, motion.spring('snappy'));
     }
     previous.current = status;
-  }, [status, motion.level, scale]);
+  }, [status, motion, scale]);
 
   const animated = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
   const { colors, radius, geometry } = useTheme();
@@ -40,7 +40,7 @@ function Receipt({ message }: { message: ChatMessage }) {
 
   return (
     <Animated.View style={[status === 'failed' && { backgroundColor: colors.surface, borderRadius: radius.pill }, animated]}>
-      <MessageStatusTicks status={status} />
+      <MessageStatusTicks status={status} size={16} />
       {message.kind === 'voice' && !!message.meta?.played_at && (
         <Ionicons accessibilityLabel="Voice heard" name="mic" size={geometry.dot} color={colors.bubbleMineText} />
       )}
@@ -48,42 +48,32 @@ function Receipt({ message }: { message: ChatMessage }) {
   );
 }
 
-/** Computes squircle continuous corner curvature based on message grouping */
 function getBubbleRadii(mine: boolean, sameOlder: boolean, sameNewer: boolean) {
   const R_LARGE = 20;
   const R_SMALL = 5;
 
   if (mine) {
     if (!sameOlder && !sameNewer) {
-      // Single
       return { borderTopLeftRadius: R_LARGE, borderTopRightRadius: R_LARGE, borderBottomLeftRadius: R_LARGE, borderBottomRightRadius: R_SMALL };
     }
     if (!sameOlder && sameNewer) {
-      // First in cluster
       return { borderTopLeftRadius: R_LARGE, borderTopRightRadius: R_LARGE, borderBottomLeftRadius: R_LARGE, borderBottomRightRadius: R_SMALL };
     }
     if (sameOlder && sameNewer) {
-      // Middle in cluster
       return { borderTopLeftRadius: R_LARGE, borderTopRightRadius: R_SMALL, borderBottomLeftRadius: R_LARGE, borderBottomRightRadius: R_SMALL };
     }
-    // Last in cluster
     return { borderTopLeftRadius: R_LARGE, borderTopRightRadius: R_SMALL, borderBottomLeftRadius: R_LARGE, borderBottomRightRadius: R_LARGE };
-  } else {
-    if (!sameOlder && !sameNewer) {
-      // Single
-      return { borderTopLeftRadius: R_LARGE, borderTopRightRadius: R_LARGE, borderBottomLeftRadius: R_SMALL, borderBottomRightRadius: R_LARGE };
-    }
-    if (!sameOlder && sameNewer) {
-      // First in cluster
-      return { borderTopLeftRadius: R_LARGE, borderTopRightRadius: R_LARGE, borderBottomLeftRadius: R_SMALL, borderBottomRightRadius: R_LARGE };
-    }
-    if (sameOlder && sameNewer) {
-      // Middle in cluster
-      return { borderTopLeftRadius: R_SMALL, borderTopRightRadius: R_LARGE, borderBottomLeftRadius: R_SMALL, borderBottomRightRadius: R_LARGE };
-    }
-    // Last in cluster
-    return { borderTopLeftRadius: R_SMALL, borderTopRightRadius: R_LARGE, borderBottomLeftRadius: R_LARGE, borderBottomRightRadius: R_LARGE };
   }
+  if (!sameOlder && !sameNewer) {
+    return { borderTopLeftRadius: R_LARGE, borderTopRightRadius: R_LARGE, borderBottomLeftRadius: R_SMALL, borderBottomRightRadius: R_LARGE };
+  }
+  if (!sameOlder && sameNewer) {
+    return { borderTopLeftRadius: R_LARGE, borderTopRightRadius: R_LARGE, borderBottomLeftRadius: R_SMALL, borderBottomRightRadius: R_LARGE };
+  }
+  if (sameOlder && sameNewer) {
+    return { borderTopLeftRadius: R_SMALL, borderTopRightRadius: R_LARGE, borderBottomLeftRadius: R_SMALL, borderBottomRightRadius: R_LARGE };
+  }
+  return { borderTopLeftRadius: R_SMALL, borderTopRightRadius: R_LARGE, borderBottomLeftRadius: R_LARGE, borderBottomRightRadius: R_LARGE };
 }
 
 type Props = {
@@ -124,10 +114,9 @@ function Bubble({
   onJump,
 }: Props) {
   const styles = useChatStyles();
-  const { colors, spacing, radius, geometry, dark } = useTheme();
+  const { colors, spacing } = useTheme();
   const motion = useMotion();
   const mine = message.sender_id === uid;
-  const lastTap = useRef(0);
   const [heartTrigger, setHeartTrigger] = useState(0);
   const [tapCoords, setTapCoords] = useState<{ x: number; y: number }>({ x: 80, y: 20 });
   const text = bodyText(message, uid, message.sender_id);
@@ -137,6 +126,7 @@ function Bubble({
   const translate = useSharedValue(0);
   const crossed = useSharedValue(false);
   const highlight = useSharedValue(1);
+  const pressScale = useSharedValue(1);
 
   useEffect(() => {
     if (!claimEntrance(message) || !animateArrival) return;
@@ -150,9 +140,9 @@ function Bubble({
   useEffect(() => {
     highlight.value =
       motion.level === 'full'
-        ? withSpring(highlighted ? motionTokens.pressScale : 1, motion.spring('snappy'))
+        ? withSpring(highlighted ? 0.96 : 1, motion.spring('snappy'))
         : 1;
-  }, [highlighted, motion.level, highlight]);
+  }, [highlighted, motion, highlight]);
 
   const animated = useAnimatedStyle(() => ({
     opacity: enter.value,
@@ -160,38 +150,50 @@ function Bubble({
       {
         translateX:
           translate.value +
-          (motion.level === 'full' ? (1 - enter.value) * motionTokens.travel * (mine ? 1 : -1) : 0),
+          (motion.level === 'full' ? (1 - enter.value) * 14 * (mine ? 1 : -1) : 0),
       },
       {
         scale:
+          pressScale.value *
           highlight.value *
-          (motion.level === 'full' ? motionTokens.pressScale + (1 - motionTokens.pressScale) * enter.value : 1),
+          (motion.level === 'full' ? 0.96 + 0.04 * enter.value : 1),
       },
     ],
   }));
 
   const arrowStyle = useAnimatedStyle(() => {
-    const scale = Math.min(1.2, Math.max(0.4, translate.value / 44));
-    const opacity = Math.min(1, translate.value / 24);
+    const scale = Math.min(1.15, Math.max(0.4, translate.value / 42));
+    const opacity = Math.min(1, translate.value / 22);
     return {
       opacity,
-      transform: [
-        { translateX: Math.min(translate.value - 36, 12) },
-        { scale },
-      ],
+      transform: [{ translateX: Math.min(translate.value - 34, 12) }, { scale }],
     };
   });
 
-  const haptic = () => {
+  const haptic = (medium = false) => {
     if (motion.level === 'full') {
-      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
+      void Haptics.impactAsync(
+        medium ? Haptics.ImpactFeedbackStyle.Medium : Haptics.ImpactFeedbackStyle.Light
+      ).catch(() => {});
     }
   };
 
-  const reply = () => onReply(message);
+  const triggerReply = () => onReply(message);
+  const triggerActions = () => {
+    haptic(false);
+    onActions(message);
+  };
+  const triggerDoubleTapHeart = (x: number, y: number) => {
+    if (message.deleted_at || message.kind === 'system') return;
+    haptic(false);
+    setTapCoords({ x, y });
+    onReact(message, '❤️', true);
+    setHeartTrigger(t => t + 1);
+  };
+  const triggerRetry = () => onRetry(message);
 
-  const swipe = useMemo(() => {
-    return Gesture.Pan()
+  const gesture = useMemo(() => {
+    const swipe = Gesture.Pan()
       .enabled(
         message.kind !== 'voice' &&
           message.status === 'sent' &&
@@ -199,39 +201,52 @@ function Bubble({
           message.kind !== 'system'
       )
       .activeOffsetX(spacing.md)
-      .failOffsetY([-spacing.sm, spacing.sm])
+      .failOffsetY([-10, 10])
       .onUpdate(event => {
-        // Logarithmic kinetic drag resistance
         const raw = Math.max(0, event.translationX);
         const resisted = raw * (1 - 1 / (raw / 40 + 1));
         translate.value = Math.min(64, resisted);
         if (translate.value >= 40 && !crossed.value) {
           crossed.value = true;
-          scheduleOnRN(haptic);
+          scheduleOnRN(haptic, true);
         } else if (translate.value < 40 && crossed.value) {
           crossed.value = false;
         }
       })
       .onEnd(() => {
-        if (translate.value >= 40) {
-          scheduleOnRN(reply);
-        }
+        if (translate.value >= 40) scheduleOnRN(triggerReply);
       })
       .onFinalize(() => {
         crossed.value = false;
-        translate.value =
-          motion.level === 'full' ? withSpring(0, motion.spring('snappy')) : 0;
+        translate.value = motion.level === 'full' ? withSpring(0, motion.spring('snappy')) : 0;
       });
-  }, [
-    message.kind,
-    message.status,
-    message.deleted_at,
-    spacing.md,
-    spacing.sm,
-    translate,
-    crossed,
-    motion.level,
-  ]);
+
+    const longPress = Gesture.LongPress()
+      .minDuration(320)
+      .onStart(() => {
+        if (motion.level === 'full') pressScale.value = withSpring(0.96, motion.spring('snappy'));
+        scheduleOnRN(triggerActions);
+      })
+      .onFinalize(() => {
+        pressScale.value = motion.level === 'full' ? withSpring(1, motion.spring('snappy')) : 1;
+      });
+
+    const doubleTap = Gesture.Tap()
+      .enabled(!message.deleted_at && message.kind !== 'system' && message.status !== 'failed')
+      .numberOfTaps(2)
+      .maxDelay(260)
+      .onEnd((e, success) => {
+        if (success) scheduleOnRN(triggerDoubleTapHeart, e.x, e.y);
+      });
+
+    const retryTap = Gesture.Tap()
+      .enabled(message.status === 'failed')
+      .onEnd((_e, success) => {
+        if (success) scheduleOnRN(triggerRetry);
+      });
+
+    return Gesture.Simultaneous(swipe, Gesture.Exclusive(longPress, doubleTap, retryTap));
+  }, [message.kind, message.status, message.deleted_at, spacing.md, translate, crossed, pressScale, motion]);
 
   const bubbleRadii = useMemo(
     () => getBubbleRadii(mine, sameOlder, sameNewer),
@@ -251,77 +266,47 @@ function Bubble({
           styles.messageRow,
           {
             alignItems: mine ? 'flex-end' : 'flex-start',
-            marginTop: sameOlder ? 2 : 8,
+            marginTop: sameOlder ? 2 : 6,
           },
         ]}
       >
-        {/* Spring-loaded swipe-to-reply indicator */}
         <Animated.View pointerEvents="none" style={[styles.swipeIndicator, arrowStyle]}>
-          <View style={[styles.swipeIconCircle, { backgroundColor: colors.surfaceAlt, borderColor: colors.primary }]}>
-            <Ionicons name="arrow-undo" size={16} color={colors.primary} />
+          <View style={styles.swipeIconCircle}>
+            <Ionicons name="arrow-undo" size={15} color={colors.primary} />
           </View>
         </Animated.View>
 
-        <GestureDetector gesture={swipe}>
-          <Animated.View style={[{ maxWidth: '84%' }, animated]}>
-            <PressableScale
-              accessibilityRole="button"
-              accessibilityLabel={
-                message.status === 'failed'
-                  ? 'Message failed. Tap to retry'
-                  : `${mine ? 'You' : partnerName}: ${text || (message.kind === 'voice' ? 'Voice message' : 'Photo')}. Hold for message actions`
-              }
-              accessibilityActions={[{ name: 'longpress', label: 'Message actions' }]}
-              onAccessibilityAction={() => onActions(message)}
-              onLongPress={() => onActions(message)}
-              delayLongPress={motionTokens.slow}
-              onPress={e => {
-                if (message.status === 'failed') {
-                  onRetry(message);
-                  return;
-                }
-                const now = Date.now();
-                if (
-                  now - lastTap.current < motionTokens.slow &&
-                  !message.deleted_at &&
-                  message.kind !== 'system'
-                ) {
-                  const { locationX, locationY } = e.nativeEvent;
-                  setTapCoords({ x: locationX, y: locationY });
-                  onReact(message, '❤️', true);
-                  setHeartTrigger(t => t + 1);
-                  lastTap.current = 0;
-                } else {
-                  lastTap.current = now;
-                }
-              }}
+        <GestureDetector gesture={gesture}>
+          <Animated.View
+            accessible
+            accessibilityRole="text"
+            accessibilityLabel={
+              message.status === 'failed'
+                ? 'Message failed. Tap to retry'
+                : `${mine ? 'You' : partnerName}: ${text || (message.kind === 'voice' ? 'Voice message' : 'Photo')}. Double tap to heart, hold for options`
+            }
+            accessibilityActions={[{ name: 'longpress', label: 'Message actions' }]}
+            onAccessibilityAction={() => onActions(message)}
+            style={[{ maxWidth: '82%' }, animated]}
+          >
+            <View
               style={[
                 styles.bubble,
                 mine ? styles.mine : styles.theirs,
                 bubbleRadii,
-                {
-                  borderWidth: highlighted ? 2 : StyleSheet.hairlineWidth,
-                  borderColor: highlighted
-                    ? colors.primary
-                    : mine
-                    ? 'transparent'
-                    : colors.border,
-                  shadowColor: colors.shadowColor,
-                  shadowOpacity: dark ? 0.3 : 0.08,
-                  shadowRadius: 5,
-                  elevation: 2,
-                },
+                highlighted && { borderWidth: 1.5, borderColor: colors.primary },
               ]}
             >
               {mine && (
                 <LinearGradient
                   pointerEvents="none"
                   colors={[colors.bubbleMineStart, colors.bubbleMineEnd]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
                   style={StyleSheet.absoluteFill}
                 />
               )}
 
-              {/* Floating heart micro-bloom on double-tap */}
               <FloatingHeart trigger={heartTrigger} x={tapCoords.x} y={tapCoords.y} />
 
               {!message.deleted_at && message.reply_to && (
@@ -333,10 +318,7 @@ function Bubble({
                   message={message}
                   uid={uid}
                   onReply={() => onActions(message)}
-                  onHeart={() => {
-                    onReact(message, '❤️', true);
-                    setHeartTrigger(t => t + 1);
-                  }}
+                  onHeart={() => triggerDoubleTapHeart(80, 60)}
                 />
               )}
 
@@ -359,9 +341,23 @@ function Bubble({
               {message.kind === 'system' && !text && <Text style={styles.body}>System message</Text>}
 
               <View style={styles.meta}>
+                {message.kind !== 'system' && message.enc && (
+                  <Ionicons
+                    name="lock-closed"
+                    size={9.5}
+                    color={mine ? colors.bubbleMineText : colors.textSecondary}
+                    style={{ opacity: 0.7 }}
+                  />
+                )}
+                {!!message.pinned_at && (
+                  <Ionicons
+                    name="pin"
+                    size={10}
+                    color={mine ? colors.bubbleMineText : colors.primary}
+                    style={{ opacity: 0.85 }}
+                  />
+                )}
                 <Text style={[styles.time, mine && styles.mineText]}>
-                  {message.kind !== 'system' ? (message.enc ? '🔒 ' : '') : ''}
-                  {message.pinned_at ? '📌 ' : ''}
                   {message.edited_at && !message.deleted_at ? 'edited · ' : ''}
                   {new Date(message.created_at).toLocaleTimeString(undefined, {
                     hour: '2-digit',
@@ -370,7 +366,7 @@ function Bubble({
                 </Text>
                 {mine && <Receipt message={message} />}
               </View>
-            </PressableScale>
+            </View>
           </Animated.View>
         </GestureDetector>
 
@@ -385,6 +381,7 @@ function Bubble({
 
         {mine && message.status === 'failed' && (
           <PressableScale
+            sheen={false}
             onPress={() => onRetry(message)}
             accessibilityRole="button"
             style={styles.retry}

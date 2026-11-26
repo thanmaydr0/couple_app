@@ -42,7 +42,7 @@ function Person({ point, name, uri }: { point: LocationPoint; name: string; uri?
   </View></Marker>;
 }
 export function LocationMap({ points, uid, ownAvatar, partnerAvatar, partnerName }: { points: LocationPoint[]; uid?: string; ownAvatar?: string; partnerAvatar?: string; partnerName: string }) {
-  const { colors, spacing, radius, geometry, dark } = useTheme();
+  const { colors, surfaces, spacing, radius, geometry, dark } = useTheme();
   const motion = useMotion();
   const camera = useRef<CameraRef>(null);
   const [follow, setFollow] = useState(false);
@@ -58,7 +58,7 @@ export function LocationMap({ points, uid, ownAvatar, partnerAvatar, partnerName
   const features: GeoJSON.Feature[] = points.map(point => ({ type: 'Feature', properties: {}, geometry: { type: 'Polygon', coordinates: [accuracyRing(point)] } }));
   if (points.length === 2) features.push({ type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: points.map(p => [p.lon, p.lat]) } });
   return <View style={{ gap: spacing.sm }}>
-    <View style={{ minHeight: geometry.touch * 6, borderRadius: radius.lg, overflow: 'hidden', backgroundColor: colors.surfaceAlt }}>
+    <View style={{ minHeight: geometry.touch * 6, borderRadius: radius.lg, overflow: 'hidden', backgroundColor: colors.bgElevated, borderWidth: geometry.hairline, borderColor: surfaces.rimStrong }}>
       <Map key={revision} mapStyle={styleUrl} style={{ flex: 1, minHeight: geometry.touch * 6 }} attribution tintColor={colors.primary} onDidFailLoadingMap={() => setFailed(true)}>
         <Camera ref={camera} initialViewState={points[0] ? { center: [points[0].lon, points[0].lat], zoom: 12 } : { zoom: 1 }} />
         <GeoJSONSource id="location-geometry" data={{ type: 'FeatureCollection', features }}>

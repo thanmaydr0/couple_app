@@ -4,7 +4,9 @@ import { setAudioModeAsync, useAudioPlayer } from 'expo-audio';
 import * as Notifications from 'expo-notifications';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Slider from '@react-native-community/slider';
-import { Button, Header, Screen, Text } from '@/ui';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import { Button, Card, Header, Screen, Text } from '@/ui';
+import { PressableScale } from '@/motion';
 import { themes, useTheme } from '@/theme';
 import { useSession } from '@/lib/hooks';
 import { getCallEngine, useCalls } from './engine';
@@ -12,7 +14,7 @@ import { getCallEngine, useCalls } from './engine';
 const beds = { White: require('./ambient/white.wav'), Pink: require('./ambient/pink.wav'), Brown: require('./ambient/brown.wav'), Rain: require('./ambient/rain.wav') };
 const FADE_MS = 30_000;
 export function GoodnightScreen() {
-  const { colors, spacing, geometry } = useTheme();
+  const { colors, surfaces, spacing, geometry, radius } = useTheme();
   const player = useAudioPlayer(null);
   const [resting, setResting] = useState(true);
   const [volume, setVolume] = useState(0.15);
@@ -39,38 +41,55 @@ export function GoodnightScreen() {
     return () => { clearInterval(timer); subscription.remove(); };
   }, [deadline, volume, player]);
   useEffect(() => { if (both && asleep && partnerAsleep && !deadline) setDeadline(Date.now() + FADE_MS); }, [both, asleep, partnerAsleep, deadline]);
-  if (resting) return <Screen bottomInset style={{ backgroundColor: colors.shadowColor }}>
-    <View style={{ padding: spacing.sm, borderRadius: spacing.sm, backgroundColor: colors.surface }}><Header title="Goodnight" subtitle="Together, quietly" /></View>
+  if (resting) return <Screen bottomInset style={{ backgroundColor: themes.Noir.bg }}>
+    <View style={{ padding: spacing.md, borderRadius: radius.lg, backgroundColor: surfaces.glassBg, borderWidth: geometry.hairline, borderColor: surfaces.rim }}>
+      <Header title="Goodnight" subtitle="Together, quietly" />
+    </View>
     <View style={{ flex: 1, justifyContent: 'center', gap: spacing.lg }}>
-      <Text variant="display/L" style={{ color: themes.Noir.textSecondary, textAlign: 'center' }}>{new Date(now).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
+      <Text variant="display/L" style={{ color: themes.Noir.textSecondary, textAlign: 'center', fontSize: 56 }}>{new Date(now).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
       <Text style={{ color: themes.Noir.textSecondary, textAlign: 'center' }}>{deadline ? `Ends at ${new Date(deadline).toLocaleTimeString()}` : both ? 'Waiting for both asleep confirmations' : 'Goodnight'}</Text>
     </View>
-    <Button title="Sound and sleep timer" variant="secondary" onPress={() => setResting(false)} />
-    <Button title="End call" variant="secondary" onPress={() => { player.pause(); void engine?.end(); }} />
+    <View style={{ gap: spacing.sm }}>
+      <Button title="Sound and sleep timer" variant="secondary" onPress={() => setResting(false)} />
+      <Button title="End call" variant="ghost" onPress={() => { player.pause(); void engine?.end(); }} />
+    </View>
   </Screen>;
-  return <Screen bottomInset><Header title="Goodnight" subtitle="A quiet moment together" />
-    <ScrollView contentContainerStyle={{ gap: spacing.md, paddingBottom: spacing.xl }}>
-      <Button title="Dim screen" variant="secondary" onPress={() => setResting(true)} />
-      <Text variant="display/L">{new Date(now).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
-      <Text>Audio only · target 20 kbps · ambient audio stays on your phone</Text>
-      <Text>{deadline ? `Call ends at ${new Date(deadline).toLocaleTimeString()}` : both ? 'Ends after you both tap “I’m asleep”' : 'No sleep timer set'}</Text>
+  return <Screen atmosphere gradient bottomInset><Header title="Goodnight" subtitle="A quiet moment together" />
+    <ScrollView contentContainerStyle={{ gap: spacing.md, paddingBottom: spacing.xl }} showsVerticalScrollIndicator={false}>
+      <Card variant="elevated" style={{ alignItems: 'center', gap: spacing.sm }}>
+        <Text variant="display/L">{new Date(now).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
+        <Text variant="caption" color="textSecondary">Audio only · ambient sound stays on your phone</Text>
+        <Text color="primary">{deadline ? `Call ends at ${new Date(deadline).toLocaleTimeString()}` : both ? 'Ends after you both tap “I’m asleep”' : 'No sleep timer set'}</Text>
+        <Button title="Dim screen for sleep" variant="secondary" onPress={() => setResting(true)} style={{ width: '100%', marginTop: spacing.xs }} />
+      </Card>
       {error && <Text color="danger">{error}</Text>}
-      <View style={{ gap: spacing.sm }}>{Object.entries(beds).map(([name, source]) => <Button key={name} title={`${name} noise`} variant="secondary" onPress={() => {
-        try { player.replace(source); player.volume = volume; player.loop = true; player.play(); } catch { setError('Ambient playback could not start.'); }
-      }} />)}</View>
-      <Text>Ambient volume: {Math.round(volume * 100)}%</Text>
-      <Slider accessibilityLabel="Ambient volume" minimumValue={0} maximumValue={0.5} value={volume} onValueChange={setVolume}
-        minimumTrackTintColor={colors.primary} maximumTrackTintColor={colors.border} thumbTintColor={colors.primary} style={{ minHeight: geometry.touch }} />
-      <Button title="Stop ambient sound" variant="secondary" onPress={() => player.pause()} />
-      {[30, 60, 120].map(minutes => <Button key={minutes} title={`End in ${minutes} minutes`} variant="secondary" onPress={() => { setBoth(false); setDeadline(Date.now() + minutes * 60_000); }} />)}
-      <Button title="Until we’re both asleep" onPress={() => { setDeadline(undefined); setBoth(true); }} />
-      <Button title={asleep ? 'You marked yourself asleep' : 'I’m asleep'} disabled={asleep} onPress={() => { void engine?.markAsleep().catch(() => setError('Could not tell your partner. Check your connection.')); }} />
+      <Card variant="elevated" style={{ gap: spacing.md }}>
+        <Text variant="title/S">Ambient sound</Text>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>{Object.entries(beds).map(([name, source]) => <PressableScale key={name} accessibilityRole="button" onPress={() => {
+          try { player.replace(source); player.volume = volume; player.loop = true; player.play(); } catch { setError('Ambient playback could not start.'); }
+        }} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: geometry.touch, paddingHorizontal: spacing.md, borderRadius: radius.pill, backgroundColor: surfaces.softPrimary, borderWidth: geometry.hairline, borderColor: surfaces.rim }}>
+          <Ionicons name="musical-notes-outline" size={16} color={colors.primary} />
+          <Text variant="label">{name}</Text>
+        </PressableScale>)}</View>
+        <Text variant="caption" color="textSecondary">Volume: {Math.round(volume * 100)}%</Text>
+        <Slider accessibilityLabel="Ambient volume" minimumValue={0} maximumValue={0.5} value={volume} onValueChange={setVolume}
+          minimumTrackTintColor={colors.primary} maximumTrackTintColor={surfaces.divider} thumbTintColor={colors.primary} style={{ minHeight: geometry.touch }} />
+        <Button title="Pause sound" variant="secondary" onPress={() => player.pause()} />
+      </Card>
+      <Card variant="elevated" style={{ gap: spacing.sm }}>
+        <Text variant="title/S">Sleep timer</Text>
+        <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+          {[30, 60, 120].map(minutes => <PressableScale key={minutes} accessibilityRole="button" onPress={() => { setBoth(false); setDeadline(Date.now() + minutes * 60_000); }} style={{ flex: 1, minHeight: geometry.touch, alignItems: 'center', justifyContent: 'center', borderRadius: radius.md, backgroundColor: colors.surfaceAlt, borderWidth: geometry.hairline, borderColor: surfaces.rim }}><Text variant="label">{minutes}m</Text></PressableScale>)}
+        </View>
+        <Button title="Until we’re both asleep" onPress={() => { setDeadline(undefined); setBoth(true); }} />
+        <Button title={asleep ? 'Marked asleep' : 'I’m asleep'} variant="secondary" disabled={asleep} onPress={() => { void engine?.markAsleep().catch(() => setError('Could not tell your partner. Check your connection.')); }} />
+      </Card>
       <Button title="End call" variant="danger" onPress={() => { player.pause(); void engine?.end(); }} />
     </ScrollView></Screen>;
 }
 
 export function BedtimeReminder() {
-  const { spacing, colors, geometry, radius, typography } = useTheme();
+  const { spacing, colors, surfaces, geometry, radius, typography } = useTheme();
   const { data: session } = useSession();
   const [time, setTime] = useState('22:00');
   const [message, setMessage] = useState<string>();
@@ -81,11 +100,12 @@ export function BedtimeReminder() {
     if (id) await Notifications.cancelScheduledNotificationAsync(id);
     await AsyncStorage.removeItem(key);
   };
-  return <View style={{ gap: spacing.sm }}><Text variant="title/S">Optional bedtime reminder</Text>
-    <Text>Choose a nightly local “Goodnight call?” suggestion. Off until enabled.</Text>
+  return <Card variant="elevated" style={{ gap: spacing.sm }}><Text variant="title/S">Optional bedtime reminder</Text>
+    <Text variant="body/S" color="textSecondary">Choose a nightly local “Goodnight call?” suggestion. Off until enabled.</Text>
     <TextInput accessibilityLabel="Bedtime in 24-hour HH:MM format" value={time} onChangeText={setTime} maxLength={5}
-      style={{ color: colors.textPrimary, backgroundColor: colors.surface, ...typography['body/M'], minHeight: geometry.touch, padding: spacing.md, borderRadius: radius.md }} />
-    <Button title="Enable nightly suggestion" loading={busy} onPress={() => {
+      style={{ color: colors.textPrimary, backgroundColor: colors.bgElevated, borderWidth: geometry.hairline, borderColor: surfaces.rimStrong, ...typography['body/M'], minHeight: geometry.touch, paddingHorizontal: spacing.md, borderRadius: radius.md }} />
+    <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+      <Button title="Enable nightly" loading={busy} style={{ flex: 1 }} onPress={() => {
       void (async () => {
         setBusy(true);
         try {
@@ -101,7 +121,8 @@ export function BedtimeReminder() {
         finally { setBusy(false); }
       })();
     }} />
-    <Button title="Disable nightly suggestion" variant="secondary" onPress={() => { void disable().then(() => setMessage('Nightly suggestion disabled.')).catch(() => setMessage('Could not disable reminder. Try again.')); }} />
-    {message && <Text accessibilityLiveRegion="polite">{message}</Text>}
-  </View>;
+      <Button title="Disable" variant="ghost" onPress={() => { void disable().then(() => setMessage('Nightly suggestion disabled.')).catch(() => setMessage('Could not disable reminder. Try again.')); }} />
+    </View>
+    {message && <Text variant="caption" color="textSecondary" accessibilityLiveRegion="polite">{message}</Text>}
+  </Card>;
 }

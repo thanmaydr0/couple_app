@@ -8,13 +8,20 @@ import { useTheme } from '@/theme';
 import { FeatureGames } from '@/features/shared/FeatureSlots';
 
 export default function GamesScreen() {
-  const { spacing, colors, geometry, radius } = useTheme();
-  return <Screen gradient><ScrollView contentContainerStyle={{ gap: spacing.lg, paddingBottom: spacing.lg }}>
+  const { spacing, colors, surfaces, geometry, radius } = useTheme();
+  return <Screen atmosphere gradient bottomInset><ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ gap: spacing.lg, paddingBottom: spacing.xl }}>
     <Header title="Play together" subtitle="A little friendly rivalry. A little more us." />
-    <StaggerList style={{ gap: spacing.lg }}>
+    <StaggerList style={{ gap: spacing.md }}>
       {([{ title: 'Chess', icon: 'grid-outline', description: 'Your next move is waiting. Play live or pick up where you left off.', route: '/games/chess', tag: 'TAKE YOUR TIME' }, { title: 'Scribble', icon: 'brush-outline', description: 'Draw a secret word. Guess a little faster. Laugh a lot together.', route: '/games/scribble', tag: 'MAKE A LITTLE MESS' }] as const).map(game => <PressableScale key={game.title} accessibilityRole="button" accessibilityLabel={`Open ${game.title}`} onPress={() => router.push(game.route)}>
         <Card variant="elevated" style={{ gap: spacing.md, padding: spacing.lg }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}><View style={{ padding: spacing.md, borderRadius: radius.md, backgroundColor: colors.surfaceAlt }}><Ionicons name={game.icon} size={geometry.touch} color={colors.primary} /></View><Text variant="caption" color="textSecondary">FOR TWO</Text></View>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+            <View style={{ width: spacing.s56, height: spacing.s56, borderRadius: radius.lg, backgroundColor: surfaces.softPrimary, borderWidth: geometry.hairline, borderColor: surfaces.rim, alignItems: 'center', justifyContent: 'center' }}>
+              <Ionicons name={game.icon} size={geometry.icon * 1.1} color={colors.primary} />
+            </View>
+            <View style={{ paddingHorizontal: spacing.s12, paddingVertical: spacing.xs, borderRadius: radius.pill, backgroundColor: surfaces.softPrimary, borderWidth: geometry.hairline, borderColor: surfaces.rim }}>
+              <Text variant="caption" color="primary">FOR TWO</Text>
+            </View>
+          </View>
           <View style={{ gap: spacing.xs }}><Text variant="caption" color="textSecondary">{game.tag}</Text><Text variant="display/M">{game.title}</Text><Text color="textSecondary">{game.description}</Text></View>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', minHeight: geometry.touch, paddingTop: spacing.xs }}><Text variant="label" color="primary">Open {game.title}</Text><Ionicons name="arrow-forward" size={geometry.icon} color={colors.primary} /></View>
         </Card>

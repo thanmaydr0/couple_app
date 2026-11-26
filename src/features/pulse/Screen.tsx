@@ -15,7 +15,7 @@ import { TheirDay } from './TheirDay';
 
 export default function PulseScreen() {
   const pulse = usePulse();
-  const { spacing, radius, colors, geometry, typography } = useTheme();
+  const { spacing, radius, colors, surfaces, geometry, typography } = useTheme();
   const client = useQueryClient();
 
   const [draft, setDraft] = useState('');
@@ -140,11 +140,11 @@ export default function PulseScreen() {
 
             {/* Streak & Thought Capsule Bar */}
             <View style={styles.metricsBar}>
-              <View style={[styles.metricPill, { backgroundColor: colors.surface, borderRadius: radius.pill, borderColor: colors.border }]}>
-                <Text style={{ fontSize: 16 }}>🔥</Text>
+              <View style={[styles.metricPill, { backgroundColor: surfaces.softPrimary, borderRadius: radius.pill, borderColor: surfaces.rim }]}>
+                <Ionicons name="flame-outline" size={16} color={colors.primary} />
                 <Text variant="label">{streakCount} day streak</Text>
               </View>
-              <View style={[styles.metricPill, { backgroundColor: colors.surface, borderRadius: radius.pill, borderColor: colors.border }]}>
+              <View style={[styles.metricPill, { backgroundColor: surfaces.softPrimary, borderRadius: radius.pill, borderColor: surfaces.rim }]}>
                 <Ionicons name="heart" size={16} color={colors.primary} />
                 <Text variant="label">{thoughtsCount} thoughts today</Text>
               </View>
@@ -183,15 +183,15 @@ export default function PulseScreen() {
             ) : (
               <>
                 {/* Wax-sealed Today's Question Card */}
-                <Card variant="elevated" style={[styles.questionCard, { borderColor: colors.border }]}>
+                <Card variant="elevated" style={styles.questionCard}>
                   <View style={styles.questionHeader}>
-                    <View style={[styles.dayPill, { backgroundColor: colors.primary, borderRadius: radius.pill }]}>
-                      <Text variant="caption" color="primaryContrast">TODAY</Text>
+                    <View style={[styles.dayPill, { backgroundColor: surfaces.softPrimary, borderWidth: geometry.hairline, borderColor: surfaces.rim, borderRadius: radius.pill }]}>
+                      <Text variant="caption" color="primary">TODAY</Text>
                     </View>
                     <Text variant="caption" color="textSecondary">{pulse.day}</Text>
                   </View>
 
-                  <Text variant="title/M" style={styles.questionText}>
+                  <Text variant="title/L" style={styles.questionText}>
                     "{questionFor(pulse.day)}"
                   </Text>
 
@@ -203,9 +203,9 @@ export default function PulseScreen() {
                             style={[
                               styles.revealedAnswer,
                               {
-                                backgroundColor: index === 0 ? colors.surfaceAlt : colors.bgElevated,
+                                backgroundColor: index === 0 ? surfaces.softPrimary : colors.bgElevated,
                                 borderRadius: radius.md,
-                                borderColor: colors.border,
+                                borderColor: surfaces.rim,
                               },
                             ]}
                           >
@@ -220,8 +220,10 @@ export default function PulseScreen() {
                       ))}
                     </View>
                   ) : mine ? (
-                    <View style={[styles.pendingEnvelope, { backgroundColor: colors.surfaceAlt, borderRadius: radius.lg }]}>
-                      <Text style={{ fontSize: 24 }}>✉️</Text>
+                    <View style={[styles.pendingEnvelope, { backgroundColor: surfaces.softPrimary, borderWidth: geometry.hairline, borderColor: surfaces.rim, borderRadius: radius.lg }]}>
+                      <View style={{ width: spacing.s40, height: spacing.s40, borderRadius: radius.pill, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center' }}>
+                        <Ionicons name="mail-outline" size={20} color={colors.primary} />
+                      </View>
                       <View style={{ flex: 1, gap: 4 }}>
                         <Text variant="label">Your answer is sealed</Text>
                         <Text variant="body/S" color="textSecondary">
@@ -247,13 +249,15 @@ export default function PulseScreen() {
                         onChangeText={setDraft}
                         editable={!pulse.offline && !submit.isPending}
                         placeholder="A little honesty goes a long way…"
-                        placeholderTextColor={colors.textSecondary}
+                        placeholderTextColor={colors.textMuted}
                         style={[
                           styles.answerInput,
                           {
                             ...typography['body/M'],
                             color: colors.textPrimary,
-                            backgroundColor: colors.surfaceAlt,
+                            backgroundColor: colors.bgElevated,
+                            borderWidth: geometry.hairline,
+                            borderColor: surfaces.rimStrong,
                             borderRadius: radius.md,
                             minHeight: geometry.touch * 2.2,
                           },

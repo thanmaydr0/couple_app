@@ -16,12 +16,12 @@ import type { PhotoMode, WidgetState } from './types';
 
 type Stroke = { path: SkPath; color: string };
 function Action({ title, onPress, disabled = false }: { title: string; onPress: () => void; disabled?: boolean }) {
-  const { colors, spacing, radius } = useTheme();
-  return <PressableScale accessibilityRole="button" disabled={disabled} onPress={onPress} style={{ padding: spacing.s12, borderRadius: radius.sm, backgroundColor: colors.surfaceAlt, justifyContent: 'center' }}><Text style={{ textAlign: 'center' }}>{title}</Text></PressableScale>;
+  const { surfaces, spacing, radius, geometry } = useTheme();
+  return <PressableScale accessibilityRole="button" disabled={disabled} onPress={onPress} style={{ minHeight: geometry.touch, paddingHorizontal: spacing.md, paddingVertical: spacing.s12, borderRadius: radius.pill, backgroundColor: surfaces.softPrimary, borderWidth: geometry.hairline, borderColor: surfaces.rimStrong, justifyContent: 'center', opacity: disabled ? geometry.disabledOpacity : 1 }}><Text variant="label" style={{ textAlign: 'center' }}>{title}</Text></PressableScale>;
 }
 export default function WidgetsScreen() {
   const theme = useTheme();
-  const { colors, spacing, radius, geometry } = theme;
+  const { colors, surfaces, spacing, radius, geometry } = theme;
   const router = useRouter();
   const params = useLocalSearchParams<{ reply?: string; photo?: string }>();
   const [state, setState] = useState<WidgetState>(initialState);
@@ -82,22 +82,22 @@ export default function WidgetsScreen() {
     { title: 'Love Doodle · 4 × 2', icon: '〰', detail: 'The latest drawing from your partner. Tap to draw a reply.' },
     { title: 'Heartbeat · 1 × 1', icon: '♥', detail: 'Tap to send a heartbeat without opening Us. One every 10 seconds.' },
   ];
-  return <Screen><Header title="Widgets" subtitle="A little closer, on your Home screen" onBack={() => router.back()} /><ScrollView contentContainerStyle={{ gap: spacing.md, paddingBottom: spacing.xl }}>
+  return <Screen atmosphere gradient bottomInset><Header title="Widgets" subtitle="A little closer, on your Home screen" onBack={() => router.back()} /><ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ gap: spacing.md, paddingBottom: spacing.xl }}>
     {offline && <Text accessibilityLiveRegion="polite">Offline · saved widget content may be out of date.</Text>}
     {loading && <ActivityIndicator color={colors.primary} accessibilityLabel="Loading widgets" />}
-    <Card><Text variant="title/M">Your Home screen, your choice</Text><Text>Personal photos and doodles can be visible to anyone holding your phone. Widgets start off.</Text><Action disabled={busy || loading} title={state.enabled ? 'Widgets ON · turn off and clear content' : 'Enable personal widget content'} onPress={() => void run(async () => {
+    <Card variant="elevated" style={{ gap: spacing.sm }}><Text variant="title/M">Your Home screen, your choice</Text><Text color="textSecondary">Personal photos and doodles can be visible to anyone holding your phone. Widgets start off.</Text><Action disabled={busy || loading} title={state.enabled ? 'Widgets ON · turn off and clear content' : 'Enable personal widget content'} onPress={() => void run(async () => {
       if (state.enabled) { await clearWidgets(); const next = { ...initialState, colors }; setState(next); await renderAll(next); }
       else await save({ enabled: true });
     })} /></Card>
-    <Text>Long-press an empty area on your Android Home screen → Widgets → Us. Hold a widget, drag it into place, and release. Available sizes depend on your launcher.</Text>
-    {cards.map(card => <Card key={card.title} style={{ gap: spacing.sm }}><View style={{ flexDirection: 'row', gap: spacing.md, alignItems: 'center' }}><View accessibilityElementsHidden style={{ minWidth: geometry.touch, minHeight: geometry.touch, padding: spacing.sm, borderRadius: radius.md, backgroundColor: colors.surfaceAlt, justifyContent: 'center', alignItems: 'center' }}><Text variant="display/M" color="primary">{card.icon}</Text></View><Text variant="title/S">{card.title}</Text></View><Text color="textSecondary">{card.detail}</Text></Card>)}
-    <Card style={{ gap: spacing.sm }}><Text variant="title/M">Photo mode</Text>{(['latest', 'random', 'favorites'] as PhotoMode[]).map(mode => <Action key={mode} disabled={busy || loading} title={`${state.mode === mode ? '✓ ' : ''}${mode === 'random' ? 'Daily random' : mode === 'latest' ? 'Latest upload' : 'Daily favorite'}`} onPress={() => void run(() => save({ mode }))} />)}
-      <Text variant="body/S">Widget favorites are saved on this phone. Select up to 50 photos below.</Text>
+    <Text variant="body/S" color="textSecondary">Long-press an empty area on your Android Home screen → Widgets → Us. Hold a widget, drag it into place, and release. Available sizes depend on your launcher.</Text>
+    {cards.map(card => <Card variant="elevated" key={card.title} style={{ gap: spacing.sm }}><View style={{ flexDirection: 'row', gap: spacing.md, alignItems: 'center' }}><View accessibilityElementsHidden style={{ minWidth: geometry.touch, minHeight: geometry.touch, padding: spacing.sm, borderRadius: radius.md, backgroundColor: surfaces.softPrimary, borderWidth: geometry.hairline, borderColor: surfaces.rim, justifyContent: 'center', alignItems: 'center' }}><Text variant="title/L" color="primary">{card.icon}</Text></View><Text variant="title/S">{card.title}</Text></View><Text color="textSecondary">{card.detail}</Text></Card>)}
+    <Card variant="elevated" style={{ gap: spacing.sm }}><Text variant="title/M">Photo mode</Text>{(['latest', 'random', 'favorites'] as PhotoMode[]).map(mode => <Action key={mode} disabled={busy || loading} title={`${state.mode === mode ? '✓ ' : ''}${mode === 'random' ? 'Daily random' : mode === 'latest' ? 'Latest upload' : 'Daily favorite'}`} onPress={() => void run(() => save({ mode }))} />)}
+      <Text variant="body/S" color="textSecondary">Widget favorites are saved on this phone. Select up to 50 photos below.</Text>
       {!rows.length && !loading && <Text color="textSecondary">No photos yet. Add a photo in Memories to start.</Text>}
       {rows.slice(0, 50).map(row => <Action key={row.id} disabled={busy} title={`${state.favorites.includes(row.id) ? '♥ ' : '♡ '}${row.caption ?? new Date(row.taken_at).toLocaleDateString()}`} onPress={() => void run(() => save({ favorites: state.favorites.includes(row.id) ? state.favorites.filter(id => id !== row.id) : [...state.favorites, row.id] }))} />)}
     </Card>
-    <Card style={{ gap: spacing.sm }}><Text variant="title/M">Love Doodle</Text><Text color="textSecondary">Draw with one finger. {reply && state.doodleFile ? 'Your partner’s doodle is the reply background.' : 'Send a little love to your partner’s widget.'}</Text>
-      <View onLayout={event => setCanvasWidth(event.nativeEvent.layout.width)} style={{ height: canvasHeight, borderRadius: radius.md, overflow: 'hidden', backgroundColor: colors.surfaceAlt }}
+    <Card variant="elevated" style={{ gap: spacing.sm }}><Text variant="title/M">Love Doodle</Text><Text color="textSecondary">Draw with one finger. {reply && state.doodleFile ? 'Your partner’s doodle is the reply background.' : 'Send a little love to your partner’s widget.'}</Text>
+      <View onLayout={event => setCanvasWidth(event.nativeEvent.layout.width)} style={{ height: canvasHeight, borderRadius: radius.md, overflow: 'hidden', backgroundColor: colors.bgElevated, borderWidth: geometry.hairline, borderColor: surfaces.rimStrong }}
         onStartShouldSetResponder={() => !busy} onMoveShouldSetResponder={() => !busy}
         onResponderGrant={event => { const path = Skia.Path.Make(); const { locationX: x, locationY: y } = event.nativeEvent; path.moveTo(x, y); path.lineTo(x + geometry.hairline, y); current.current = { path, color: ink }; setRevision(value => value + 1); }}
         onResponderMove={event => { current.current?.path.lineTo(event.nativeEvent.locationX, event.nativeEvent.locationY); setRevision(value => value + 1); }}

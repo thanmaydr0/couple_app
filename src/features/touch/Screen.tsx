@@ -17,7 +17,7 @@ export default function TouchScreen() {
   const profile = useProfile();
   const partner = usePartner();
   const router = useRouter();
-  const { colors, spacing, radius, typography, geometry } = useTheme();
+  const { colors, surfaces, spacing, radius, typography, geometry } = useTheme();
   const motion = useMotion();
 
   const [open, setOpen] = useState(false);
@@ -120,7 +120,7 @@ export default function TouchScreen() {
       />
 
       {settings && (
-        <FadeInView style={[styles.settingsDrawer, { backgroundColor: colors.surface, borderRadius: radius.lg, borderColor: colors.border }]}>
+        <FadeInView style={[styles.settingsDrawer, { backgroundColor: colors.surface, borderRadius: radius.lg, borderColor: surfaces.rimStrong }]}>
           <View style={styles.settingsHeader}>
             <Ionicons name="sparkles-outline" size={18} color={colors.primary} />
             <Text variant="title/S">Haptic Sensation</Text>
@@ -160,7 +160,7 @@ export default function TouchScreen() {
       )}
 
       {notice ? (
-        <View style={[styles.noticeBadge, { backgroundColor: colors.surfaceAlt, borderRadius: radius.pill }]}>
+        <View style={[styles.noticeBadge, { backgroundColor: surfaces.softPrimary, borderWidth: geometry.hairline, borderColor: surfaces.rim, borderRadius: radius.pill }]}>
           <Text variant="body/S" color="textSecondary" accessibilityLiveRegion="polite">
             {notice}
           </Text>
@@ -192,8 +192,8 @@ export default function TouchScreen() {
             style={[
               styles.hudCapsule,
               {
-                backgroundColor: colors.bgElevated,
-                borderColor: room.merged ? colors.primary : colors.border,
+                backgroundColor: surfaces.glassBg,
+                borderColor: room.merged ? colors.primary : surfaces.rimStrong,
                 borderRadius: radius.pill,
               },
             ]}
@@ -244,7 +244,7 @@ export default function TouchScreen() {
               accessibilityRole="button"
               accessibilityLabel="Leave room"
               onPress={leave}
-              style={[styles.floatingActionPill, { backgroundColor: colors.surface, borderRadius: radius.pill }]}
+              style={[styles.floatingActionPill, { backgroundColor: surfaces.glassBg, borderWidth: geometry.hairline, borderColor: surfaces.rimStrong, borderRadius: radius.pill }]}
             >
               <Ionicons name="close-circle-outline" size={18} color={colors.textSecondary} />
               <Text variant="label" color="textSecondary">Leave</Text>
@@ -257,7 +257,7 @@ export default function TouchScreen() {
                 room.up();
                 setRetry(true);
               }}
-              style={[styles.floatingActionPill, { backgroundColor: colors.surface, borderRadius: radius.pill }]}
+              style={[styles.floatingActionPill, { backgroundColor: surfaces.glassBg, borderWidth: geometry.hairline, borderColor: surfaces.rimStrong, borderRadius: radius.pill }]}
             >
               <Ionicons name="refresh-outline" size={18} color={colors.primary} />
               <Text variant="label" color="primary">Reconnect</Text>
@@ -297,7 +297,7 @@ export default function TouchScreen() {
 
           {/* Past summary celebration badge */}
           {summary !== undefined && (
-            <FadeInView style={[styles.summaryCard, { backgroundColor: colors.surfaceAlt, borderRadius: radius.lg }]}>
+            <FadeInView style={[styles.summaryCard, { backgroundColor: surfaces.softPrimary, borderWidth: geometry.hairline, borderColor: surfaces.rim, borderRadius: radius.lg }]}>
               <Ionicons name="ribbon-outline" size={20} color={colors.primary} />
               <Text variant="title/S">
                 You held hands for {Math.floor(summary / 60_000)}m {Math.floor(summary / 1000) % 60}s

@@ -71,7 +71,7 @@ export function AppLockGate({ children }: PropsWithChildren) {
     finally { if (alive.current) setBusy(false); }
   };
   if (!covered) mountedContent.current = true;
-  const lockScreen = <Screen centered bottomInset style={{ backgroundColor: colors.bg }}>
+  const lockScreen = <Screen atmosphere gradient centered bottomInset>
     <Animated.View accessibilityViewIsModal style={{ opacity: unlockOpacity, width: '100%', alignItems: 'center', gap: spacing.lg }}>
       <Image source={require('../../../assets/splash-mark.png')} accessibilityLabel="Us app logo" style={{ width: geometry.touch * 2, height: geometry.touch * 2 }} resizeMode="contain" />
       <Header title={ready ? 'Your space is locked' : 'Protecting your space'} />

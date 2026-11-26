@@ -17,9 +17,10 @@ import {
 import { voiceTime } from './types';
 
 export function VoicePlayer(props: VoiceTrack) {
-  const { colors, spacing, typography, geometry, radius } = useTheme();
+  const { colors, surfaces, radius } = useTheme();
   const playback = useSyncExternalStore(subscribePlayback, playbackSnapshot, playbackSnapshot);
   const active = playback.id === props.id;
+  const inverted = props.receiver === false;
 
   useEffect(() => watchAudioFocus(), []);
 
@@ -30,15 +31,15 @@ export function VoicePlayer(props: VoiceTrack) {
       style={[
         styles.container,
         {
-          borderRadius: radius.lg,
-          backgroundColor: colors.surfaceAlt,
-          borderColor: colors.border,
+          borderRadius: radius.md,
+          backgroundColor: inverted ? 'rgba(255,255,255,0.12)' : colors.surface,
+          borderColor: inverted ? 'rgba(255,255,255,0.18)' : surfaces.rim,
         },
       ]}
     >
       <View style={styles.topRow}>
-        {/* Play/Pause circular button */}
         <PressableScale
+          sheen={false}
           accessibilityRole="button"
           accessibilityLabel={
             active && playback.loading
@@ -51,17 +52,23 @@ export function VoicePlayer(props: VoiceTrack) {
             if (active && playback.loading) pauseVoice();
             else void playVoice(props);
           }}
-          style={[styles.playBtn, { backgroundColor: colors.primary, borderRadius: radius.pill }]}
+          style={[
+            styles.playBtn,
+            {
+              backgroundColor: inverted ? colors.bubbleMineText : colors.primary,
+              borderRadius: radius.pill,
+            },
+          ]}
         >
           <Ionicons
             name={active && playback.loading ? 'hourglass' : active && playback.playing ? 'pause' : 'play'}
-            size={16}
-            color={colors.primaryContrast}
+            size={15}
+            color={inverted ? colors.primary : colors.primaryContrast}
           />
         </PressableScale>
 
-        {/* Live Audio Waveform */}
         <Waveform
+          inverted={inverted}
           peaks={props.meta?.peaks ?? Array.from({ length: 48 }, () => 0.25)}
           progress={active && playback.duration ? playback.position / playback.duration : 0}
           onSeek={fraction => {
@@ -72,30 +79,47 @@ export function VoicePlayer(props: VoiceTrack) {
           }}
         />
 
-        {/* Speed button pill */}
         <PressableScale
+          sheen={false}
           accessibilityRole="button"
           accessibilityLabel="Change voice playback speed"
           onPress={voiceSpeed}
-          style={[styles.speedPill, { backgroundColor: colors.bgElevated, borderRadius: radius.pill }]}
+          style={[
+            styles.speedPill,
+            {
+              backgroundColor: inverted ? 'rgba(255,255,255,0.18)' : colors.surfaceAlt,
+              borderRadius: radius.pill,
+            },
+          ]}
         >
-          <Text style={[styles.speedText, { color: colors.textPrimary }]}>
+          <Text
+            style={[
+              styles.speedText,
+              { color: inverted ? colors.bubbleMineText : colors.textPrimary },
+            ]}
+          >
             {playback.speed}×
           </Text>
         </PressableScale>
       </View>
 
-      {/* Meta duration & status row */}
       <View style={styles.metaRow}>
-        <Text style={[styles.timeText, { color: colors.textSecondary }]}>
+        <Text
+          style={[
+            styles.timeText,
+            { color: inverted ? colors.bubbleMineText : colors.textSecondary },
+          ]}
+        >
           {active ? `${voiceTime(playback.position * 1000)} / ` : ''}
           {duration ? voiceTime(duration) : 'Voice message'}
           {props.receiver && props.meta?.played_at ? ' · Heard' : ''}
         </Text>
 
         {active && playback.error && (
-          <PressableScale onPress={() => void playVoice(props)}>
-            <Text style={[styles.errorText, { color: colors.danger }]}>{playback.error}</Text>
+          <PressableScale sheen={false} onPress={() => void playVoice(props)} style={{ minHeight: 24, minWidth: 24 }}>
+            <Text style={[styles.errorText, { color: inverted ? colors.bubbleMineText : colors.danger }]}>
+              {playback.error}
+            </Text>
           </PressableScale>
         )}
       </View>
@@ -105,25 +129,29 @@ export function VoicePlayer(props: VoiceTrack) {
 
 const styles = StyleSheet.create({
   container: {
-    minWidth: 200,
-    padding: 10,
-    gap: 6,
-    marginVertical: 4,
+    minWidth: 210,
+    padding: 9,
+    gap: 5,
+    marginVertical: 2,
     borderWidth: StyleSheet.hairlineWidth,
   },
   topRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 8,
   },
   playBtn: {
     width: 34,
     height: 34,
+    minWidth: 34,
+    minHeight: 34,
     alignItems: 'center',
     justifyContent: 'center',
   },
   speedPill: {
-    paddingHorizontal: 8,
+    minWidth: 34,
+    minHeight: 24,
+    paddingHorizontal: 7,
     paddingVertical: 3,
     alignItems: 'center',
     justifyContent: 'center',
@@ -141,6 +169,7 @@ const styles = StyleSheet.create({
   },
   timeText: {
     fontSize: 11,
+    opacity: 0.85,
     fontVariant: ['tabular-nums'],
   },
   errorText: {

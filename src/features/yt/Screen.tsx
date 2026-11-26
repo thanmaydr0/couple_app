@@ -18,7 +18,7 @@ import type { Video, YtSession } from './types';
 
 /** Public entry for the future Watch tab File | YouTube switch. */
 export function YouTubeEntry({ initialText = '' }: { initialText?: string }) {
-  const theme = useTheme(); const { colors, spacing, geometry, radius, typography } = theme; const router = useRouter();
+  const theme = useTheme(); const { colors, surfaces, spacing, geometry, radius, typography } = theme; const router = useRouter();
   const profile = useProfile(); const partner = usePartner(); const ownAvatar = useAvatar(profile.data?.avatar_path); const partnerAvatar = useAvatar(partner.data?.avatar_path);
   const couple = profile.data?.couple_id; const user = profile.data?.id; const peer = partner.data?.id;
   const dimensions = useWindowDimensions(); const landscape = dimensions.width > dimensions.height;
@@ -139,7 +139,7 @@ export function YouTubeEntry({ initialText = '' }: { initialText?: string }) {
   </View>;
   const player = session?.current_video_id && user && peer && focused ? <Player key={`${session.id}:${session.current_video_id}`} session={session} user={user} partner={peer} onEnded={advance} onPresence={setPartnerHere} compact={landscape} autoStart={autoStart.current} /> : null;
   const compact = landscape && !!player;
-  return <Screen style={compact ? { padding: spacing.sm } : undefined}><ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ gap: spacing.md, paddingBottom: spacing.lg, flexGrow: 1 }}>
+  return <Screen atmosphere gradient bottomInset style={compact ? { padding: spacing.sm } : undefined}><ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} contentContainerStyle={{ gap: spacing.md, paddingBottom: spacing.xl, flexGrow: 1 }}>
     <Header title="YouTube together" subtitle="A little watch party for two" onBack={() => router.back()} right={<YtButton title="Refresh" onPress={() => void action(refresh)} disabled={busy || offline} />} />
     {!compact && participantRow}
     {offline && <YtCard><Text accessibilityLiveRegion="polite">Offline — YouTube needs an internet connection. Playback is paused; your saved queue stays here.</Text></YtCard>}
@@ -152,7 +152,7 @@ export function YouTubeEntry({ initialText = '' }: { initialText?: string }) {
     {session && !session.current_video_id && <YtCard><Text>All caught up. Add a video to watch next.</Text></YtCard>}
     {!session && !loading && <YtCard><Text variant="title/M">What shall we watch?</Text><Text color="textSecondary">Paste a video, short or public playlist. Both partners can control playback.</Text></YtCard>}
     <YtCard><Text variant="title/M">Add to Up next</Text>
-      <TextInput value={text} onChangeText={value => { setText(value); setPreviews([]); }} multiline maxLength={4000} accessibilityLabel="YouTube link or shared text" placeholder="Paste a YouTube link or shared text" placeholderTextColor={colors.textSecondary} style={{ ...typography['body/M'], minHeight: geometry.field, padding: spacing.s12, backgroundColor: colors.surfaceAlt, color: colors.textPrimary, borderRadius: radius.sm }} />
+      <TextInput value={text} onChangeText={value => { setText(value); setPreviews([]); }} multiline maxLength={4000} accessibilityLabel="YouTube link or shared text" placeholder="Paste a YouTube link or shared text" placeholderTextColor={colors.textMuted} style={{ ...typography['body/M'], minHeight: geometry.field, padding: spacing.s12, backgroundColor: colors.bgElevated, borderWidth: geometry.hairline, borderColor: surfaces.rimStrong, color: colors.textPrimary, borderRadius: radius.md }} />
       <View style={{ flexDirection: 'row', gap: spacing.sm }}><YtButton title="Paste" disabled={busy} onPress={() => void action(async () => { setText(await Clipboard.getStringAsync()); setPreviews([]); })} /><YtButton title={busy ? 'Working…' : 'Preview'} onPress={validate} disabled={busy || offline || !text.trim() || !!playlist} /></View>
       {playlist && <PlaylistResolver key={playlist} id={playlist} onResolve={resolvePlaylist} onError={message => { setPlaylist(null); setError(message); }} onCancel={() => setPlaylist(null)} />}
       {previews[0] && <><VideoPreview video={previews[0]} /><Text>{previews.length === 1 ? 'Ready to add' : `${previews.length} public videos ready to add`}</Text><YtButton title={session ? 'Add to Up next' : 'Start together'} onPress={() => enqueue(previews)} disabled={busy || offline || !peer} /></>}

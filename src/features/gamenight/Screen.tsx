@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { ScrollView, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { Screen, Header, Text, Card, Button, TextField } from '@/ui';
+import { Screen, Header, Text, Card, Button, PressableScale, TextField } from '@/ui';
 import { AnimatedNumber, StaggerList } from '@/motion';
 import { useTheme } from '@/theme';
 import { usePresence } from '@/features/presence/PresenceProvider';
@@ -30,29 +30,32 @@ export default function GameNightScreen() {
   const queryError = engine.profile.error || engine.partner.error || engine.rounds.error || engine.active.error || engine.customs.error || engine.stats.error;
   const content = { gap: theme.spacing.md, paddingBottom: theme.spacing.lg };
   function back() { if (playing) setPlaying(false); else if (selected) { setSelected(null); setCustom(false); setCategory(''); } else router.replace('/(tabs)/games'); }
-  return <Screen bottomInset><ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={content}>
+  return <Screen atmosphere gradient bottomInset><ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} contentContainerStyle={content}>
     <Header title={selected ? titles[selected] : 'Game night'} subtitle="A little friendly rivalry. A little closer together." onBack={back} />
-    <Text color="textSecondary">{engine.partner.data?.display_name || 'Your partner'} · {online ? 'Online' : 'Away'} · {engine.rounds.realtime === 'SUBSCRIBED' ? 'Live sync' : 'Reconnecting'}</Text>
-    {engine.rounds.offline && <Card><Text>Offline. Saved content stays visible; reconnect to make a move.</Text></Card>}
-    {(engine.error || queryError) && <Card style={content}><Text color="danger">{engine.error || 'Could not load game night. Check your connection and retry.'}</Text><Button title="Retry" onPress={engine.refresh} /></Card>}
+    <View style={{ flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: 6, paddingHorizontal: theme.spacing.s12, paddingVertical: theme.spacing.xs, borderRadius: theme.radius.pill, backgroundColor: theme.surfaces.softPrimary, borderWidth: theme.geometry.hairline, borderColor: theme.surfaces.rim }}>
+      <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: online ? theme.colors.success : theme.colors.textSecondary }} />
+      <Text variant="caption" color="textPrimary">{engine.partner.data?.display_name || 'Your partner'} · {online ? 'Online' : 'Away'} · {engine.rounds.realtime === 'SUBSCRIBED' ? 'Live sync' : 'Reconnecting'}</Text>
+    </View>
+    {engine.rounds.offline && <Card variant="elevated"><Text>Offline. Saved content stays visible; reconnect to make a move.</Text></Card>}
+    {(engine.error || queryError) && <Card variant="elevated" style={content}><Text color="danger">{engine.error || 'Could not load game night. Check your connection and retry.'}</Text><Button title="Retry" onPress={engine.refresh} /></Card>}
     {engine.notice && <Text accessibilityLiveRegion="polite">{engine.notice}</Text>}
     {engine.profile.isLoading || engine.rounds.isLoading || engine.active.isLoading ? <Text accessibilityRole="progressbar">Restoring your games…</Text>
-      : !engine.coupleId ? <Card><Text>Link your couple in Settings to play together.</Text></Card>
-      : !selected ? <StaggerList><View style={content}>{gameIds.map(game => <Card key={game} style={content}><Text variant="title/M">{titles[game]}</Text><Text color="textSecondary">{descriptions[game]}</Text><Button title="Open lobby" onPress={() => { setSelected(game); setCategory(''); }} /></Card>)}</View></StaggerList>
+      : !engine.coupleId ? <Card variant="elevated"><Text>Link your couple in Settings to play together.</Text></Card>
+      : !selected ? <StaggerList><View style={content}>{gameIds.map(game => <PressableScale key={game} accessibilityRole="button" accessibilityLabel={`Open ${titles[game]}`} onPress={() => { setSelected(game); setCategory(''); }}><Card variant="elevated" style={content}><View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}><Text variant="title/M">{titles[game]}</Text><View style={{ paddingHorizontal: theme.spacing.s12, paddingVertical: 4, borderRadius: theme.radius.pill, backgroundColor: theme.surfaces.softPrimary, borderWidth: theme.geometry.hairline, borderColor: theme.surfaces.rim }}><Text variant="caption" color="primary">Play →</Text></View></View><Text color="textSecondary">{descriptions[game]}</Text></Card></PressableScale>)}</View></StaggerList>
       : playing && round ? <Play key={round.id} engine={engine} round={round} disabled={disabled} category={category} />
       : <>
-        <Card style={content}><Text variant="title/M">{live ? 'Your game is waiting' : 'Make an evening of it'}</Text><Text>{descriptions[selected]}</Text>
+        <Card variant="elevated" style={content}><Text variant="title/M">{live ? 'Your game is waiting' : 'Make an evening of it'}</Text><Text>{descriptions[selected]}</Text>
           {!engine.partner.data && <Text>Waiting for your linked partner’s profile.</Text>}
-          {(selected === 'know' || selected === 'roulette') && <><Text variant="label">Prompt category</Text><View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm }}>{['', ...(selected === 'know' ? ['favorites', 'memories', 'habits', 'dreams'] : ['sweet', 'funny', 'adventurous', 'deep'])].map(c => <Button key={c} variant={category === c ? 'primary' : 'secondary'} title={`${category === c ? '✓ ' : ''}${c || 'All moods'}`} onPress={() => setCategory(c)} disabled={engine.busy} />)}</View></>}
-          {selected !== 'connect' && (engine.customs.data ?? []).some(p => p.game === selected) && <Button title={`${category === '__custom' ? '✓ ' : ''}Use only your custom prompts`} variant={category === '__custom' ? 'primary' : 'secondary'} onPress={() => setCategory(category === '__custom' ? '' : '__custom')} />}
+          {(selected === 'know' || selected === 'roulette') && <><Text variant="label">Prompt category</Text><View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing.sm }}>{['', ...(selected === 'know' ? ['favorites', 'memories', 'habits', 'dreams'] : ['sweet', 'funny', 'adventurous', 'deep'])].map(c => <Button key={c} variant={category === c ? 'primary' : 'secondary'} title={`${c || 'All moods'}`} onPress={() => setCategory(c)} disabled={engine.busy} />)}</View></>}
+          {selected !== 'connect' && (engine.customs.data ?? []).some(p => p.game === selected) && <Button title={category === '__custom' ? 'Showing only custom prompts' : 'Use only your custom prompts'} variant={category === '__custom' ? 'primary' : 'secondary'} onPress={() => setCategory(category === '__custom' ? '' : '__custom')} />}
           {live ? <Button title="Resume game" onPress={() => setPlaying(true)} /> : <Button title={engine.busy ? 'Starting…' : round ? 'Rematch · new game' : 'Start a game'} disabled={disabled} onPress={() => { void engine.start(selected, category || undefined, round).then(success => { if (success) setPlaying(true); }); }} />}
           {live?.status === 'lobby' && live.created_by === engine.uid && <Button title="Cancel invitation" variant="ghost" disabled={disabled} onPress={() => { void engine.action('cancel', live); }} />}
         </Card>
-        <Card style={content}><Text variant="title/S">Your story so far</Text><View style={{ flexDirection: 'row', gap: theme.spacing.md }}>{[
+        <Card variant="elevated" style={content}><Text variant="title/S">Your story so far</Text><View style={{ flexDirection: 'row', gap: theme.spacing.md }}>{[
           { label: 'Played', value: stats?.played ?? 0 },
           { label: 'Your wins', value: stats && stats.extra.a === engine.uid ? stats.wins_a : stats?.wins_b ?? 0 },
           { label: 'Partner wins', value: stats && stats.extra.a === engine.uid ? stats.wins_b : stats?.wins_a ?? 0 },
-        ].map(item => <View key={item.label} style={{ flex: 1 }}><AnimatedNumber value={item.value} /><Text variant="caption" color="textSecondary">{item.label}</Text></View>)}</View>
+        ].map(item => <View key={item.label} style={{ flex: 1, alignItems: 'center', gap: 2 }}><AnimatedNumber value={item.value} style={{ ...theme.typography['display/M'], textAlign: 'center' }} /><Text variant="caption" color="textSecondary">{item.label}</Text></View>)}</View>
           {(selected === 'know' || selected === 'rather') && <><AnimatedNumber value={stats?.extra.attempts ? Math.round((stats.extra.matches ?? 0) / stats.extra.attempts * 100) : 0} /><Text>{selected === 'know' ? 'Knowing each other' : 'You agree'} · {stats?.extra.attempts ? 'percent over all revealed rounds' : 'No answers revealed yet'}</Text>{selected === 'know' && <Text>Best streak: {stats?.extra.best_streak ?? 0}</Text>}</>}
         </Card>
         <Text variant="title/S">Last results</Text>{rounds.filter(r => r.status === 'finished').length ? <StaggerList>{rounds.filter(r => r.status === 'finished').slice(0, theme.geometry.firstScreenful).map(r => <Card key={r.id} style={content}><Text>{new Date(r.updated_at).toLocaleDateString()} · {result(r, engine.uid)}</Text><Text variant="caption">{r.game === 'connect' ? `${r.state.step} moves` : `You ${r.state.scores[engine.uid ?? ''] ?? 0} · Partner ${r.state.scores[r.state.a === engine.uid ? r.state.b : r.state.a] ?? 0}`}</Text></Card>)}</StaggerList> : <Text color="textSecondary">Your first result starts here.</Text>}

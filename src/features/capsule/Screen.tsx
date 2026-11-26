@@ -26,8 +26,8 @@ export function CapsuleScreen() {
   const remove = (capsule: Capsule) => Alert.alert('Delete this sealed capsule?', 'Its message and photos will be removed. This cannot be undone.', [{ text: 'Keep capsule' }, { text: 'Delete', style: 'destructive', onPress: () => {
     setBusy(true); setError(''); void deleteCapsule(capsule).then(() => query.refetch()).catch(() => setError('Could not delete this capsule. It may already be unlocked.')).finally(() => setBusy(false));
   } }]);
-  return <Screen bottomInset><Header title="Time Capsule" subtitle="A little love, saved for later" onBack={() => router.back()} />
-    <ScrollView contentContainerStyle={{ gap: spacing.md, paddingBottom: spacing.xl }}>
+  return <Screen atmosphere gradient bottomInset><Header title="Time Capsule" subtitle="A little love, saved for later" onBack={() => router.back()} />
+    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ gap: spacing.md, paddingBottom: spacing.xl }}>
       {query.offline && <Text color="danger">Offline · saved previews may be out of date. Reconnect to write or open.</Text>}
       <SegmentedControl options={[{ value: 'received', label: 'Sealed for you' }, { value: 'authored', label: 'You wrote' }]} value={tab} onChange={setTab} />
       <Button title="Write a capsule" disabled={!query.data || query.offline || busy} onPress={() => { setEditing(undefined); setComposer(true); }} />
@@ -36,11 +36,11 @@ export function CapsuleScreen() {
       {query.isError && <ErrorState title="Couldn’t refresh capsules" description="Your saved previews are still here. Check your connection and try again." onRetry={() => { void query.refetch(); }} />}
       {!!error && <Text color="danger" accessibilityLiveRegion="polite">{error}</Text>}
       {query.data && <StaggerList style={{ gap: spacing.md }}>{tab === 'received' ? query.data.received.map(stub => <PressableScale key={stub.id} accessibilityRole="button" disabled={!stub.ready || query.offline} onPress={() => setCeremony({ id: stub.id, together: stub.open_together })}>
-        <Card style={{ gap: spacing.md }}><View style={{ flexDirection: 'row', gap: spacing.md, alignItems: 'center' }}><WaxSeal ready={stub.ready} /><View style={{ flex: 1 }}><Text variant="title/S">{stub.title_hint || `A sealed ${stub.kind === 'future_us' ? 'message for future us' : stub.kind} from them`}</Text><Text>{stub.opened_at ? 'Open again' : countdown(stub.unlock_at, query.data!.serverNow)}</Text></View></View>
+        <Card variant="elevated" style={{ gap: spacing.md }}><View style={{ flexDirection: 'row', gap: spacing.md, alignItems: 'center' }}><WaxSeal ready={stub.ready} /><View style={{ flex: 1 }}><Text variant="title/S">{stub.title_hint || `A sealed ${stub.kind === 'future_us' ? 'message for future us' : stub.kind} from them`}</Text><Text>{stub.opened_at ? 'Open again' : countdown(stub.unlock_at, query.data!.serverNow)}</Text></View></View>
           <Text variant="caption" color="textSecondary">{new Date(stub.unlock_at).toLocaleString()}{stub.open_together ? ' · Open together' : ''}{stub.has_media ? ' · A little extra inside' : ''}</Text>
         </Card></PressableScale>) : query.data.authored.map(capsule => {
           const sealed = new Date(capsule.unlock_at) > new Date(query.data!.serverNow);
-          return <Card key={capsule.id} style={{ gap: spacing.md }}><Text variant="title/S">{capsule.title || 'Your capsule'}</Text><Text>{countdown(capsule.unlock_at, query.data!.serverNow)}</Text><Text variant="caption" color="textSecondary">{new Date(capsule.unlock_at).toLocaleString()}{capsule.open_together ? ' · Open together' : ''}</Text>
+          return <Card variant="elevated" key={capsule.id} style={{ gap: spacing.md }}><Text variant="title/S">{capsule.title || 'Your capsule'}</Text><Text>{countdown(capsule.unlock_at, query.data!.serverNow)}</Text><Text variant="caption" color="textSecondary">{new Date(capsule.unlock_at).toLocaleString()}{capsule.open_together ? ' · Open together' : ''}</Text>
             {sealed ? <><Button title="Edit" disabled={query.offline || busy} onPress={() => { setEditing(capsule); setComposer(true); }} /><Button title="Delete" disabled={query.offline || busy} onPress={() => remove(capsule)} /></> : <Button title={capsule.opened_at ? 'Read again' : 'Open capsule'} disabled={query.offline} onPress={() => setCeremony({ id: capsule.id, together: capsule.open_together })} />}</Card>;
         })}</StaggerList>}
       {query.data && (tab === 'received' ? !query.data.received.length : !query.data.authored.length) && <EmptyState title={tab === 'received' ? 'Good things take their time' : 'Write to your future'} description={tab === 'received' ? 'Letters sealed for you will appear here.' : 'Save a message, a surprise, or a moment for your next anniversary.'} />}

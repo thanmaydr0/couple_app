@@ -10,10 +10,10 @@ import { useStory } from './useStory';
 import { storyTimezone } from './timezone';
 import { cancelStoryNotifications, reminderKey, rescheduleReminders } from './notifications';
 export function HomeCard() {
-  const story = useStory('all', false); const {spacing} = useTheme();
+  const story = useStory('all', false); const { spacing } = useTheme();
   const memory = story.today.data?.[0];
-  const years = memory ? Number(story.day.slice(0,4))-Number(new Intl.DateTimeFormat('en',{timeZone:story.timezone,year:'numeric'}).format(new Date(memory.at))) : 0;
-  return <View style={{gap:spacing.md}}>{memory && <PressableScale accessibilityRole="button" onPress={()=>router.push('/us/story')}><Card style={{gap:spacing.sm}}><Text variant="label" color="primary">ON THIS DAY</Text><Text variant="title/M">{years} {years===1?'year':'years'} ago today…</Text><Text>{memory.title}</Text></Card></PressableScale>}{story.day.slice(5,7)==='12' && <PressableScale accessibilityRole="button" onPress={()=>router.push({pathname:'/us/story',params:{wrapped:story.day.slice(0,4)}})}><Card><Text variant="title/M">Us in {story.day.slice(0,4)}</Text><Text color="textSecondary">Your year, one little moment at a time. Open Wrapped →</Text></Card></PressableScale>}{story.notificationError && <Text variant="caption" color="textSecondary">{story.notificationError}</Text>}</View>;
+  const years = memory ? Number(story.day.slice(0, 4)) - Number(new Intl.DateTimeFormat('en', { timeZone: story.timezone, year: 'numeric' }).format(new Date(memory.at))) : 0;
+  return <View style={{ gap: spacing.md }}>{memory && <PressableScale accessibilityRole="button" onPress={() => router.push('/us/story')}><Card variant="elevated" style={{ gap: spacing.sm }}><Text variant="label" color="primary">ON THIS DAY</Text><Text variant="title/M">{years} {years === 1 ? 'year' : 'years'} ago today…</Text><Text>{memory.title}</Text></Card></PressableScale>}{story.day.slice(5, 7) === '12' && <PressableScale accessibilityRole="button" onPress={() => router.push({ pathname: '/us/story', params: { wrapped: story.day.slice(0, 4) } })}><Card variant="elevated"><Text variant="title/M">Us in {story.day.slice(0, 4)}</Text><Text color="textSecondary">Your year, one little moment at a time. Open Wrapped →</Text></Card></PressableScale>}{story.notificationError && <Text variant="caption" color="textSecondary">{story.notificationError}</Text>}</View>;
 }
 export function SettingsSection() {
   const profile = useProfile(); const couple = useCouple(); const user = profile.data?.id; const id = profile.data?.couple_id;

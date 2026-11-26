@@ -17,7 +17,7 @@ export function StatusCard({
   partner?: Status;
   offline: boolean;
 }) {
-  const { spacing, radius, colors, geometry, typography } = useTheme();
+  const { spacing, radius, colors, surfaces, geometry, typography } = useTheme();
   const client = useQueryClient();
 
   const [mood, setMood] = useState<Mood>(own?.mood ?? 'calm');
@@ -48,7 +48,7 @@ export function StatusCard({
       </View>
 
       {partner ? (
-        <View style={[styles.partnerBanner, { backgroundColor: colors.surfaceAlt, borderRadius: radius.md }]}>
+        <View style={[styles.partnerBanner, { backgroundColor: surfaces.softPrimary, borderWidth: geometry.hairline, borderColor: surfaces.rim, borderRadius: radius.md }]}>
           <Text style={{ fontSize: 24 }}>{moodEmoji[moods.indexOf(partner.mood)]}</Text>
           <View style={{ flex: 1, gap: 2 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
@@ -64,7 +64,7 @@ export function StatusCard({
           </View>
         </View>
       ) : (
-        <View style={[styles.partnerBanner, { backgroundColor: colors.surfaceAlt, borderRadius: radius.md }]}>
+        <View style={[styles.partnerBanner, { backgroundColor: surfaces.divider, borderRadius: radius.md }]}>
           <Text variant="body/S" color="textSecondary">Partner hasn't checked in yet today.</Text>
         </View>
       )}
@@ -151,7 +151,7 @@ export function StatusCard({
           <TextInput
             accessibilityLabel="Optional status note"
             placeholder="Anything you want them to know?"
-            placeholderTextColor={colors.textSecondary}
+            placeholderTextColor={colors.textMuted}
             value={note}
             maxLength={240}
             editable={!busy}
@@ -161,7 +161,9 @@ export function StatusCard({
               {
                 ...typography['body/M'],
                 color: colors.textPrimary,
-                backgroundColor: colors.surfaceAlt,
+                backgroundColor: colors.bgElevated,
+                borderWidth: geometry.hairline,
+                borderColor: surfaces.rimStrong,
                 borderRadius: radius.md,
               },
             ]}

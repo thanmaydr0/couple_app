@@ -136,7 +136,7 @@ export function ActiveCallScreen() {
 
 export default function CallsScreen() {
   const styles = useCallStyles();
-  const { colors, geometry, spacing, radius } = useTheme();
+  const { colors, surfaces, geometry, spacing, radius } = useTheme();
   const { data: session } = useSession();
   const { data: partner } = usePartner();
   const ready = useCalls((s) => s.ready);
@@ -153,15 +153,18 @@ export default function CallsScreen() {
       <Header title="Calls" subtitle="A little closer" />
       <ScrollView contentContainerStyle={styles.page} showsVerticalScrollIndicator={false}>
         {/* Partner Calling Hero Card */}
-        <View style={{ alignItems: 'center', gap: spacing.md, paddingVertical: spacing.md }}>
-          <PulseRing size={120}>
+        <View style={{ alignItems: 'center', gap: spacing.md, paddingVertical: spacing.lg }}>
+          <PulseRing size={132}>
             <PartnerAvatar />
           </PulseRing>
           <View style={{ alignItems: 'center', gap: 4 }}>
             <Text style={styles.name}>{partner?.display_name ?? 'Your partner'}</Text>
-            <Text style={styles.subtitle}>
-              {ready ? 'Ready to connect · End-to-end encrypted' : 'Connecting to couple service…'}
-            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: spacing.s12, paddingVertical: spacing.xs, borderRadius: radius.pill, backgroundColor: surfaces.softPrimary, borderWidth: geometry.hairline, borderColor: surfaces.rim }}>
+              <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: ready ? colors.success : colors.warning }} />
+              <Text style={styles.subtitle}>
+                {ready ? 'Ready · End-to-end encrypted' : 'Connecting to couple service…'}
+              </Text>
+            </View>
           </View>
         </View>
 
@@ -175,7 +178,7 @@ export default function CallsScreen() {
             style={[styles.startButton, !ready && styles.disabled]}
             onPress={() => { void startCall('audio'); }}
           >
-            <Ionicons name="call" size={24} color={colors.primaryContrast} />
+            <Ionicons name="call" size={22} color={colors.primaryContrast} />
             <Text style={styles.startLabel}>Voice Call</Text>
           </PressableScale>
 
@@ -185,13 +188,13 @@ export default function CallsScreen() {
             style={[styles.startButton, !ready && styles.disabled]}
             onPress={() => { void startCall('video'); }}
           >
-            <Ionicons name="videocam" size={24} color={colors.primaryContrast} />
+            <Ionicons name="videocam" size={22} color={colors.primaryContrast} />
             <Text style={styles.startLabel}>Video Call</Text>
           </PressableScale>
         </View>
 
-        {/* Call Utilities Card */}
-        <View style={{ flexDirection: 'row', gap: spacing.sm, alignItems: 'center', justifyContent: 'center' }}>
+        {/* Call Utilities Pills */}
+        <View style={{ flexDirection: 'row', gap: spacing.sm, alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap' }}>
           <PressableScale
             accessibilityRole="button"
             onPress={() => {
@@ -201,16 +204,18 @@ export default function CallsScreen() {
                 .then(() => setNotice('Call notifications are active.'))
                 .catch(() => setNotice('Notifications could not register on this build.'));
             }}
-            style={{ paddingHorizontal: spacing.md, paddingVertical: spacing.sm, backgroundColor: colors.surfaceAlt, borderRadius: radius.pill }}
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: geometry.touch, paddingHorizontal: spacing.md, backgroundColor: surfaces.softPrimary, borderColor: surfaces.rim, borderWidth: geometry.hairline, borderRadius: radius.pill }}
           >
-            <Text style={styles.link}>Notifications Setup</Text>
+            <Ionicons name="notifications-outline" size={16} color={colors.primary} />
+            <Text style={styles.link}>Notifications</Text>
           </PressableScale>
 
           <PressableScale
             accessibilityRole="button"
             onPress={() => setHealth(true)}
-            style={{ paddingHorizontal: spacing.md, paddingVertical: spacing.sm, backgroundColor: colors.surfaceAlt, borderRadius: radius.pill }}
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: geometry.touch, paddingHorizontal: spacing.md, backgroundColor: surfaces.softPrimary, borderColor: surfaces.rim, borderWidth: geometry.hairline, borderRadius: radius.pill }}
           >
+            <Ionicons name="pulse-outline" size={16} color={colors.primary} />
             <Text style={styles.link}>Ringing Health</Text>
           </PressableScale>
         </View>

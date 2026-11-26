@@ -25,7 +25,7 @@ export function ReactionChips({
   animate: boolean;
   onReact: (emoji: string) => void;
 }) {
-  const { colors, spacing, radius, typography } = useTheme();
+  const { colors, surfaces, radius } = useTheme();
   const counts = new Map<string, number>();
   for (const reaction of reactions) {
     counts.set(reaction.emoji, (counts.get(reaction.emoji) ?? 0) + 1);
@@ -37,6 +37,7 @@ export function ReactionChips({
         const hasReacted = reactions.some(r => r.user_id === uid && r.emoji === emoji);
         const chip = (
           <PressableScale
+            sheen={false}
             accessibilityRole="button"
             accessibilityLabel={`${emoji}, ${count} reaction${count === 1 ? '' : 's'}`}
             accessibilityState={{ selected: hasReacted }}
@@ -45,8 +46,8 @@ export function ReactionChips({
               styles.chip,
               {
                 borderRadius: radius.pill,
-                backgroundColor: hasReacted ? colors.primary : colors.bgElevated,
-                borderColor: hasReacted ? colors.primary : colors.border,
+                backgroundColor: hasReacted ? surfaces.softPrimary : colors.bgElevated,
+                borderColor: hasReacted ? colors.primary : surfaces.rimStrong,
                 shadowColor: colors.shadowColor,
               },
             ]}
@@ -56,9 +57,7 @@ export function ReactionChips({
               <Text
                 style={[
                   styles.countText,
-                  {
-                    color: hasReacted ? colors.primaryContrast : colors.textPrimary,
-                  },
+                  { color: hasReacted ? colors.primary : colors.textPrimary },
                 ]}
               >
                 {count}
@@ -81,29 +80,30 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 6,
+    gap: 5,
     marginTop: 4,
-    paddingHorizontal: 4,
+    paddingHorizontal: 2,
   },
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
     paddingHorizontal: 8,
-    paddingVertical: 3,
-    minHeight: 26,
+    paddingVertical: 2,
+    minWidth: 28,
+    minHeight: 24,
     borderWidth: StyleSheet.hairlineWidth,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
-    shadowRadius: 2,
+    shadowRadius: 3,
     elevation: 2,
   },
   emojiText: {
-    fontSize: 14,
+    fontSize: 13,
   },
   countText: {
-    fontSize: 12,
-    fontWeight: '600',
+    fontSize: 11.5,
+    fontWeight: '700',
     fontVariant: ['tabular-nums'],
   },
 });

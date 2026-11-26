@@ -50,7 +50,7 @@ export function WorldMap({ places, homes, photos = [], couple, active, canvasRef
   places: Place[]; homes: Home[]; photos?: { id: string; thumb_path: string | null; storage_path: string }[];
   couple: string | null | undefined; active: boolean; canvasRef: RefObject<CanvasRef | null>;
 }) {
-  const { colors, geometry, radius, spacing } = useTheme(); const motion = useMotion(); const [width, setWidth] = useState(geometry.touch * 6);
+  const { colors, surfaces, geometry, radius, spacing } = useTheme(); const motion = useMotion(); const [width, setWidth] = useState(geometry.touch * 6);
   const height = width * asset.height / asset.width; const fit = width/asset.width;
   const zoom = useSharedValue(1), x = useSharedValue(0), y = useSharedValue(0), startZ = useSharedValue(1), startX = useSharedValue(0), startY = useSharedValue(0);
   const [low, setLow] = useState(true);
@@ -74,12 +74,12 @@ export function WorldMap({ places, homes, photos = [], couple, active, canvasRef
   // Dense maps keep the newest 48 photo pins; all saved locations remain in the list.
   const pins = useMemo(() => places.slice(0,geometry.maxParticles),[places,geometry.maxParticles]);
   return <View style={{ gap:spacing.sm }}>
-    <View onLayout={e=>setWidth(e.nativeEvent.layout.width)} style={{ borderRadius:radius.lg,overflow:'hidden',backgroundColor:colors.bgElevated }}>
+    <View onLayout={e=>setWidth(e.nativeEvent.layout.width)} style={{ borderRadius:radius.lg,overflow:'hidden',backgroundColor:colors.bgElevated,borderWidth:geometry.hairline,borderColor:surfaces.rimStrong }}>
       <GestureDetector gesture={Gesture.Simultaneous(pan,pinch,double)}><Canvas ref={canvasRef} style={{width:'100%',height}} accessible accessibilityLabel={`Our world map. ${visited.size} visited countries. Use the place list below to inspect locations.`}>
         <Rect x={0} y={0} width={width} height={height} color={colors.bgElevated} />
         <Group transform={transform}>
           <Path path={low ? baseLow() : baseHigh()} color={colors.surfaceAlt} />
-          <Path path={low ? baseLow() : baseHigh()} color={colors.border} style="stroke" strokeWidth={geometry.hairline} />
+          <Path path={low ? baseLow() : baseHigh()} color={surfaces.rimStrong} style="stroke" strokeWidth={geometry.hairline} />
           {[...visited].map(code=>{ const shape=countryByCode.get(code); return shape && <Country key={code} shape={shape} low={low} visited active={active} />; })}
           {[...wishlist].map(code=>{ const shape=countryByCode.get(code); return shape && <Country key={code} shape={shape} low={low} visited={false} active={active} />; })}
           {arc && <Path path={arc} color={colors.textPrimary} style="stroke" strokeWidth={geometry.stroke} strokeCap="round"><DashPathEffect intervals={[geometry.stroke,geometry.dot]} phase={phase} /></Path>}

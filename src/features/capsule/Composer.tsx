@@ -68,13 +68,13 @@ export function Composer({ existing, serverNow, offline, onClose, onSaved }: { e
       onSaved();
     } catch (cause) { report(cause); } finally { setBusy(false); }
   };
-  return <Screen bottomInset><Header title={existing ? 'Your sealed capsule' : 'A little gift for later'} subtitle="Words worth waiting for" onBack={() => { if (!busy) onClose(); }} />
-    <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ gap: spacing.md, paddingBottom: spacing.xl }}>
+  return <Screen atmosphere gradient bottomInset><Header title={existing ? 'Your sealed capsule' : 'A little gift for later'} subtitle="Words worth waiting for" onBack={() => { if (!busy) onClose(); }} />
+    <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ gap: spacing.md, paddingBottom: spacing.xl }}>
       {offline && <Text color="danger">Offline · your draft stays here. Reconnect before sealing.</Text>}
       <TextField label="Title (hidden until opened)" value={title} onChangeText={setTitle} maxLength={160} editable={!busy} />
       <TextField label="Your message" multiline textAlignVertical="top" value={body} onChangeText={setBody} maxLength={30000} editable={!busy} style={{ minHeight: geometry.touch * 4 }} hint="Line breaks and paragraphs are preserved." />
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>{(['letter', 'surprise', 'future_us'] as const).map(value => <Chip key={value} label={value === 'future_us' ? 'Future us' : value === 'letter' ? 'Letter' : 'Surprise'} selected={kind === value} disabled={busy} onPress={() => setKind(value)} />)}</View>
-      {kind === 'future_us' && <Card><TextField label="Our anniversary in N years" value={years} onChangeText={setYears} keyboardType="number-pad" editable={!busy} /><Button title="Choose that anniversary" disabled={busy} onPress={() => quick('anniversary', true)} /></Card>}
+      {kind === 'future_us' && <Card variant="elevated"><TextField label="Our anniversary in N years" value={years} onChangeText={setYears} keyboardType="number-pad" editable={!busy} /><Button title="Choose that anniversary" disabled={busy} onPress={() => quick('anniversary', true)} /></Card>}
       <Text variant="title/S">Choose a moment</Text>
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm }}>{(['tomorrow', 'anniversary', 'birthday', 'year'] as const).map(value => <Chip key={value} label={{ tomorrow: 'Tomorrow', anniversary: 'Next anniversary', birthday: 'Next birthday', year: '1 year' }[value]} disabled={busy} onPress={() => quick(value)} />)}</View>
       <DateTimePicker value={date} onChange={setDate} disabled={busy} />

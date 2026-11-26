@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { AppState, Linking, ScrollView, View } from 'react-native';
 import { AndroidImportance, AndroidNotificationSetting, AuthorizationStatus } from 'react-native-notify-kit';
-import { Screen, Header, Text, Button } from '@/ui';
+import { Screen, Header, Text, Button, Card } from '@/ui';
 import { useTheme } from '@/theme';
 import Constants from 'expo-constants';
 import { CALL_CHANNEL, ensureCallChannel, isRingingDispatcherReady, notify, openFullScreenSettings } from './runtime';
@@ -33,10 +33,10 @@ export function RingingHealthScreen({ onBack }: { onBack: () => void }) {
   }, []);
   useEffect(() => { void refresh(); const subscription = AppState.addEventListener('change', state => { if (state === 'active') void refresh(); }); return () => subscription.remove(); }, [refresh]);
   const open = (action: () => Promise<unknown>) => { void action().catch(() => setError('This settings screen is unavailable on this phone. Open Android Settings → Apps → Us.')); };
-  return <Screen bottomInset><Header title="Ringing health check" onBack={onBack} />
-    <ScrollView contentContainerStyle={{ gap: spacing.md, paddingBottom: spacing.xl }}>
-      <Text>Android controls whether calls can wake your phone. Recheck after changing settings.</Text>
-      {checks.map(check => <View key={check}><Text>{check}</Text></View>)}
+  return <Screen atmosphere gradient bottomInset><Header title="Ringing health check" onBack={onBack} />
+    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ gap: spacing.md, paddingBottom: spacing.xl }}>
+      <Text color="textSecondary">Android controls whether calls can wake your phone. Recheck after changing settings.</Text>
+      {checks.length > 0 && <Card variant="elevated" style={{ gap: spacing.sm }}>{checks.map(check => <Text key={check} variant="body/S">{check}</Text>)}</Card>}
       {error && <Text color="danger">{error}</Text>}
       <Button title="Recheck" loading={loading} onPress={() => { void refresh(); }} />
       <Button title="Allow notifications" onPress={() => open(() => notify.requestPermission().then(refresh))} />

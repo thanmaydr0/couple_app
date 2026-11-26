@@ -3,7 +3,7 @@ import { Alert, AppState, ScrollView, View, StyleSheet } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Screen, Header, Text, Button, Card, IconButton, EmptyState } from '@/ui';
-import { useTheme } from '@/theme';
+import { hexAlpha, useTheme } from '@/theme';
 import { PressableScale, FadeInView } from '@/motion';
 import { MovieButton, MovieCard, MovieEntrance, useMovieStyles } from './presentation';
 import { usePartner, useProfile } from '@/lib/hooks';
@@ -13,7 +13,7 @@ import { pickMovie, saveFile } from './local';
 
 export default function WatchScreen() {
   const movieStyles = useMovieStyles();
-  const { colors, spacing, radius, geometry } = useTheme();
+  const { colors, surfaces, spacing, radius, geometry } = useTheme();
   const profile = useProfile();
   const partner = usePartner();
   const router = useRouter();
@@ -119,8 +119,8 @@ export default function WatchScreen() {
         showsVerticalScrollIndicator={false}
       >
         {/* Cinema Hero Card */}
-        <Card variant="elevated" style={[styles.heroCard, { borderColor: colors.border }]}>
-          <View style={[styles.heroIconBox, { backgroundColor: colors.surfaceAlt, borderRadius: radius.pill }]}>
+        <Card variant="elevated" style={styles.heroCard}>
+          <View style={[styles.heroIconBox, { backgroundColor: surfaces.softPrimary, borderWidth: geometry.hairline, borderColor: surfaces.rim, borderRadius: radius.pill }]}>
             <Ionicons name="film-outline" size={28} color={colors.primary} />
           </View>
           <View style={{ gap: 4 }}>
@@ -137,6 +137,20 @@ export default function WatchScreen() {
             style={{ width: '100%', marginTop: 6 }}
           />
         </Card>
+
+        {/* YouTube Watch Party shortcut */}
+        <PressableScale accessibilityRole="button" accessibilityLabel="Open YouTube together" onPress={() => router.push('/us/yt')}>
+          <Card variant="elevated" style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
+            <View style={{ width: spacing.s40, height: spacing.s40, borderRadius: radius.md, backgroundColor: surfaces.softPrimary, borderWidth: geometry.hairline, borderColor: surfaces.rim, alignItems: 'center', justifyContent: 'center' }}>
+              <Ionicons name="logo-youtube" size={20} color={colors.primary} />
+            </View>
+            <View style={{ flex: 1, gap: 2 }}>
+              <Text variant="title/S">Watch YouTube Together</Text>
+              <Text variant="caption" color="textSecondary">Shared queue, real-time sync & reactions</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={colors.textSecondary} />
+          </Card>
+        </PressableScale>
 
         {(!couple || !partner.data) && (
           <View style={[styles.warningBox, { backgroundColor: colors.surfaceAlt, borderRadius: radius.md }]}>
@@ -163,7 +177,7 @@ export default function WatchScreen() {
             <MovieEntrance
               key={session.id}
               animate={index < geometry.firstScreenful}
-              style={[movieStyles.card, { borderRadius: radius.lg, backgroundColor: colors.surface, borderColor: colors.border }]}
+              style={[movieStyles.card, { borderRadius: radius.lg, backgroundColor: colors.surface, borderColor: surfaces.rimStrong }]}
             >
               <View style={styles.sessionHeader}>
                 <Ionicons
@@ -190,7 +204,7 @@ export default function WatchScreen() {
                 />
 
                 <PressableScale
-                  style={[styles.endPill, { backgroundColor: colors.surfaceAlt, borderRadius: radius.md }]}
+                  style={[styles.endPill, { backgroundColor: hexAlpha(colors.danger, 0.14), borderWidth: geometry.hairline, borderColor: hexAlpha(colors.danger, 0.3), borderRadius: radius.md }]}
                   accessibilityRole="button"
                   onPress={() =>
                     Alert.alert('End this session?', 'Local files and saved positions are kept.', [

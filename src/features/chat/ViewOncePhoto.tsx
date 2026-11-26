@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, AppState, Modal, Text, View } from 'react-native';
+import { ActivityIndicator, AppState, Modal, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { supabase } from '@/lib/supabase';
 import { Header, Screen } from '@/ui';
 import { useTheme } from '@/theme';
@@ -12,10 +13,22 @@ import { decryptedFile } from '@/features/e2ee/files';
 import * as FS from 'expo-file-system/legacy';
 
 /** Wait for Android screenshot protection before presenting private media. */
-export function useViewOnceScreenshotProtection(visible: boolean) { return useSecureScreen(visible); }
+export function useViewOnceScreenshotProtection(visible: boolean) {
+  return useSecureScreen(visible);
+}
 
-export function ViewOncePhoto({ message, uid, onActions, onHeart }: { message: ChatMessage; uid: string; onActions: () => void; onHeart: () => void }) {
-  const { colors, spacing, radius, typography, geometry } = useTheme();
+export function ViewOncePhoto({
+  message,
+  uid,
+  onActions,
+  onHeart,
+}: {
+  message: ChatMessage;
+  uid: string;
+  onActions: () => void;
+  onHeart: () => void;
+}) {
+  const { colors, surfaces, spacing, radius, typography, geometry } = useTheme();
   const motion = useMotion();
   const [url, setUrl] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -27,50 +40,133 @@ export function ViewOncePhoto({ message, uid, onActions, onHeart }: { message: C
   const mine = message.sender_id === uid;
   const protection = useViewOnceScreenshotProtection(!!url || busy);
   const localFile = useRef<string | null>(null);
+
   const close = useCallback(() => {
     setUrl(null);
-    if (localFile.current) { void FS.deleteAsync(localFile.current, { idempotent: true }).catch(() => {}); localFile.current = null; }
+    if (localFile.current) {
+      void FS.deleteAsync(localFile.current, { idempotent: true }).catch(() => {});
+      localFile.current = null;
+    }
     if (opened.current) {
       opened.current = false;
       void supabase.functions.invoke('link-preview', { body: { action: 'close-once', message_id: message.id } });
     }
   }, [message.id]);
+
   useEffect(() => {
     alive.current = true;
-    const subscription = AppState.addEventListener('change', state => { if (state !== 'active') close(); });
-    return () => { alive.current = false; subscription.remove(); close(); };
+    const subscription = AppState.addEventListener('change', state => {
+      if (state !== 'active') close();
+    });
+    return () => {
+      alive.current = false;
+      subscription.remove();
+      close();
+    };
   }, [close]);
-  useEffect(() => { if (!url) return; const timer = setTimeout(close, 60_000); return () => clearTimeout(timer); }, [url, close]);
+
+  useEffect(() => {
+    if (!url) return;
+    const timer = setTimeout(close, 60_000);
+    return () => clearTimeout(timer);
+  }, [url, close]);
+
   const open = async () => {
     if (opening.current || mine || consumed || message.viewed_at || message.status !== 'sent') return;
     opening.current = true;
-    setBusy(true); setError(null);
+    setBusy(true);
+    setError(null);
     try {
-      const response = await supabase.functions.invoke<{ url: string }>('link-preview', { body: { action: 'open-once', message_id: message.id } });
-      if (response.error || !response.data?.url) throw new Error('Photo could not open. It may have already been viewed.');
+      const response = await supabase.functions.invoke<{ url: string }>('link-preview', {
+        body: { action: 'open-once', message_id: message.id },
+      });
+      if (response.error || !response.data?.url) {
+        throw new Error('Photo could not open. It may have already been viewed.');
+      }
       opened.current = true;
       let uri = response.data.url;
-      if (message.enc && message.media_path) { uri = await decryptedFile(message.media_path, 'chat-once', uri); localFile.current = uri; }
-      if (alive.current && AppState.currentState === 'active') { setUrl(uri); setConsumed(true); }
-      else close();
-    } catch (reason: unknown) { if (alive.current) setError(reason instanceof Error ? reason.message : 'Try again when online.'); }
-    finally { opening.current = false; if (alive.current) setBusy(false); }
+      if (message.enc && message.media_path) {
+        uri = await decryptedFile(message.media_path, 'chat-once', uri);
+        localFile.current = uri;
+      }
+      if (alive.current && AppState.currentState === 'active') {
+        setUrl(uri);
+        setConsumed(true);
+      } else {
+        close();
+      }
+    } catch (reason: unknown) {
+      if (alive.current) setError(reason instanceof Error ? reason.message : 'Try again when online.');
+    } finally {
+      opening.current = false;
+      if (alive.current) setBusy(false);
+    }
   };
-  const taps=useBubbleTap(()=>void open(),onHeart);
-  return <>
-    <PressableScale accessibilityRole="button" accessibilityLabel={message.viewed_at || consumed ? 'View-once photo opened' : 'Open view-once photo'} onLongPress={() => { taps.cancel();onActions(); }} onPress={taps.tap}
-      style={{ minWidth: geometry.touch * 3, padding: spacing.md, gap: spacing.sm, backgroundColor: colors.surface, borderRadius: radius.md }}>
-      <Text style={{ ...typography.label, color: colors.textPrimary }}>{message.viewed_at || consumed ? 'Opened' : mine ? '① View-once photo sent' : '🔒 View once · tap to open'}</Text>
-      {busy && <ActivityIndicator color={colors.primary} />}
-      {!!error && <Text style={{ ...typography['body/S'], color: colors.danger }}>{error}</Text>}
-    </PressableScale>
-    <Modal visible={!!url && protection.ready} animationType={motion.level === 'off' ? 'none' : 'fade'} onRequestClose={close}>
-      <Screen bottomInset><Header title="View once" subtitle="Closes after 60 seconds. Screen protection follows your privacy setting." onBack={close} />
-        <View style={{ flex: 1, padding: spacing.md }}>{url && protection.ready && <Image source={{ uri: url }} contentFit="contain" cachePolicy="none" style={{ flex: 1 }} onError={() => setError('Photo unavailable')} />}
-          {!!protection.error && <Text style={{ ...typography['body/S'], color: colors.danger }}>{protection.error}</Text>}
-          {!!error && <Text style={{ ...typography['body/S'], color: colors.danger }}>{error}</Text>}
+
+  const taps = useBubbleTap(() => void open(), onHeart);
+  const done = !!(message.viewed_at || consumed);
+
+  return (
+    <>
+      <PressableScale
+        accessibilityRole="button"
+        accessibilityLabel={done ? 'View-once photo opened' : 'Open view-once photo'}
+        onLongPress={() => {
+          taps.cancel();
+          onActions();
+        }}
+        onPress={taps.tap}
+        style={{
+          minWidth: geometry.touch * 3.4,
+          paddingHorizontal: 14,
+          paddingVertical: 11,
+          gap: spacing.xs,
+          flexDirection: 'row',
+          alignItems: 'center',
+          backgroundColor: mine ? 'rgba(255,255,255,0.14)' : surfaces.softPrimary,
+          borderRadius: radius.md,
+          borderWidth: StyleSheet.hairlineWidth,
+          borderColor: mine ? 'rgba(255,255,255,0.2)' : surfaces.rimStrong,
+        }}
+      >
+        <Ionicons
+          name={done ? 'eye-off-outline' : 'flame-outline'}
+          size={18}
+          color={mine ? colors.bubbleMineText : colors.primary}
+        />
+        <View style={{ flex: 1 }}>
+          <Text style={{ ...typography.label, color: mine ? colors.bubbleMineText : colors.textPrimary }}>
+            {done ? 'Opened' : mine ? 'View-once photo' : 'View once · Tap to open'}
+          </Text>
+          {!!error && (
+            <Text style={{ ...typography.caption, color: mine ? colors.bubbleMineText : colors.danger }}>
+              {error}
+            </Text>
+          )}
         </View>
-      </Screen>
-    </Modal>
-  </>;
+        {busy && <ActivityIndicator size="small" color={mine ? colors.bubbleMineText : colors.primary} />}
+      </PressableScale>
+
+      <Modal visible={!!url && protection.ready} animationType={motion.level === 'off' ? 'none' : 'fade'} onRequestClose={close}>
+        <Screen bottomInset atmosphere>
+          <Header title="View once" subtitle="Closes after 60 seconds · Protected" onBack={close} />
+          <View style={{ flex: 1, padding: spacing.md }}>
+            {url && protection.ready && (
+              <Image
+                source={{ uri: url }}
+                contentFit="contain"
+                cachePolicy="none"
+                style={{ flex: 1 }}
+                onError={() => setError('Photo unavailable')}
+              />
+            )}
+            {!!protection.error && (
+              <Text style={{ ...typography['body/S'], color: colors.danger }}>{protection.error}</Text>
+            )}
+            {!!error && <Text style={{ ...typography['body/S'], color: colors.danger }}>{error}</Text>}
+          </View>
+        </Screen>
+      </Modal>
+    </>
+  );
 }

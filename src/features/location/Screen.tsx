@@ -85,20 +85,20 @@ export default function LocationScreen() {
     if (changeError) throw new Error('The place could not be changed.');
     if (state.lease) await syncGeofences();
   }
-  return <Screen bottomInset><Header title="A little closer" subtitle="Location stays off until you choose to share" onBack={() => router.back()} /><ScrollView contentContainerStyle={{ gap: spacing.md, paddingBottom: spacing.xl }} keyboardShouldPersistTaps="handled">
-    <Card style={{ gap: spacing.sm }}>
+  return <Screen atmosphere gradient bottomInset><Header title="A little closer" subtitle="Location stays off until you choose to share" onBack={() => router.back()} /><ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ gap: spacing.md, paddingBottom: spacing.xl }} keyboardShouldPersistTaps="handled">
+    <Card variant="elevated" style={{ gap: spacing.sm }}>
       <Text variant="title/M" color={state.lease ? 'primary' : 'textPrimary'}>{state.lease ? "You're sharing your location" : 'Your location is private · sharing is off'}</Text>
       <Text>{state.lease ? state.lease.until === 'infinity' ? 'Sharing until you stop. Your partner can see only your latest point.' : `Sharing ends ${new Date(state.lease.until).toLocaleTimeString()}. Your partner can see only your latest point.` : 'You each decide separately. Viewing your partner never turns on your own sharing.'}</Text>
       {state.lease ? <Button title="Pause / Stop sharing now" variant="danger" onPress={() => { void run(stopSharing); }} /> : <>
         <SegmentedControl options={MODES} value={mode} onChange={setMode} disabled={busy} />
         <Button title="Choose to share my location" disabled={!isLocationHeadlessReady() || !state.ready || !data.uid || !data.coupleId || busy || data.offline || state.pendingStop || simulate} onPress={() => setGuide('explanation')} />
       </>}
-      <Text variant="caption">Your battery: {localBattery}</Text>
+      <Text variant="caption" color="textSecondary">Your battery: {localBattery}</Text>
     </Card>
-    {!isLocationHeadlessReady() && <Card><Text color="danger">Location setup needed: the shared Android entry must load the location headless module before Expo Router. Sharing stays off until background Stop registration is available. The map and developer preview remain available.</Text></Card>}
-    {(error || state.error || data.isError) && <Card style={{ gap: spacing.sm }}><Text color="danger" accessibilityLiveRegion="polite">{error ?? state.error ?? 'Location data could not load. Check your connection and database setup.'}</Text><Button title={state.pendingStop ? 'Retry Stop and server deletion' : 'Retry sync'} variant="secondary" onPress={() => { void run(state.pendingStop ? retryDeletion : data.refresh); }} /></Card>}
+    {!isLocationHeadlessReady() && <Card variant="elevated"><Text color="danger">Location setup needed: the shared Android entry must load the location headless module before Expo Router. Sharing stays off until background Stop registration is available. The map and developer preview remain available.</Text></Card>}
+    {(error || state.error || data.isError) && <Card variant="elevated" style={{ gap: spacing.sm }}><Text color="danger" accessibilityLiveRegion="polite">{error ?? state.error ?? 'Location data could not load. Check your connection and database setup.'}</Text><Button title={state.pendingStop ? 'Retry Stop and server deletion' : 'Retry sync'} variant="secondary" onPress={() => { void run(state.pendingStop ? retryDeletion : data.refresh); }} /></Card>}
     {data.offline && <Text color="danger">Offline. Live markers are hidden because consent cannot be checked. Stop works on this phone; server deletion needs a connection.</Text>}
-    {guide !== 'closed' && <Card style={{ gap: spacing.md }}>
+    {guide !== 'closed' && <Card variant="elevated" style={{ gap: spacing.md }}>
       <Text variant="title/M">{guide === 'explanation' ? 'Your choice, your location' : 'Allow all the time · Android guide'}</Text>
       <Text>{guide === 'explanation' ? 'Your partner will see your latest precise location, accuracy, movement speed, battery and charging state. Location sharing continues while the app is in the background. There is no server trail of past points. Saved places stay until you delete them. Journey destinations are temporary and removed when sharing ends. Place and battery alerts can reveal where you are or whether you are online. Each person opts in separately.' : 'Foreground permission is granted. Next, Android opens location settings. Choose “Allow all the time”, then return to Us. This allows the foreground service to keep your chosen sharing session working in the background. Keep notifications enabled so Stop is always visible.'}</Text>
       <Text>Live for 1 hour is the default. Pause/Stop deletes your latest server point and temporary journey when online. If offline, deletion retries after reconnecting; your partner may see the last point until expiry. “Until I stop” has no automatic expiry.</Text>
@@ -116,7 +116,7 @@ export default function LocationScreen() {
     {__DEV__ && <Card style={{ gap: spacing.sm }}><Text variant="label">Developer preview · simulated movement</Text><Switch accessibilityLabel="Simulate movement locally without sharing" value={simulate} disabled={!!state.lease} onValueChange={setSimulate} />{simulate && <Text color="primary">SIMULATED · no points or notifications sent. Sharing is disabled in preview.</Text>}</Card>}
     {!points.length && !data.isPending && <Text color="textSecondary">No one is sharing right now. Your partner appears here only while their own sharing session is active.</Text>}
     <LocationMap points={points} uid={data.uid} ownAvatar={ownAvatar.data} partnerAvatar={partnerAvatar.data} partnerName={partner?.display_name ?? 'Your partner'} />
-    {other && <Card style={{ gap: spacing.sm }}>
+    {other && <Card variant="elevated" style={{ gap: spacing.sm }}>
       <Text variant="title/M">{me ? estimate(distance(me, other), other.speed) : `${partner?.display_name ?? 'Your partner'} is sharing`}</Text>
       <Text variant="caption">Straight-line estimate, not a road route or traffic prediction.</Text>
       <Text>Partner updated {age(other, now)} · battery {other.battery_pct === null ? 'unknown' : `${other.battery_pct}%`}{other.charging ? ' · charging' : ''}</Text>
@@ -124,9 +124,9 @@ export default function LocationScreen() {
     </Card>}
     {(data.data?.journeys ?? []).filter(j => j.status === 'active' && points.some(p => p.user_id === j.user_id)).map(journey => {
       const point = points.find(p => p.user_id === journey.user_id);
-      return <Card key={journey.id} style={{ gap: spacing.sm }}><Text variant="title/M">{journey.user_id === data.uid ? 'You are' : 'Your partner is'} heading to {journey.dest_name}</Text><Text>{point ? estimate(distance(point, { lat: journey.dest_lat, lon: journey.dest_lon }), point.speed, 'left') : 'Waiting for a fresh point'}</Text><Text variant="caption">Straight-line progress estimate · arrival is detected within 150 m with accuracy ≤100 m.</Text>{journey.user_id === data.uid && <Button title="Cancel journey" variant="secondary" onPress={() => { void run(async () => { const { error: cancelError } = await db.from('journeys').delete().eq('id', journey.id).eq('user_id', data.uid ?? ''); if (cancelError) throw new Error('Journey could not be cancelled.'); }); }} />}</Card>;
+      return <Card variant="elevated" key={journey.id} style={{ gap: spacing.sm }}><Text variant="title/M">{journey.user_id === data.uid ? 'You are' : 'Your partner is'} heading to {journey.dest_name}</Text><Text>{point ? estimate(distance(point, { lat: journey.dest_lat, lon: journey.dest_lon }), point.speed, 'left') : 'Waiting for a fresh point'}</Text><Text variant="caption">Straight-line progress estimate · arrival is detected within 150 m with accuracy ≤100 m.</Text>{journey.user_id === data.uid && <Button title="Cancel journey" variant="secondary" onPress={() => { void run(async () => { const { error: cancelError } = await db.from('journeys').delete().eq('id', journey.id).eq('user_id', data.uid ?? ''); if (cancelError) throw new Error('Journey could not be cancelled.'); }); }} />}</Card>;
     })}
-    <Card style={{ gap: spacing.md }}>
+    <Card variant="elevated" style={{ gap: spacing.md }}>
       <Text variant="title/M">I’m heading home</Text>
       <Text>Pick a saved place or search a town/city with Open-Meteo. Search terms go to Open-Meteo; your live point is never sent to geocoding.</Text>
       <TextField label="Destination search" value={query} onChangeText={text => { search.current?.abort(); setQuery(text); setSearched(false); setResults([]); }} />

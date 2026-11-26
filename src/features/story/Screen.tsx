@@ -38,7 +38,7 @@ function kindIcon(kind: string): keyof typeof Ionicons.glyphMap {
 }
 
 function MemoryCard({ entry, timezone }: { entry: Entry; timezone: string }) {
-  const { spacing, geometry, colors, radius } = useTheme();
+  const { spacing, geometry, colors, surfaces, radius } = useTheme();
   const [expanded, setExpanded] = useState(false);
   const [burst, setBurst] = useState(0);
 
@@ -60,8 +60,8 @@ function MemoryCard({ entry, timezone }: { entry: Entry; timezone: string }) {
         style={[
           styles.memoryCard,
           {
-            borderColor: isMilestone ? colors.primary : colors.border,
-            borderWidth: isMilestone ? 1.5 : StyleSheet.hairlineWidth,
+            borderColor: isMilestone ? colors.primary : surfaces.rimStrong,
+            borderWidth: isMilestone ? 1.5 : geometry.hairline,
           },
         ]}
       >
@@ -70,7 +70,7 @@ function MemoryCard({ entry, timezone }: { entry: Entry; timezone: string }) {
             style={[
               styles.kindPill,
               {
-                backgroundColor: isMilestone ? colors.primary : colors.surfaceAlt,
+                backgroundColor: isMilestone ? colors.primary : surfaces.softPrimary,
                 borderRadius: radius.pill,
               },
             ]}
@@ -146,7 +146,7 @@ export default function StoryScreen() {
     Number.isInteger(requested) && requested >= 1900 && requested <= currentYear ? requested : undefined
   );
   const [year, setYear] = useState(currentYear);
-  const { spacing, geometry, colors, radius } = useTheme();
+  const { spacing, geometry, colors, surfaces, radius } = useTheme();
   const scroll = useSharedValue(0);
   const boundedScroll = useDerivedValue(() => Math.min(scroll.value, geometry.touch));
 
@@ -399,7 +399,7 @@ export default function StoryScreen() {
           }
 
           const content = (
-            <View style={[styles.timelineNode, { borderLeftColor: colors.border }]}>
+            <View style={[styles.timelineNode, { borderLeftColor: surfaces.rimStrong }]}>
               {/* Timeline dot */}
               <View
                 style={[

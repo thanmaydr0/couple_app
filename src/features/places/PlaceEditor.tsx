@@ -11,8 +11,8 @@ import type { GeoResult, Place, PlaceInput, Suggestion } from './types';
 import asset from './world-paths.json';
 
 function MemoryChoice({ photo, couple, selected, onPress }: { photo: { id: string; thumb_path: string | null; storage_path: string; caption: string | null; taken_at: string }; couple: string; selected: boolean; onPress: () => void }) {
-  const { spacing, geometry, colors, radius } = useTheme(); const url=usePhotoUrl(photo.id,photo.thumb_path ?? photo.storage_path,couple);
-  return <PressableScale accessibilityRole="checkbox" accessibilityState={{checked:selected}} accessibilityLabel={photo.caption ?? `Photo from ${new Date(photo.taken_at).toLocaleDateString()}`} onPress={onPress} style={{flexDirection:'row',alignItems:'center',gap:spacing.sm,borderRadius:radius.sm,padding:spacing.sm,borderWidth:geometry.stroke,borderColor:selected ? colors.primary : colors.border}}>
+  const { spacing, geometry, colors, surfaces, radius } = useTheme(); const url=usePhotoUrl(photo.id,photo.thumb_path ?? photo.storage_path,couple);
+  return <PressableScale accessibilityRole="checkbox" accessibilityState={{checked:selected}} accessibilityLabel={photo.caption ?? `Photo from ${new Date(photo.taken_at).toLocaleDateString()}`} onPress={onPress} style={{flexDirection:'row',alignItems:'center',gap:spacing.sm,borderRadius:radius.sm,padding:spacing.sm,borderWidth:selected ? geometry.stroke : geometry.hairline,borderColor:selected ? colors.primary : surfaces.rimStrong,backgroundColor:selected ? surfaces.softPrimary : colors.surface}}>
     {url.data && <Image source={{uri:url.data}} style={{width:geometry.avatar,height:geometry.avatar,borderRadius:radius.sm}} />}<Text style={{flex:1}} numberOfLines={2}>{selected ? '✓ ' : ''}{photo.caption ?? new Date(photo.taken_at).toLocaleDateString()}{url.isError ? ' · Preview unavailable' : ''}</Text>
   </PressableScale>;
 }

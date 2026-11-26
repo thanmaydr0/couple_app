@@ -38,14 +38,14 @@ export function Wheel({ round }: { round: Round }) {
   </View>;
 }
 function Disc({ value, last, winning, row }: { value: number; last: boolean; winning: boolean; row: number }) {
-  const { colors, geometry, spacing } = useTheme(); const motion = useMotion(); const drop = useSharedValue(0);
+  const { colors, surfaces, geometry, spacing } = useTheme(); const motion = useMotion(); const drop = useSharedValue(0);
   useEffect(() => { cancelAnimation(drop); if (last && value && motion.level === 'full') { drop.value = -(row + 1) * geometry.touch; drop.value = withSpring(0, motion.spring('gentle')); } else drop.value = 0; return () => cancelAnimation(drop); }, [last, value, row, motion.level, drop, geometry.touch]);
   const style = useAnimatedStyle(() => ({ transform: [{ translateY: drop.value }] }));
-  return <Animated.View style={[{ width: geometry.touch - spacing.sm, height: geometry.touch - spacing.sm, borderRadius: geometry.touch, backgroundColor: value === 1 ? colors.primary : colors.surfaceAlt, borderColor: winning ? colors.textPrimary : colors.border, borderWidth: winning ? geometry.stroke * 2 : geometry.hairline, alignItems: 'center', justifyContent: 'center' }, style]}><Text color={value === 1 ? 'primaryContrast' : 'textPrimary'} variant="label">{value ? value === 1 ? 'A' : 'B' : '·'}</Text></Animated.View>;
+  return <Animated.View style={[{ width: geometry.touch - spacing.sm, height: geometry.touch - spacing.sm, borderRadius: geometry.touch, backgroundColor: value === 1 ? colors.primary : value === 2 ? colors.accent : colors.bgElevated, borderColor: winning ? colors.textPrimary : surfaces.rimStrong, borderWidth: winning ? geometry.stroke * 2 : geometry.hairline, alignItems: 'center', justifyContent: 'center' }, style]}><Text color={value === 1 ? 'primaryContrast' : value === 2 ? 'primaryContrast' : 'textSecondary'} variant="label">{value ? value === 1 ? 'A' : 'B' : '·'}</Text></Animated.View>;
 }
 export function ConnectBoard({ round, disabled, onMove }: { round: Round; disabled: boolean; onMove: (col: number) => void }) {
-  const { spacing, geometry, colors, radius } = useTheme();
-  return <View style={{ gap: spacing.sm }}><Text variant="caption">Scroll sideways if needed. Tap a column to drop a disc.</Text><ScrollView horizontal contentContainerStyle={{ gap: spacing.xs, padding: spacing.sm, borderRadius: radius.md, backgroundColor: colors.surface }}>
+  const { spacing, geometry, colors, surfaces, radius } = useTheme();
+  return <View style={{ gap: spacing.sm }}><Text variant="caption" color="textSecondary">Scroll sideways if needed. Tap a column to drop a disc.</Text><ScrollView horizontal contentContainerStyle={{ gap: spacing.xs, padding: spacing.sm, borderRadius: radius.lg, backgroundColor: colors.surface, borderWidth: geometry.hairline, borderColor: surfaces.rimStrong }}>
     {Array.from({ length: 7 }, (_, col) => <PressableScale key={col} accessibilityRole="button" accessibilityLabel={`Drop in column ${col + 1}. ${Array.from({ length: 6 }, (_, row) => round.state.board[row * 7 + col] === 1 ? 'A' : round.state.board[row * 7 + col] === 2 ? 'B' : 'empty').join(', ')}`} accessibilityState={{ disabled: disabled || round.state.board[col] !== 0 }} disabled={disabled || round.state.board[col] !== 0} onPress={() => onMove(col)} style={{ minWidth: geometry.touch, gap: spacing.xs, alignItems: 'center', paddingVertical: spacing.sm }}>
       <Text variant="label">{col + 1}</Text>{Array.from({ length: 6 }, (_, row) => { const index = row * 7 + col; return <Disc key={row} row={row} value={round.state.board[index] ?? 0} last={round.state.last === index} winning={round.state.line.includes(index)} />; })}
     </PressableScale>)}

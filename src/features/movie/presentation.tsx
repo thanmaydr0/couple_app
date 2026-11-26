@@ -11,14 +11,14 @@ import { time, type MovieFile } from './model';
 
 // Feature-local presentation only. No session reads or playback side effects.
 export function useMovieStyles() {
-  const { colors, spacing, radius, typography, geometry } = useTheme();
+  const { colors, surfaces, spacing, radius, typography, geometry } = useTheme();
   return StyleSheet.create({
     root: { flex: 1, backgroundColor: colors.bg },
     content: { gap: spacing.md, paddingBottom: spacing.s40 },
     title: { ...typography['display/M'], color: colors.textPrimary },
     text: { ...typography['body/M'], color: colors.textPrimary },
     muted: { ...typography['body/S'], color: colors.textSecondary },
-    card: { backgroundColor: colors.surface, borderColor: colors.border, borderWidth: geometry.hairline, borderRadius: radius.lg, padding: spacing.md, gap: spacing.s12 },
+    card: { backgroundColor: colors.surface, borderColor: surfaces.rim, borderWidth: geometry.hairline, borderRadius: radius.lg, padding: spacing.md, gap: spacing.s12 },
     error: { ...typography['body/S'], color: colors.danger },
     row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm, flexWrap: 'wrap' },
   });
@@ -42,17 +42,17 @@ export function MovieEntrance({ children, style, shake = false, animate = true }
 }
 
 export function MovieCard({ file, title, size, durationMs }: { file?: MovieFile; title: string; size?: number | null; durationMs?: number | null }) {
-  const { colors, spacing, radius, geometry } = useTheme(); const [thumbnail, setThumbnail] = useState<string | null>(null);
+  const { colors, surfaces, spacing, radius, geometry } = useTheme(); const [thumbnail, setThumbnail] = useState<string | null>(null);
   useEffect(() => {
     let active = true; setThumbnail(null);
     if (file) void Thumbnails.getThumbnailAsync(file.uri).then(result => { if (active) setThumbnail(result.uri); }).catch(() => {});
     return () => { active = false; };
   }, [file?.uri]);
-  return <View style={{ backgroundColor: colors.surfaceAlt, borderRadius: radius.lg, overflow: 'hidden' }}>
+  return <View style={{ backgroundColor: colors.surfaceAlt, borderWidth: geometry.hairline, borderColor: surfaces.rim, borderRadius: radius.lg, overflow: 'hidden' }}>
     {file && <View style={{ aspectRatio: 16 / 9, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.bgElevated }}>
       {thumbnail ? <Image accessibilityLabel={`Preview of ${title}`} source={{ uri: thumbnail }} style={StyleSheet.absoluteFill} /> : <><Ionicons name="film-outline" size={geometry.touch} color={colors.primary} /><Text variant="caption" color="textSecondary">Local video · preview unavailable</Text></>}
     </View>}
-    <View style={{ padding: spacing.md, gap: spacing.sm }}><Text variant="caption" color="textSecondary">ON YOUR OWN PHONES</Text><Text variant="title/S">{title}</Text><Text variant="body/S" color="textSecondary">{size?.toLocaleString() ?? 'Unknown'} bytes · {time((durationMs ?? 0) / 1000)}</Text></View>
+    <View style={{ padding: spacing.md, gap: spacing.xs }}><Text variant="caption" color="textSecondary">ON YOUR OWN PHONES</Text><Text variant="title/S">{title}</Text><Text variant="body/S" color="textSecondary">{size?.toLocaleString() ?? 'Unknown'} bytes · {time((durationMs ?? 0) / 1000)}</Text></View>
   </View>;
 }
 
@@ -64,13 +64,13 @@ export function WaitingDots() {
 }
 
 export function SkipButton({ label, disabled, onPress }: { label: string; disabled: boolean; onPress: () => void }) {
-  const { colors, spacing, geometry, radius } = useTheme(); const motion = useMotion(); const pulse = useSharedValue(1);
+  const { colors, surfaces, spacing, geometry, radius } = useTheme(); const motion = useMotion(); const pulse = useSharedValue(1);
   useEffect(() => () => cancelAnimation(pulse), [pulse]);
   const animated = useAnimatedStyle(() => ({ opacity: 1 - pulse.value, transform: [{ scale: 1 + pulse.value * geometry.parallax }] }));
   return <PressableScale accessibilityRole="button" accessibilityLabel={label} disabled={disabled} onPress={() => {
     if (motion.level === 'full') { pulse.value = 0; pulse.value = withTiming(1, { duration: motion.duration('slow') }); }
     onPress();
-  }} style={{ minWidth: geometry.touch, minHeight: geometry.touch, padding: spacing.sm, borderRadius: radius.pill, backgroundColor: colors.surfaceAlt, alignItems: 'center', justifyContent: 'center' }}>
+  }} style={{ minWidth: geometry.touch, minHeight: geometry.touch, paddingHorizontal: spacing.md, borderRadius: radius.pill, backgroundColor: surfaces.softPrimary, borderWidth: geometry.hairline, borderColor: surfaces.rimStrong, alignItems: 'center', justifyContent: 'center' }}>
     <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { borderWidth: geometry.stroke, borderColor: colors.primary, borderRadius: radius.pill }, animated]} /><Text variant="label">{label}</Text>
   </PressableScale>;
 }

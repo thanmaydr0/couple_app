@@ -46,27 +46,27 @@ export default function ScribbleScreen() {
     </ScrollView>}
   </KeyboardAvoidingView></Screen></GestureHandlerRootView>;
 }
-const makeStyles = ({ colors, spacing, radius, geometry, typography, elevations }: ReturnType<typeof useTheme>) => StyleSheet.create({
-  root: { flex: 1 }, screen: { padding: spacing.md }, content: { gap: spacing.md, paddingBottom: spacing.lg },
+const makeStyles = ({ colors, surfaces, spacing, radius, geometry, typography, elevations }: ReturnType<typeof useTheme>) => StyleSheet.create({
+  root: { flex: 1 }, screen: { padding: spacing.md }, content: { gap: spacing.md, paddingBottom: spacing.xl },
   hero: { paddingVertical: spacing.lg, gap: spacing.md }, art: { ...typography['display/L'], color: colors.primary, textAlign: 'center' },
   heading: { ...typography['title/L'], color: colors.textPrimary, textAlign: 'center' },
   muted: { ...typography['body/S'], color: colors.textSecondary }, centerMuted: { ...typography['body/S'], color: colors.textSecondary, textAlign: 'center' },
-  card: { backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.md, gap: spacing.md, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.border, shadowColor: colors.shadowColor, shadowOpacity: 0.1, shadowRadius: 6, elevation: 3 },
+  card: { backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.md, gap: spacing.md, borderWidth: geometry.hairline, borderColor: surfaces.rimStrong, shadowColor: colors.shadowColor, shadowOpacity: elevations[1]!.opacity, shadowRadius: elevations[1]!.blur, shadowOffset: { width: 0, height: elevations[1]!.y }, elevation: elevations[1]!.androidDp },
   label: { ...typography.label, color: colors.textSecondary }, stepper: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: spacing.lg },
   number: { ...typography['display/M'], color: colors.textPrimary }, text: { ...typography['body/M'], color: colors.textPrimary },
-  match: { flexDirection: 'row', alignItems: 'center', padding: spacing.md, borderRadius: radius.md, backgroundColor: colors.surface, gap: spacing.sm, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.border, shadowColor: colors.shadowColor, shadowOpacity: 0.08, shadowRadius: 4, elevation: 2 },
+  match: { flexDirection: 'row', alignItems: 'center', padding: spacing.md, borderRadius: radius.lg, backgroundColor: colors.surface, gap: spacing.sm, borderWidth: geometry.hairline, borderColor: surfaces.rimStrong, shadowColor: colors.shadowColor, shadowOpacity: elevations[1]!.opacity * 0.7, shadowRadius: elevations[1]!.blur, elevation: 2 },
   code: { ...typography.caption, color: colors.textSecondary, marginTop: spacing.xs }, arrow: { ...typography['title/L'], color: colors.primary },
   scoreRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm }, score: { ...typography['title/L'], color: colors.textPrimary }, right: { textAlign: 'right' }, round: { alignItems: 'center', flexShrink: 1 },
-  banner: { padding: spacing.md, gap: spacing.xs, backgroundColor: colors.surfaceAlt, borderRadius: radius.md, borderColor: colors.warning, borderWidth: geometry.stroke },
-  error: { padding: spacing.md, gap: spacing.sm, backgroundColor: colors.surface, borderColor: colors.danger, borderWidth: geometry.stroke, borderRadius: radius.md, marginBottom: spacing.sm },
+  banner: { padding: spacing.md, gap: spacing.xs, backgroundColor: surfaces.softAccent, borderRadius: radius.lg, borderColor: colors.warning, borderWidth: geometry.hairline },
+  error: { padding: spacing.md, gap: spacing.sm, backgroundColor: colors.surface, borderColor: colors.danger, borderWidth: geometry.hairline, borderRadius: radius.lg, marginBottom: spacing.sm },
   prompt: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm }, eyebrow: { ...typography.caption, color: colors.textSecondary },
   word: { ...typography['title/L'], color: colors.primary, textAlign: 'center' },
   tools: { gap: spacing.sm }, palette: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   swatchTarget: { alignItems: 'center', justifyContent: 'center' }, swatch: { width: geometry.thumb, height: geometry.thumb, borderRadius: radius.pill },
   toolRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, alignItems: 'center' },
-  size: { width: geometry.touch, height: geometry.touch, borderRadius: radius.s12, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surfaceAlt },
-  sizeSelected: { borderColor: colors.primary, borderWidth: geometry.stroke }, small: { ...typography.caption, color: colors.textSecondary },
-  inputRow: { flexDirection: 'row', gap: spacing.sm }, input: { ...typography['body/M'], flex: 1, minWidth: 0, minHeight: geometry.touch, backgroundColor: colors.bg, borderWidth: geometry.hairline, borderColor: colors.border, borderRadius: radius.md, paddingHorizontal: spacing.sm, color: colors.textPrimary },
+  size: { width: geometry.touch, height: geometry.touch, borderRadius: radius.s12, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surfaceAlt, borderWidth: geometry.hairline, borderColor: surfaces.rim },
+  sizeSelected: { backgroundColor: surfaces.softPrimary, borderColor: colors.primary, borderWidth: geometry.stroke }, small: { ...typography.caption, color: colors.textSecondary },
+  inputRow: { flexDirection: 'row', gap: spacing.sm }, input: { ...typography['body/M'], flex: 1, minWidth: 0, minHeight: geometry.touch, backgroundColor: colors.bgElevated, borderWidth: geometry.hairline, borderColor: surfaces.rimStrong, borderRadius: radius.md, paddingHorizontal: spacing.sm, color: colors.textPrimary },
   correct: { color: colors.success }, result: { ...typography['title/M'], color: colors.success, textAlign: 'center' },
-  canvasCard: { borderRadius: radius.lg, overflow: 'hidden', borderColor: colors.border, borderWidth: geometry.hairline, shadowColor: colors.shadowColor, shadowOpacity: elevations[1]!.opacity, shadowRadius: elevations[1]!.blur, shadowOffset: { width: 0, height: elevations[1]!.y }, elevation: elevations[1]!.androidDp },
+  canvasCard: { borderRadius: radius.lg, overflow: 'hidden', borderColor: surfaces.rimStrong, borderWidth: geometry.hairline, shadowColor: colors.shadowColor, shadowOpacity: elevations[1]!.opacity, shadowRadius: elevations[1]!.blur, shadowOffset: { width: 0, height: elevations[1]!.y }, elevation: elevations[1]!.androidDp },
 });

@@ -32,7 +32,7 @@ export function Garden({ plants, logs, userId, now }: {
     userId?: string;
     now: number;
 }) {
-    const { colors, spacing, radius, geometry } = useTheme();
+    const { colors, surfaces, spacing, radius, geometry } = useTheme();
     const [page, setPage] = useState(0);
     const stats = statistics(logs, userId, now);
     const [width, setWidth] = useState(geometry.touch * 6);
@@ -41,13 +41,13 @@ export function Garden({ plants, logs, userId, now }: {
     const max = Math.max(1, ...stats.bars.flatMap(b => [b.you, b.partner]));
     const height = geometry.touch * 4;
     return <View style={{ gap: spacing.lg }}>
-  <Card style={{ gap: spacing.md }}><Text variant="display/M">{plants.length} plants</Text><Text color="textSecondary">Every completed work cycle leaves something growing.</Text>
-  {!plants.length ? <EmptyState title="Your garden starts with one quiet moment" description="Finish a work cycle to plant your first flower."/> : <View onLayout={e => setWidth(e.nativeEvent.layout.width)} style={{ height, backgroundColor: colors.surfaceAlt, borderRadius: radius.lg, overflow: 'hidden' }}>{visible.map((p, i) => <View key={p.id} style={{ position: 'absolute', left: p.x * Math.max(0, width - spacing.s56), top: p.y * (height - spacing.s56) }}><Sprout plant={p} animate={i < geometry.firstScreenful && now - Date.parse(p.grown_at) < 60000}/></View>)}</View>}
+  <Card variant="elevated" style={{ gap: spacing.md }}><Text variant="display/M">{plants.length} plants</Text><Text color="textSecondary">Every completed work cycle leaves something growing.</Text>
+  {!plants.length ? <EmptyState title="Your garden starts with one quiet moment" description="Finish a work cycle to plant your first flower."/> : <View onLayout={e => setWidth(e.nativeEvent.layout.width)} style={{ height, backgroundColor: colors.bgElevated, borderWidth: geometry.hairline, borderColor: surfaces.rimStrong, borderRadius: radius.lg, overflow: 'hidden' }}>{visible.map((p, i) => <View key={p.id} style={{ position: 'absolute', left: p.x * Math.max(0, width - spacing.s56), top: p.y * (height - spacing.s56) }}><Sprout plant={p} animate={i < geometry.firstScreenful && now - Date.parse(p.grown_at) < 60000}/></View>)}</View>}
   {plants.length > 40 && <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}><PressableScale accessibilityRole="button" disabled={page === 0} onPress={() => setPage(p => p - 1)}><Text>Newer plants</Text></PressableScale><PressableScale accessibilityRole="button" disabled={(page + 1) * 40 >= plants.length} onPress={() => setPage(p => p + 1)}><Text>Older plants</Text></PressableScale></View>}
   </Card>
-  <Card style={{ gap: spacing.md }}><Text variant="title/M">Time well spent</Text><Text>{stats.streak} day shared streak · Your best: {stats.best} min/day</Text><Text color="textSecondary" variant="caption">UTC days · Completed work only · Joining credits the room’s completed cycles</Text>
+  <Card variant="elevated" style={{ gap: spacing.md }}><Text variant="title/M">Time well spent</Text><Text>{stats.streak} day shared streak · Your best: {stats.best} min/day</Text><Text color="textSecondary" variant="caption">UTC days · Completed work only · Joining credits the room’s completed cycles</Text>
   <Text color="textSecondary">This week · You / Partner · Minutes</Text>
-  {stats.bars.map(b => <View key={b.day} style={{ gap: spacing.xs }}><Text variant="caption">{b.day.slice(5)} · {b.you} / {b.partner} min</Text><View style={{ height: geometry.track, backgroundColor: colors.surfaceAlt, borderRadius: radius.pill }}><View style={{ height: geometry.track, width: `${100 * b.you / max}%`, backgroundColor: colors.primary, borderRadius: radius.pill }}/></View><View style={{ height: geometry.track, backgroundColor: colors.surfaceAlt, borderRadius: radius.pill }}><View style={{ height: geometry.track, width: `${100 * b.partner / max}%`, backgroundColor: colors.success, borderRadius: radius.pill }}/></View></View>)}
+  {stats.bars.map(b => <View key={b.day} style={{ gap: spacing.xs }}><Text variant="caption">{b.day.slice(5)} · {b.you} / {b.partner} min</Text><View style={{ height: geometry.track, backgroundColor: surfaces.divider, borderRadius: radius.pill }}><View style={{ height: geometry.track, width: `${100 * b.you / max}%`, backgroundColor: colors.primary, borderRadius: radius.pill }}/></View><View style={{ height: geometry.track, backgroundColor: surfaces.divider, borderRadius: radius.pill }}><View style={{ height: geometry.track, width: `${100 * b.partner / max}%`, backgroundColor: colors.success, borderRadius: radius.pill }}/></View></View>)}
   </Card>
  </View>;
 }
